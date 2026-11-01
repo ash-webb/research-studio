@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 2,
+  "version": "0.2.0",
+  "description": "Fictional demonstration. No participant evidence is simulated.",
+  "welcome": "This is a demonstration using fictional account information. Please do not enter personal or sensitive data.",
+  "consent": "I understand that this study records task timing, choices, grouping/navigation actions, and responses that I submit. No screen recording or passwords are collected. I will not enter sensitive information.",
+  "preQuestions": [],
+  "postQuestions": [],
+  "id": "demo-card-sort",
+  "title": "Open card sorting demonstration",
+  "tasks": [
+    {
+      "id": "organize-content",
+      "method": "card_sort",
+      "title": "Organize these account features",
+      "instructions": "Group these account features in the way that makes the most sense to you. Create your own group names.",
+      "sortMode": "open",
+      "cards": [
+        {
+          "id": "payments",
+          "label": "Make a payment"
+        },
+        {
+          "id": "payment-history",
+          "label": "Payment activity"
+        },
+        {
+          "id": "tax-documents",
+          "label": "Tax documents"
+        },
+        {
+          "id": "notices",
+          "label": "Account notices"
+        },
+        {
+          "id": "refund",
+          "label": "Refund status"
+        },
+        {
+          "id": "support",
+          "label": "Contact support"
+        },
+        {
+          "id": "profile",
+          "label": "Update mailing address"
+        },
+        {
+          "id": "payment-plan",
+          "label": "Payment plan"
+        }
+      ],
+      "categories": [],
+      "questions": [
+        {
+          "id": "grouping-notes",
+          "type": "textarea",
+          "text": "Which items, if any, were difficult to categorize?",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

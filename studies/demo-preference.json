@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 2,
+  "version": "0.2.0",
+  "description": "Fictional demonstration. No participant evidence is simulated.",
+  "welcome": "This is a demonstration using fictional account information. Please do not enter personal or sensitive data.",
+  "consent": "I understand that this study records task timing, choices, grouping/navigation actions, and responses that I submit. No screen recording or passwords are collected. I will not enter sensitive information.",
+  "preQuestions": [],
+  "postQuestions": [],
+  "id": "demo-preference",
+  "title": "Preference testing demonstration",
+  "tasks": [
+    {
+      "id": "choose-layout",
+      "method": "preference",
+      "title": "Compare document layouts",
+      "instructions": "Which layout would you prefer to use to find documents?",
+      "variants": [
+        {
+          "id": "list",
+          "label": "List layout",
+          "imageUrl": "demo/assets/design-a.svg"
+        },
+        {
+          "id": "tiles",
+          "label": "Tile layout",
+          "imageUrl": "demo/assets/design-b.svg"
+        }
+      ],
+      "questions": [
+        {
+          "id": "why",
+          "type": "textarea",
+          "text": "What influenced your preference?",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

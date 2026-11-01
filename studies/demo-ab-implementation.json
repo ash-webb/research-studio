@@ -1,0 +1,92 @@
+{
+  "schemaVersion": 3,
+  "id": "demo-ab-implementation",
+  "version": "0.3.0",
+  "title": "Interactive design comparison: CivicPortal",
+  "description": "A fictional A/B usability experiment comparing two implementations of a sample account portal.",
+  "welcome": "You will explore one version of a fictional account portal and perform two short activities. There is no real account information.",
+  "consent": "I agree to take part. I understand that this study records my assigned prototype version, click/navigation events from the demo, task timing, task responses, and survey answers. I will not enter sensitive information.",
+  "preQuestions": [],
+  "tasks": [
+    {
+      "id": "find-service-request",
+      "method": "ab_test",
+      "title": "Find your most recent service request",
+      "instructions": "Find the details and status of the most recent service request in your account.",
+      "experimentId": "portal-navigation-2026",
+      "successSignal": "ab-request-detail",
+      "variants": [
+        {
+          "id": "design-a",
+          "label": "Sidebar navigation",
+          "prototypeUrl": "demo/ab-design-a.html",
+          "revision": "demo-v1"
+        },
+        {
+          "id": "design-b",
+          "label": "Dashboard shortcuts",
+          "prototypeUrl": "demo/ab-design-b.html",
+          "revision": "demo-v1"
+        }
+      ],
+      "questions": [
+        {
+          "id": "request-ease",
+          "type": "scale7",
+          "text": "How easy or difficult was it to find the service request?",
+          "required": true,
+          "lowLabel": "Very difficult",
+          "highLabel": "Very easy"
+        },
+        {
+          "id": "request-issue",
+          "type": "textarea",
+          "text": "What, if anything, made this task difficult?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "find-message",
+      "method": "ab_test",
+      "title": "Find your latest account notification",
+      "instructions": "Find and open the latest account notification in your account.",
+      "experimentId": "portal-navigation-2026",
+      "successSignal": "ab-message-detail",
+      "variants": [
+        {
+          "id": "design-a",
+          "label": "Sidebar navigation",
+          "prototypeUrl": "demo/ab-design-a.html",
+          "revision": "demo-v1"
+        },
+        {
+          "id": "design-b",
+          "label": "Dashboard shortcuts",
+          "prototypeUrl": "demo/ab-design-b.html",
+          "revision": "demo-v1"
+        }
+      ],
+      "questions": [
+        {
+          "id": "message-ease",
+          "type": "scale7",
+          "text": "How easy or difficult was it to find the notification?",
+          "required": true,
+          "lowLabel": "Very difficult",
+          "highLabel": "Very easy"
+        }
+      ]
+    }
+  ],
+  "postQuestions": [
+    {
+      "id": "overall-clarity",
+      "type": "scale5",
+      "text": "How clear was the account navigation overall?",
+      "required": true,
+      "lowLabel": "Not clear",
+      "highLabel": "Very clear"
+    }
+  ]
+}

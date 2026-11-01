@@ -1,0 +1,217 @@
+{
+  "schemaVersion": 2,
+  "version": "0.2.0",
+  "description": "Fictional demonstration. No participant evidence is simulated.",
+  "welcome": "This is a demonstration using fictional account information. Please do not enter personal or sensitive data.",
+  "consent": "I understand that this study records task timing, choices, grouping/navigation actions, and responses that I submit. No screen recording or passwords are collected. I will not enter sensitive information.",
+  "preQuestions": [],
+  "postQuestions": [],
+  "id": "demo-mixed",
+  "title": "Multi-method research demonstration",
+  "tasks": [
+    {
+      "id": "organize-content",
+      "method": "card_sort",
+      "title": "Organize these account features",
+      "instructions": "Group these account features in the way that makes the most sense to you. Create your own group names.",
+      "sortMode": "open",
+      "cards": [
+        {
+          "id": "payments",
+          "label": "Make a payment"
+        },
+        {
+          "id": "payment-history",
+          "label": "Payment activity"
+        },
+        {
+          "id": "tax-documents",
+          "label": "Tax documents"
+        },
+        {
+          "id": "notices",
+          "label": "Account notices"
+        },
+        {
+          "id": "refund",
+          "label": "Refund status"
+        },
+        {
+          "id": "support",
+          "label": "Contact support"
+        },
+        {
+          "id": "profile",
+          "label": "Update mailing address"
+        },
+        {
+          "id": "payment-plan",
+          "label": "Payment plan"
+        }
+      ],
+      "categories": [],
+      "questions": [
+        {
+          "id": "grouping-notes",
+          "type": "textarea",
+          "text": "Which items, if any, were difficult to categorize?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "find-transcript",
+      "method": "tree_test",
+      "title": "Find a transcript",
+      "instructions": "Imagine you need a copy of your tax transcript. Where would you expect to find it?",
+      "tree": [
+        {
+          "id": "home",
+          "label": "Home"
+        },
+        {
+          "id": "payments",
+          "label": "Payments",
+          "children": [
+            {
+              "id": "make-payment",
+              "label": "Make a payment"
+            },
+            {
+              "id": "payment-history",
+              "label": "Payment history"
+            }
+          ]
+        },
+        {
+          "id": "records",
+          "label": "Records",
+          "children": [
+            {
+              "id": "tax-transcripts",
+              "label": "Tax transcripts"
+            },
+            {
+              "id": "tax-documents",
+              "label": "Tax documents"
+            }
+          ]
+        },
+        {
+          "id": "notices",
+          "label": "Notices"
+        },
+        {
+          "id": "profile",
+          "label": "Profile"
+        },
+        {
+          "id": "help",
+          "label": "Help"
+        }
+      ],
+      "correctNodeIds": [
+        "tax-transcripts"
+      ],
+      "questions": [
+        {
+          "id": "confidence",
+          "type": "scale5",
+          "text": "How confident are you that you selected the right location?",
+          "lowLabel": "Not at all confident",
+          "highLabel": "Very confident",
+          "required": true
+        }
+      ]
+    },
+    {
+      "id": "first-click-records",
+      "method": "first_click",
+      "title": "First-click navigation",
+      "instructions": "You need to find your tax transcript. Where would you click first on this screen?",
+      "imageUrl": "demo/assets/first-click.svg",
+      "imageAlt": "Fictional account portal dashboard with side navigation and content cards",
+      "targetAreas": [
+        {
+          "x": 2,
+          "y": 35,
+          "width": 18,
+          "height": 10,
+          "label": "Records in side navigation"
+        }
+      ],
+      "questions": [
+        {
+          "id": "reason",
+          "type": "textarea",
+          "text": "What made you choose that location?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "choose-layout",
+      "method": "preference",
+      "title": "Compare document layouts",
+      "instructions": "Which layout would you prefer to use to find documents?",
+      "variants": [
+        {
+          "id": "list",
+          "label": "List layout",
+          "imageUrl": "demo/assets/design-a.svg"
+        },
+        {
+          "id": "tiles",
+          "label": "Tile layout",
+          "imageUrl": "demo/assets/design-b.svg"
+        }
+      ],
+      "questions": [
+        {
+          "id": "why",
+          "type": "textarea",
+          "text": "What influenced your preference?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "survey-questions",
+      "method": "survey",
+      "title": "Account experience survey",
+      "instructions": "Please answer these questions based on your experience with account websites. There are no right or wrong answers.",
+      "questions": [
+        {
+          "id": "frequency",
+          "type": "single",
+          "text": "How frequently do you use account websites?",
+          "options": [
+            "Daily",
+            "Weekly",
+            "Monthly",
+            "Less often"
+          ],
+          "required": true
+        },
+        {
+          "id": "priority",
+          "type": "multi",
+          "text": "Which tasks are important to you? Select all that apply.",
+          "options": [
+            "Make a payment",
+            "Find records",
+            "Read notices",
+            "Update information"
+          ],
+          "required": true
+        },
+        {
+          "id": "feedback",
+          "type": "textarea",
+          "text": "What would make these websites easier to use?",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

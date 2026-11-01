@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 2,
+  "version": "0.2.0",
+  "description": "Fictional demonstration. No participant evidence is simulated.",
+  "welcome": "This is a demonstration using fictional account information. Please do not enter personal or sensitive data.",
+  "consent": "I understand that this study records task timing, choices, grouping/navigation actions, and responses that I submit. No screen recording or passwords are collected. I will not enter sensitive information.",
+  "preQuestions": [],
+  "postQuestions": [],
+  "id": "demo-survey",
+  "title": "Survey demonstration",
+  "tasks": [
+    {
+      "id": "survey-questions",
+      "method": "survey",
+      "title": "Account experience survey",
+      "instructions": "Please answer these questions based on your experience with account websites. There are no right or wrong answers.",
+      "questions": [
+        {
+          "id": "frequency",
+          "type": "single",
+          "text": "How frequently do you use account websites?",
+          "options": [
+            "Daily",
+            "Weekly",
+            "Monthly",
+            "Less often"
+          ],
+          "required": true
+        },
+        {
+          "id": "priority",
+          "type": "multi",
+          "text": "Which tasks are important to you? Select all that apply.",
+          "options": [
+            "Make a payment",
+            "Find records",
+            "Read notices",
+            "Update information"
+          ],
+          "required": true
+        },
+        {
+          "id": "feedback",
+          "type": "textarea",
+          "text": "What would make these websites easier to use?",
+          "required": false
+        }
+      ]
+    }
+  ]
+}

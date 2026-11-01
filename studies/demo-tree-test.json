@@ -1,0 +1,78 @@
+{
+  "schemaVersion": 2,
+  "version": "0.2.0",
+  "description": "Fictional demonstration. No participant evidence is simulated.",
+  "welcome": "This is a demonstration using fictional account information. Please do not enter personal or sensitive data.",
+  "consent": "I understand that this study records task timing, choices, grouping/navigation actions, and responses that I submit. No screen recording or passwords are collected. I will not enter sensitive information.",
+  "preQuestions": [],
+  "postQuestions": [],
+  "id": "demo-tree-test",
+  "title": "Tree testing demonstration",
+  "tasks": [
+    {
+      "id": "find-transcript",
+      "method": "tree_test",
+      "title": "Find a transcript",
+      "instructions": "Imagine you need a copy of your tax transcript. Where would you expect to find it?",
+      "tree": [
+        {
+          "id": "home",
+          "label": "Home"
+        },
+        {
+          "id": "payments",
+          "label": "Payments",
+          "children": [
+            {
+              "id": "make-payment",
+              "label": "Make a payment"
+            },
+            {
+              "id": "payment-history",
+              "label": "Payment history"
+            }
+          ]
+        },
+        {
+          "id": "records",
+          "label": "Records",
+          "children": [
+            {
+              "id": "tax-transcripts",
+              "label": "Tax transcripts"
+            },
+            {
+              "id": "tax-documents",
+              "label": "Tax documents"
+            }
+          ]
+        },
+        {
+          "id": "notices",
+          "label": "Notices"
+        },
+        {
+          "id": "profile",
+          "label": "Profile"
+        },
+        {
+          "id": "help",
+          "label": "Help"
+        }
+      ],
+      "correctNodeIds": [
+        "tax-transcripts"
+      ],
+      "questions": [
+        {
+          "id": "confidence",
+          "type": "scale5",
+          "text": "How confident are you that you selected the right location?",
+          "lowLabel": "Not at all confident",
+          "highLabel": "Very confident",
+          "required": true
+        }
+      ]
+    }
+  ]
+}

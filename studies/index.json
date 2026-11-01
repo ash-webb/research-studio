@@ -1,0 +1,42 @@
+[
+  {
+    "id": "demo-ab-implementation",
+    "title": "A/B implementation testing demonstration",
+    "config": "studies/demo-ab-implementation.json"
+  },
+  {
+    "id": "demo-mixed",
+    "title": "Multi-method research demonstration",
+    "config": "studies/demo-mixed.json"
+  },
+  {
+    "id": "demo-card-sort",
+    "title": "Open card sorting demonstration",
+    "config": "studies/demo-card-sort.json"
+  },
+  {
+    "id": "demo-tree-test",
+    "title": "Tree testing demonstration",
+    "config": "studies/demo-tree-test.json"
+  },
+  {
+    "id": "demo-first-click",
+    "title": "First-click demonstration",
+    "config": "studies/demo-first-click.json"
+  },
+  {
+    "id": "demo-preference",
+    "title": "Preference testing demonstration",
+    "config": "studies/demo-preference.json"
+  },
+  {
+    "id": "demo-survey",
+    "title": "Survey demonstration",
+    "config": "studies/demo-survey.json"
+  },
+  {
+    "id": "demo-portal",
+    "title": "Prototype usability demonstration",
+    "config": "studies/demo-portal.json"
+  }
+]

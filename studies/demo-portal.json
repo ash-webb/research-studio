@@ -1,0 +1,40 @@
+{
+  "schemaVersion": 1,
+  "id": "demo-portal",
+  "version": "1.0.0",
+  "title": "Portal navigation usability study",
+  "description": "Two short tasks using a fictional account portal. This demonstration uses fabricated account information only.",
+  "prototypeUrl": "demo/prototype.html",
+  "welcome": "You will complete two short activities in a sample account portal. Please approach each task as you normally would. The prototype uses fictional information.",
+  "consent": "I understand that this study will record click locations, navigation, task timing, and the survey answers I provide. It will not record my keystrokes, passwords, or screen video. I will not enter real personal or financial information.",
+  "preQuestions": [
+    { "id": "experience", "type": "single", "text": "How often do you use online account portals?", "options": ["Daily", "Weekly", "A few times a year", "Rarely or never"], "required": true }
+  ],
+  "tasks": [
+    {
+      "id": "task-activity",
+      "title": "Locate account activity",
+      "instructions": "Imagine you want to review your recent account activity. Use the portal to find the details of the most recent activity entry. Stop when you reach its details.",
+      "successSignal": "task-activity",
+      "questions": [
+        { "id": "ease", "type": "scale7", "text": "Overall, how difficult or easy was this task?", "required": true, "lowLabel": "Very difficult", "highLabel": "Very easy" },
+        { "id": "clarity", "type": "scale5", "text": "How clear were the task instructions?", "required": true, "lowLabel": "Not at all clear", "highLabel": "Extremely clear" },
+        { "id": "comments", "type": "textarea", "text": "What, if anything, was confusing?", "required": false }
+      ]
+    },
+    {
+      "id": "task-message",
+      "title": "Find a message",
+      "instructions": "You received an important message in your account. Find and open the message titled “Account update.” Stop when you can see its contents.",
+      "successSignal": "task-message",
+      "questions": [
+        { "id": "ease", "type": "scale7", "text": "Overall, how difficult or easy was this task?", "required": true, "lowLabel": "Very difficult", "highLabel": "Very easy" },
+        { "id": "comments", "type": "textarea", "text": "What would you change to make this easier?", "required": false }
+      ]
+    }
+  ],
+  "postQuestions": [
+    { "id": "overall", "type": "scale5", "text": "How satisfied are you with this portal overall?", "required": true, "lowLabel": "Very dissatisfied", "highLabel": "Very satisfied" },
+    { "id": "final-feedback", "type": "textarea", "text": "Is there anything else you would like to share?", "required": false }
+  ]
+}

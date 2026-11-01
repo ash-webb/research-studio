@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 2,
+  "version": "0.2.0",
+  "description": "Fictional demonstration. No participant evidence is simulated.",
+  "welcome": "This is a demonstration using fictional account information. Please do not enter personal or sensitive data.",
+  "consent": "I understand that this study records task timing, choices, grouping/navigation actions, and responses that I submit. No screen recording or passwords are collected. I will not enter sensitive information.",
+  "preQuestions": [],
+  "postQuestions": [],
+  "id": "demo-first-click",
+  "title": "First-click demonstration",
+  "tasks": [
+    {
+      "id": "first-click-records",
+      "method": "first_click",
+      "title": "First-click navigation",
+      "instructions": "You need to find your tax transcript. Where would you click first on this screen?",
+      "imageUrl": "demo/assets/first-click.svg",
+      "imageAlt": "Fictional account portal dashboard with side navigation and content cards",
+      "targetAreas": [
+        {
+          "x": 2,
+          "y": 35,
+          "width": 18,
+          "height": 10,
+          "label": "Records in side navigation"
+        }
+      ],
+      "questions": [
+        {
+          "id": "reason",
+          "type": "textarea",
+          "text": "What made you choose that location?",
+          "required": false
+        }
+      ]
+    }
+  ]
+}
