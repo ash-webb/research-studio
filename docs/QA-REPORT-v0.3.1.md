@@ -25,6 +25,8 @@ Scripted participants completed every bundled example study through the real par
 | Extra configurations (Import JSON → Preview) | 1 | Closed card sort, hybrid card sort, unscored first-click test, prototype page **without** the tracker | 24 |
 | **Total** | | | **218 / 218 pass** |
 
+The total varies slightly between runs (for example 220) because designs are assigned at random and the A/B scenario keeps adding sessions until each design has been seen at least twice.
+
 Every scenario also asserts no console errors, no uncaught page errors and no failed HTTP requests.
 
 ## Defects found and fixed
