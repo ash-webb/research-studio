@@ -18,7 +18,20 @@ function setSaveStatus(status,message=''){
   else if(status==='error'){el.textContent='Sync pending';if(message)alertMessage(`Some responses have not synced. ${message}`);}
 }
 function progress(value,label){$('#progressFill').style.width=`${Math.min(100,Math.round(value*100))}%`;$('#stepCount').textContent=label;}
-function render(markup){$main().innerHTML=markup;window.scrollTo(0,0);}
+// Replaces the screen and moves focus into it, so keyboard and screen-reader users are not
+// sent back to the top of the page. focus: a selector to focus, 'h1' (default) for the new
+// heading, or null to leave focus alone (first load).
+function render(markup,focus='h1'){
+  $main().innerHTML=markup;
+  if(focus===null){window.scrollTo(0,0);return;}
+  const target=(focus&&$main().querySelector(focus))||$main().querySelector('h1');
+  if(!target){window.scrollTo(0,0);return;}
+  if(target.matches('h1,h2,section,div,p'))target.setAttribute('tabindex','-1');
+  if(focus==='h1'||target.matches('h1'))window.scrollTo(0,0);
+  target.focus({preventScroll:focus==='h1'});
+}
+// Polite announcement for changes that do not move to a new screen.
+function announce(message){const el=$('#srStatus');if(!el)return;el.textContent='';setTimeout(()=>{el.textContent=message;},30);}
 function elapsed(){return Math.round((Date.now()-taskStartedAt)/1000);}
 function event(action,detail={}){writer.add('method_event',activeTask.id,{method:normalizeMethod(activeTask),action,detail});}
 function instructionCard(title,subtitle=''){
@@ -41,11 +54,11 @@ async function init(){
     validateStudy(study);
     document.title=`${study.title} · Research Studio`;
     progress(0,'Introduction');welcome();
-  }catch(err){render(`<section class="welcome-card"><h1>Study unavailable</h1><p>${esc(err.message)}</p><a class="btn btn-outline" href="index.html">Return to Research Studio</a></section>`);}
+  }catch(err){render(`<section class="welcome-card"><h1>Study unavailable</h1><p>${esc(err.message)}</p><a class="btn btn-outline" href="index.html">Return to Research Studio</a></section>`,null);}
 }
 function welcome(){
   stage='welcome';
-  render(`<section class="welcome-card"><span class="eyebrow accent">UNMODERATED RESEARCH STUDY</span><h1>${esc(study.title)}</h1><p>${esc(study.welcome||study.description||'')}</p><div class="notice"><strong>What this study may collect</strong><br>Task timing, navigation choices, random design assignment for implementation comparisons, card groupings and names, first-click locations, preferences, and answers you explicitly submit. An instrumented prototype may also record click locations and navigation. No screen recording, passwords, or typed prototype form values are collected by the tracker. Please do not enter sensitive personal information.</div><label class="consent"><input id="consentCheck" type="checkbox"><span>${esc(study.consent||'I agree to participate and to the data collection described above.')}</span></label><button id="startStudy" class="btn btn-primary" disabled>Agree and begin study →</button><p class="small muted" style="margin-top:18px">Participation is voluntary. You can close the page at any point.</p></section>`);
+  render(`<section class="welcome-card"><span class="eyebrow accent">UNMODERATED RESEARCH STUDY</span><h1>${esc(study.title)}</h1><p>${esc(study.welcome||study.description||'')}</p><div class="notice"><strong>What this study may collect</strong><br>Task timing, navigation choices, random design assignment for implementation comparisons, card groupings and names, first-click locations, preferences, and answers you explicitly submit. An instrumented prototype may also record click locations and navigation. No screen recording, passwords, or typed prototype form values are collected by the tracker. Please do not enter sensitive personal information.</div><label class="consent"><input id="consentCheck" type="checkbox"><span>${esc(study.consent||'I agree to participate and to the data collection described above.')}</span></label><button id="startStudy" class="btn btn-primary" disabled>Agree and begin study →</button><p class="small muted" style="margin-top:18px">Participation is voluntary. You can close the page at any point.</p></section>`,null);
   $('#consentCheck').onchange=e=>$('#startStudy').disabled=!e.target.checked;
   $('#startStudy').onclick=()=>{
     sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview);
@@ -55,7 +68,13 @@ function welcome(){
 }
 function formPage(eyebrow,title,helper,questions,onSubmit){
   render(`<section class="survey-card"><span class="eyebrow accent">${esc(eyebrow)}</span><h1>${esc(title)}</h1><p>${esc(helper)}</p><form id="questionForm">${questionFields(questions,'form')}<div id="formError" class="notice warning hidden" role="alert"></div><button class="btn btn-primary" type="submit">Continue →</button></form></section>`);
-  $('#questionForm').onsubmit=async e=>{e.preventDefault();try{const answers=collectAnswers(e.currentTarget,questions);$('#formError').classList.add('hidden');await onSubmit(answers);}catch(err){$('#formError').textContent=err.message;$('#formError').classList.remove('hidden');}};
+  $('#questionForm').onsubmit=async e=>{e.preventDefault();const form=e.currentTarget;try{const answers=collectAnswers(form,questions);$('#formError').classList.add('hidden');await onSubmit(answers);}catch(err){
+    $('#formError').textContent=err.message;$('#formError').classList.remove('hidden');
+    // Take the participant straight to the unanswered question.
+    form.querySelectorAll('[aria-invalid]').forEach(x=>x.removeAttribute('aria-invalid'));
+    const first=err.questionId?form.querySelector(`[name="${CSS.escape(err.questionId)}"]`):null;
+    if(first){first.closest('.question')?.querySelector('[role=group]')?.setAttribute('aria-invalid','true');first.focus();}
+  }};
 }
 function showPre(){stage='pre';progress(.08,'Before the activities');formPage('BEFORE WE BEGIN','A few quick questions','Please answer the following questions.',study.preQuestions,async answers=>{
  writer.add('answers',null,{stage:'pre',answers});await writer.flush();startActivity();
@@ -146,7 +165,7 @@ window.addEventListener('message',e=>{
   if(m.type==='success' && m.task_id===activeTask.successSignal){observedSuccess=true;return;}
   if(m.type==='ready'){lastPage=String(m.page||'').slice(0,90);return;}
   if(['click','scroll','screen','custom'].includes(m.type)){
-    const hit={type:m.type,at:new Date().toISOString(),page:String(m.page||lastPage||'').slice(0,90),target:String(m.target||m.name||'').slice(0,90),x_pct:Math.min(100,Math.max(0,Number(m.x_pct)||0)),y_pct:Math.min(100,Math.max(0,Number(m.y_pct)||0)),viewport_width:Math.max(0,Number(m.viewport_width)||0),viewport_height:Math.max(0,Number(m.viewport_height)||0)};
+    const hit={type:m.type,at:new Date().toISOString(),page:String(m.page||lastPage||'').slice(0,90),target:String(m.target||m.name||'').slice(0,90),x_pct:Math.min(100,Math.max(0,Number(m.x_pct)||0)),y_pct:Math.min(100,Math.max(0,Number(m.y_pct)||0)),viewport_width:Math.max(0,Number(m.viewport_width)||0),viewport_height:Math.max(0,Number(m.viewport_height)||0),...(['keyboard','pointer'].includes(m.input)?{input:m.input}:{})};
     taskInteractions.push(hit);if(m.type==='click'){clickCount++;if($('#taskClicks'))$('#taskClicks').textContent=clickCount;}
     if(taskInteractions.length>=20)flushInteractions();
   }
@@ -159,16 +178,18 @@ function startCardSort(){
   let moves=0;
   const categories=()=>[...(activeTask.sortMode==='open'?[]:activeTask.categories||[]),...created];
   const methodAction=(action,detail)=>{moves++;event(action,detail);};
-  function assign(cardId,categoryId){if(!Object.hasOwn(groups,cardId))return;if(categoryId&&!categories().some(c=>c.id===categoryId))return;groups[cardId]=categoryId;methodAction('card_assignment',{card_id:cardId,category_id:categoryId||null});show();}
-  function show(){
+  function assign(cardId,categoryId){if(!Object.hasOwn(groups,cardId))return;if(categoryId&&!categories().some(c=>c.id===categoryId))return;groups[cardId]=categoryId;methodAction('card_assignment',{card_id:cardId,category_id:categoryId||null});show(`select[data-assign-card="${CSS.escape(cardId)}"]`);
+    const card=activeTask.cards.find(c=>c.id===cardId),cat=categories().find(c=>c.id===categoryId),done=Object.values(groups).filter(Boolean).length;
+    announce(`${card?.label||cardId} moved to ${cat?.label||'Unsorted'}. ${done} of ${activeTask.cards.length} cards grouped.`);}
+  function show(focus='h1'){
     const cats=categories();const assigned=Object.values(groups).filter(Boolean).length;
     const cardMarkup=c=>`<div class="sort-card" draggable="true" data-drag-card="${esc(c.id)}"><span class="sort-grip" aria-hidden="true">⠿</span><span class="sort-card-title">${esc(c.label)}</span><label class="sort-card-select"><span class="sr-only">Category for ${esc(c.label)}</span><select data-assign-card="${esc(c.id)}" aria-label="Category for ${esc(c.label)}"><option value="">Unsorted</option>${cats.map(cat=>`<option value="${esc(cat.id)}" ${groups[c.id]===cat.id?'selected':''}>${esc(cat.label)}</option>`).join('')}</select></label></div>`;
     const groupsMarkup=cats.map(cat=>`<section class="sort-dropzone" data-drop-category="${esc(cat.id)}"><div class="sort-zone-heading"><strong>${esc(cat.label)}</strong><small>${Object.values(groups).filter(x=>x===cat.id).length} cards</small></div><div class="sort-zone-cards">${activeTask.cards.filter(c=>groups[c.id]===cat.id).map(cardMarkup).join('')||'<div class="drop-placeholder">Drag a card here or use its category menu</div>'}</div></section>`).join('');
-    render(methodTemplate(`<div class="sort-progress"><strong>${assigned} of ${activeTask.cards.length} cards grouped</strong><span>${esc(activeTask.sortMode)} sort</span></div><div class="sort-layout"><section class="sort-unsorted" data-drop-category=""><div class="sort-zone-heading"><strong>Unsorted cards</strong><small>${activeTask.cards.length-assigned} remaining</small></div>${activeTask.cards.filter(c=>!groups[c.id]).map(cardMarkup).join('')||'<p class="muted small">All cards have been assigned.</p>'}</section><div class="sort-zones">${groupsMarkup||'<div class="notice">Create a group to begin sorting.</div>'}${activeTask.sortMode!=='closed'?`<form id="addGroupForm" class="add-group-form"><label for="newGroupName" class="field">New category name<input id="newGroupName" required maxlength="80" placeholder="Enter a group name"></label><button class="btn btn-outline" type="submit">+ Add group</button></form>`:''}</div></div><div class="method-actions"><button id="submitSort" class="btn btn-primary" ${assigned!==activeTask.cards.length?'disabled':''}>Finish card sort →</button><button id="skipSort" class="btn btn-outline">I cannot finish grouping</button></div>`));
+    render(methodTemplate(`<div class="sort-progress"><strong>${assigned} of ${activeTask.cards.length} cards grouped</strong><span>${esc(activeTask.sortMode)} sort</span></div><div class="sort-layout"><section class="sort-unsorted" data-drop-category=""><div class="sort-zone-heading"><strong>Unsorted cards</strong><small>${activeTask.cards.length-assigned} remaining</small></div>${activeTask.cards.filter(c=>!groups[c.id]).map(cardMarkup).join('')||'<p class="muted small">All cards have been assigned.</p>'}</section><div class="sort-zones">${groupsMarkup||'<div class="notice">Create a group to begin sorting.</div>'}${activeTask.sortMode!=='closed'?`<form id="addGroupForm" class="add-group-form"><label for="newGroupName" class="field">New category name<input id="newGroupName" required maxlength="80" placeholder="Enter a group name"></label><button class="btn btn-outline" type="submit">+ Add group</button></form>`:''}</div></div><div class="method-actions"><button id="submitSort" class="btn btn-primary" ${assigned!==activeTask.cards.length?'disabled':''}>Finish card sort →</button><button id="skipSort" class="btn btn-outline">I cannot finish grouping</button></div>`),focus);
     $main().querySelectorAll('[data-assign-card]').forEach(el=>el.onchange=e=>assign(e.target.dataset.assignCard,e.target.value));
     if($('#addGroupForm'))$('#addGroupForm').onsubmit=e=>{e.preventDefault();const label=$('#newGroupName').value.trim();if(!label)return;
       if(categories().some(cat=>cat.label.toLocaleLowerCase()===label.toLocaleLowerCase()))return alertMessage('That category name already exists.');
-      const id=`created-${created.length+1}`;created.push({id,label});methodAction('category_created',{category_id:id,label});show();};
+      const id=`created-${created.length+1}`;created.push({id,label});methodAction('category_created',{category_id:id,label});show('#newGroupName');announce(`Group "${label}" added. Cards can now be moved to it.`);};
     $main().querySelectorAll('[data-drag-card]').forEach(el=>el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',el.dataset.dragCard);e.dataTransfer.effectAllowed='move';}));
     $main().querySelectorAll('[data-drop-category]').forEach(el=>{el.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';});el.addEventListener('drop',e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(Object.hasOwn(groups,id))assign(id,el.dataset.dropCategory);});});
     $('#submitSort').onclick=()=>completeActivity({sort_mode:activeTask.sortMode,groups,categories:cats,move_count:moves,completed:true});
@@ -182,20 +203,21 @@ function startCardSort(){
 function startTreeTest(){
   let stack=[],history=[];
   const currentChildren=()=>stack.length?stack.at(-1).children||[]:activeTask.tree;
-  function show(){
+  function show(moved=false){
     const current=stack.at(-1);
-    const breadcrumb=`<nav class="tree-breadcrumb" aria-label="Navigation path"><button type="button" data-tree-root>Start</button>${stack.map((n,i)=>`<span aria-hidden="true">›</span><button type="button" data-tree-level="${i}">${esc(n.label)}</button>`).join('')}</nav>`;
-    render(methodTemplate(`${breadcrumb}<div class="tree-explorer"><div class="tree-section-title">${current?`Inside ${esc(current.label)}`:'Choose a starting location'}</div><div class="tree-choices">${currentChildren().length?currentChildren().map(n=>`<button type="button" class="tree-choice" data-tree-node="${esc(n.id)}"><span class="tree-choice-icon" aria-hidden="true">${n.children?.length?'▤':'◻'}</span><span>${esc(n.label)}</span><span aria-hidden="true">›</span></button>`).join(''):'<p class="muted">There are no more items inside this location.</p>'}</div></div><div class="method-actions">${current?cardButton('Select this location →','selectDestination'):''}<button class="btn btn-outline" id="cannotFind">I cannot find it</button></div><p class="small muted">Select the location where you expect the requested information to be. You can navigate back if needed.</p>`));
+    const breadcrumb=`<nav class="tree-breadcrumb" aria-label="Navigation path"><button type="button" data-tree-root>Start</button>${stack.map((n,i)=>`<span aria-hidden="true">›</span><button type="button" data-tree-level="${i}" ${i===stack.length-1?'aria-current="location"':''}>${esc(n.label)}</button>`).join('')}</nav>`;
+    render(methodTemplate(`${breadcrumb}<div class="tree-explorer"><div class="tree-section-title">${current?`Inside ${esc(current.label)}`:'Choose a starting location'}</div><div class="tree-choices">${currentChildren().length?currentChildren().map(n=>`<button type="button" class="tree-choice" data-tree-node="${esc(n.id)}"><span class="tree-choice-icon" aria-hidden="true">${n.children?.length?'▤':'◻'}</span><span>${esc(n.label)}</span><span aria-hidden="true">›</span></button>`).join(''):'<p class="muted">There are no more items inside this location.</p>'}</div></div><div class="method-actions">${current?cardButton('Select this location →','selectDestination'):''}<button class="btn btn-outline" id="cannotFind">I cannot find it</button></div><p class="small muted">Select the location where you expect the requested information to be. You can navigate back if needed.</p>`),moved?'.tree-choices .tree-choice, #selectDestination':'h1');
+    if(moved){const kids=currentChildren();announce(current?`Inside ${current.label}. ${kids.length?`${kids.length} item${kids.length===1?'':'s'}.`:'No more items inside. You can select this location or go back.'}`:`Starting locations. ${kids.length} items.`);}
     function navigateTo(nodes){stack=nodes;show();}
     $main().querySelectorAll('[data-tree-node]').forEach(el=>el.onclick=()=>{
       const n=currentChildren().find(x=>x.id===el.dataset.treeNode);if(!n)return;
-      stack.push(n);const entry={action:'open',node_id:n.id,at_ms:Date.now()-taskStartedAt};history.push(entry);event('tree_open',entry);show();
+      stack.push(n);const entry={action:'open',node_id:n.id,at_ms:Date.now()-taskStartedAt};history.push(entry);event('tree_open',entry);show(true);
     });
     $main().querySelectorAll('[data-tree-level]').forEach(el=>el.onclick=()=>{
-      const idx=Number(el.dataset.treeLevel);if(idx<stack.length-1){const popped=stack.slice(idx+1).map(x=>x.id);stack=stack.slice(0,idx+1);const entry={action:'back',to_node:stack.at(-1)?.id||null,popped,at_ms:Date.now()-taskStartedAt};history.push(entry);event('tree_back',entry);show();}
+      const idx=Number(el.dataset.treeLevel);if(idx<stack.length-1){const popped=stack.slice(idx+1).map(x=>x.id);stack=stack.slice(0,idx+1);const entry={action:'back',to_node:stack.at(-1)?.id||null,popped,at_ms:Date.now()-taskStartedAt};history.push(entry);event('tree_back',entry);show(true);}
     });
     if($main().querySelector('[data-tree-root]'))$main().querySelector('[data-tree-root]').onclick=()=>{
-      if(stack.length){const entry={action:'back',to_node:null,popped:stack.map(x=>x.id),at_ms:Date.now()-taskStartedAt};history.push(entry);event('tree_back',entry);stack=[];show();}
+      if(stack.length){const entry={action:'back',to_node:null,popped:stack.map(x=>x.id),at_ms:Date.now()-taskStartedAt};history.push(entry);event('tree_back',entry);stack=[];show(true);}
     };
     if($('#selectDestination'))$('#selectDestination').onclick=()=>{
       const chosen=stack.at(-1).id;event('tree_selected',{node_id:chosen});completeActivity(scoreTree(activeTask.tree,activeTask.correctNodeIds,chosen,history),{observedSuccess:activeTask.correctNodeIds.includes(chosen)});
@@ -206,16 +228,33 @@ function startTreeTest(){
 }
 
 function startFirstClick(){
-  let first=null;
+  let first=null,pending=null;
   const image=secureURL(activeTask.imageUrl,location.href);
-  function show(){
-    // Once the first click is made it is final, so the "not sure" option is withdrawn.
-    render(methodTemplate(`<div class="image-test"><p class="helper">Click or tap the first place you would go. Your first selection is final.</p><div class="click-image-frame"><img id="firstClickImage" src="${esc(image)}" alt="${esc(activeTask.imageAlt||'Interface screenshot for first-click test')}" draggable="false">${first?`<span class="first-click-marker" style="left:${first.x_pct}%;top:${first.y_pct}%" aria-hidden="true"></span>`:''}</div></div><div class="method-actions">${first?cardButton('Continue →','submitFirstClick'):'<button class="btn btn-outline" id="cannotChoose">I\'m not sure where to click</button>'}</div>`));
+  const alt=activeTask.imageAlt||'Interface screenshot for first-click test';
+  // input records how the position was chosen: 'pointer' (mouse/touch) or 'keyboard'.
+  function record(x,y,input){
+    first={x_pct:Math.round(x*100)/100,y_pct:Math.round(y*100)/100,at_ms:Date.now()-taskStartedAt,input};
+    event('first_click',first);show('#submitFirstClick');announce('First click recorded. Select Continue when ready.');
+  }
+  function show(focus='h1'){
+    // Once the first click is made it is final, so the "not sure" option and keyboard marker are withdrawn.
+    const interactive=!first;
+    render(methodTemplate(`<div class="image-test"><p class="helper" id="firstClickHelp">Click or tap the first place you would go. Your first selection is final.${interactive?' <span class="keyboard-hint">Using a keyboard? Move to the screenshot, press Enter to show a marker, move it with the arrow keys (hold Shift for bigger steps), then press Enter again to confirm. Escape removes the marker.</span>':''}</p><div class="click-image-frame" ${interactive?`tabindex="0" role="application" aria-label="${esc(alt)}. First-click area" aria-describedby="firstClickHelp"`:''}><img id="firstClickImage" src="${esc(image)}" alt="${esc(alt)}" draggable="false">${first?`<span class="first-click-marker" style="left:${first.x_pct}%;top:${first.y_pct}%" aria-hidden="true"></span>`:'<span class="first-click-marker pending" hidden aria-hidden="true"></span>'}</div></div><div class="method-actions">${first?cardButton('Continue →','submitFirstClick'):'<button class="btn btn-outline" id="cannotChoose">I\'m not sure where to click</button>'}</div>`),focus);
     const img=$('#firstClickImage');img.onerror=()=>alertMessage('Could not load the test image. Ask the researcher to check the URL.');
     img.onclick=e=>{
       if(first)return;const r=e.currentTarget.getBoundingClientRect();
-      first={x_pct:Math.round((e.clientX-r.left)/r.width*10000)/100,y_pct:Math.round((e.clientY-r.top)/r.height*10000)/100,at_ms:Date.now()-taskStartedAt};
-      event('first_click',first);show();
+      record((e.clientX-r.left)/r.width*100,(e.clientY-r.top)/r.height*100,'pointer');
+    };
+    const frame=$main().querySelector('.click-image-frame[tabindex]'),marker=$main().querySelector('.first-click-marker.pending');
+    if(frame)frame.onkeydown=e=>{
+      const place=()=>{marker.hidden=false;marker.style.left=`${pending.x}%`;marker.style.top=`${pending.y}%`;};
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();
+        if(!pending){pending={x:50,y:50};place();announce('Marker shown in the centre of the screenshot. Move it with the arrow keys, press Enter to confirm, or Escape to remove it.');}
+        else record(pending.x,pending.y,'keyboard');
+        return;}
+      if(e.key==='Escape'&&pending){e.preventDefault();pending=null;marker.hidden=true;announce('Marker removed.');return;}
+      const step=e.shiftKey?10:2,moves={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]}[e.key];
+      if(moves&&pending){e.preventDefault();pending.x=Math.min(100,Math.max(0,pending.x+moves[0]));pending.y=Math.min(100,Math.max(0,pending.y+moves[1]));place();}
     };
     if($('#submitFirstClick'))$('#submitFirstClick').onclick=()=>completeActivity({click:first,hit_target:scoreFirstClick(first,activeTask.targetAreas||[]),scored:!!activeTask.targetAreas?.length},{observedSuccess:scoreFirstClick(first,activeTask.targetAreas||[])??undefined});
     // "Not sure" on a scored test is an observed miss, like "I cannot find it" in a tree test.

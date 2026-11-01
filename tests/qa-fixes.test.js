@@ -59,3 +59,16 @@ test('prototype analysis without a configured success signal does not show a sig
   const out = renderAnalyses(study, {tasks:[{task_id:'p', session_id:'a', tracker_connected:true, observed_success:null, self_report:'completed', result:{}}], answers:[]}, escapeHTML);
   assert.match(out, /Observed signals: <strong>No signal configured<\/strong>/);
 });
+
+test('interaction input type (keyboard/pointer) survives flattening for the Clicks CSV', () => {
+  const flat = flattenEvents([
+    started('one'),
+    {kind:'interaction_batch', study_id:'s', session_id:'one', task_id:'t', created_at:'2026-11-01T10:00:01Z', payload:{items:[
+      {type:'click', target:'nav', x_pct:12.5, y_pct:30, input:'keyboard'},
+      {type:'click', target:'card', x_pct:40, y_pct:60, input:'pointer'},
+      {type:'click', target:'old', x_pct:5, y_pct:5}
+    ]}}
+  ]);
+  assert.deepEqual(flat.interactions.map(i => i.input), ['keyboard', 'pointer', '']);
+  assert.ok(csv(flat.interactions, ['target', 'input']).includes('"nav","keyboard"'));
+});

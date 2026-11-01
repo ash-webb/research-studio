@@ -10,7 +10,7 @@ const by = id=>document.getElementById(id);
 const questionTypes=[['text','Short text'],['textarea','Long text'],['scale5','5-point scale'],['scale7','7-point scale'],['single','Single choice'],['multi','Multiple choice']];
 
 function toast(message,timeout=4500){const el=by('toast');el.textContent=message;el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),timeout);}
-function switchTab(name){$$('.nav-option').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));$$('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.id!==`tab-${name}`));if(name==='results')refreshResults().catch(err=>toast(err.message));if(name==='setup')renderAuth();}
+function switchTab(name){$$('.nav-option').forEach(b=>{const on=b.dataset.tab===name;b.classList.toggle('active',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});$$('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.id!==`tab-${name}`));if(name==='results')refreshResults().catch(err=>toast(err.message));if(name==='setup')renderAuth();}
 function newQuestion(){return {id:`question-${Math.random().toString(36).slice(2,7)}`,type:'textarea',text:'',required:false};}
 function normalizeStudy(item){return {schemaVersion:item.schemaVersion||3,id:item.id || 'new-study',version:item.version||'1.0.0',title:item.title || '',description:item.description||'',prototypeUrl:item.prototypeUrl || '',welcome:item.welcome||'',consent:item.consent||'',preQuestions:item.preQuestions || [],tasks:item.tasks || [],postQuestions:item.postQuestions || []};}
 function prepareEditor(){
@@ -135,6 +135,23 @@ async function refreshResults(){
     by('resultsStatus').textContent=`${records.length} collected event records. ${remoteEnabled?'Loaded from Supabase.':'Local demo records only; not centrally collected.'}${previewNote}`;
   } catch(err){by('resultsStatus').textContent=`Unable to load results: ${err.message}`;records=[];flat=flattenEvents([]);renderResults();}
 }
+// Wide tables scroll sideways; make each scroll area reachable and named for keyboard
+// and screen-reader users (WCAG 2.1.1 / axe scrollable-region-focusable).
+function labelScrollRegions(root=document){
+  const used=new Map();
+  for(const el of root.querySelectorAll('.table-scroll')){
+    if(el.hasAttribute('tabindex')){used.set(el.getAttribute('aria-label'),1);continue;}
+    let heading=null;
+    for(let n=el.previousElementSibling;n&&!heading;n=n.previousElementSibling)if(/^H[2-4]$/.test(n.tagName))heading=n;
+    heading||=el.closest('section,.panel')?.querySelector('h2,h3,h4');
+    // Prefix the activity title so tables repeated across activities stay distinguishable.
+    const activity=el.closest('.method-analysis')?.querySelector('h3');
+    const parts=[activity&&activity!==heading?activity.textContent.trim():'',heading?.textContent.trim()||'Results'].filter(Boolean);
+    let label=`${parts.join(': ')} table (scrolls sideways)`;
+    const n=(used.get(label)||0)+1;used.set(label,n);if(n>1)label=`${label} ${n}`;
+    el.setAttribute('tabindex','0');el.setAttribute('role','region');el.setAttribute('aria-label',label);
+  }
+}
 function metric(label,value,sub){return `<div class="metric-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div>`;}
 function renderResults(){
   const total=flat.sessions.length,completed=flat.sessions.filter(x=>x.completed_at).length, attempts=flat.tasks.length;
@@ -162,7 +179,7 @@ function renderResults(){
     return `<tr><td><strong>${esc(activity?.title||id)}</strong></td><td>${esc(METHODS[method]?.label||method)}</td><td>${starts.length}</td><td>${unfinished}</td><td>${scored.length?`${good} of ${scored.length}`:'Not scored'}</td><td>${formatDuration(mean)}</td><td>${esc(special)}</td></tr>`;
   }).join(''):'<tr><td colspan="7">No activity results yet.</td></tr>';
   by('sessionsList').innerHTML=flat.sessions.length?flat.sessions.slice().reverse().map(s=>`<button class="session-item ${s.session_id===selectedSession?'active':''}" data-session="${esc(s.session_id)}"><strong>${esc(s.session_id.slice(0,8))}… · ${s.completed_at?'Finished':'In progress / left early'}${s.preview?' · Preview':''}</strong><small>${esc(formatDate(s.started_at))} · ${flat.tasks.filter(t=>t.session_id===s.session_id).length} completed activities</small></button>`).join(''):'<p class="muted small">No sessions recorded.</p>';
-  renderMethodInsights();renderExplorer();
+  renderMethodInsights();renderExplorer();labelScrollRegions();
 }
 
 function renderMethodInsights(){
@@ -190,7 +207,7 @@ function renderExplorer(){
     if(normalizeMethod(task)==='ab_test'&&!variant)throw new Error('Missing assignment');
     const src=prototypeURL(variant?.prototypeUrl||task.prototypeUrl||source.prototypeUrl);if(f.getAttribute('src')!==src)f.setAttribute('src',src);}catch{f.removeAttribute('src');}}else f.removeAttribute('src');
   by('clickOverlay').innerHTML=shown.filter(x=>x.x_pct!==''&&x.y_pct!=='').slice(0,100).map((x,i)=>`<span class="click-dot" title="${esc(x.target)}" style="left:${Math.max(0,Math.min(100,+x.x_pct))}%;top:${Math.max(0,Math.min(100,+x.y_pct))}%">${i<99?i+1:'·'}</span>`).join('');
-  by('clickTimeline').innerHTML=taskHits.length?taskHits.map((x,i)=>`<div><strong>${i+1}.</strong> ${esc(x.type)} · ${esc(x.target||x.page||'Unknown target')} · ${esc(formatDate(x.at))}</div>`).join(''):'<div>No interactions from this task. Confirm the bridge script is installed in the prototype.</div>';
+  by('clickTimeline').innerHTML=taskHits.length?taskHits.map((x,i)=>`<div><strong>${i+1}.</strong> ${esc(x.type)}${x.input==='keyboard'?' (keyboard)':''} · ${esc(x.target||x.page||'Unknown target')} · ${esc(formatDate(x.at))}</div>`).join(''):'<div>No interactions from this task. Confirm the bridge script is installed in the prototype.</div>';
 }
 function exportDataset(kind){
   const id=by('resultsStudy').value;
@@ -200,7 +217,7 @@ function exportDataset(kind){
   const fields={
     tasks:['session_id','study_id','task_id','at','method','experiment_id','variant_id','variant_revision','self_report','observed_success','tracker_connected','time_seconds','click_count'],
     answers:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','stage','question_id','response','at'],
-    interactions:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','type','target','page','x_pct','y_pct','viewport_width','viewport_height'],
+    interactions:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','type','input','target','page','x_pct','y_pct','viewport_width','viewport_height'],
     methodEvents:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','method','action','detail']
   }[kind];
   const rows=kind==='methodEvents'?flat.methodEvents.map(e=>({...e,detail:JSON.stringify(e.detail)})):flat[kind];

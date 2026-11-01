@@ -1,4 +1,4 @@
-/* Research Studio prototype bridge v0.1
+/* Research Studio prototype bridge v0.1.1 (v0.1.1: keyboard activations recorded at the element centre and labelled input:'keyboard')
    Install in every page of a prototype that you control:
    <script src="https://YOUR-RESEARCH-SITE/sdk/utp-tracker.js"
            data-parent-origin="https://YOUR-RESEARCH-SITE"></script>
@@ -36,9 +36,14 @@
   document.addEventListener('click',e => {
     if(!(e.target instanceof Element)) return;
     const el=e.target;
-    const x_pct = Number((100*e.clientX/Math.max(1,window.innerWidth)).toFixed(2));
-    const y_pct = Number((100*e.clientY/Math.max(1,window.innerHeight)).toFixed(2));
-    send('click',{target:targetFor(el),x_pct,y_pct,...viewport()});
+    // Enter/Space on a button fires a click with no pointer position (0,0). Record those at
+    // the centre of the activated element and label them, so click maps are not skewed.
+    const keyboard = e.detail === 0 && e.clientX === 0 && e.clientY === 0;
+    let cx = e.clientX, cy = e.clientY;
+    if (keyboard) {const r=(el.closest('button,a,input,select,[role="button"],[data-ut-id]')||el).getBoundingClientRect();cx=r.left+r.width/2;cy=r.top+r.height/2;}
+    const x_pct = Number((100*cx/Math.max(1,window.innerWidth)).toFixed(2));
+    const y_pct = Number((100*cy/Math.max(1,window.innerHeight)).toFixed(2));
+    send('click',{target:targetFor(el),x_pct,y_pct,input:keyboard?'keyboard':'pointer',...viewport()});
     const completion = el.closest('[data-ut-success]')?.getAttribute('data-ut-success');
     if(completion) window.UTP.markSuccess(completion);
   },true);

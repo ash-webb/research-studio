@@ -1,3 +1,25 @@
+# v0.3.2 release notes — accessibility pass (November 1, 2026)
+
+Accessibility review against WCAG 2.2 A/AA. Automated scan of 72 screen states (desktop, phone, 400% zoom): **0 violations** (was 3 rule types). Keyboard-only runs through every study type: **39/39 checks** (was 5/35). Details: `docs/ACCESSIBILITY-REPORT-v0.3.2.md`.
+
+## Fixed
+- Focus moves into each new screen (heading) instead of being lost; within activities it stays on the relevant control (card menu, group field, tree items).
+- First-click test can be taken by keyboard (Enter for a marker, arrows to move, Enter to confirm). Clicks record `input: "keyboard"` or `"pointer"`.
+- Screen-reader announcements for card moves, new groups and tree navigation; current tree location marked.
+- Validation errors move focus to the unanswered question.
+- Strong, consistent focus outline on every control; 24 low-contrast grey text shades darkened to ≥4.6:1.
+- Results tables that scroll sideways are keyboard-reachable, named regions; skip link and `aria-current` on the researcher side; builder overview landmark fixed.
+- Reduced-motion support.
+- **Tracker (sdk v0.1.1):** keyboard activations inside prototypes were recorded at (0%, 0%). They are now recorded at the element centre and labelled `input: "keyboard"`. New `input` column in the Clicks CSV.
+
+## Added
+- `npm run test:a11y` (axe-core scan of every screen, including 320px reflow) and `npm run test:keyboard` (keyboard-only runs). `npm run test:all` runs every suite.
+
+## Data compatibility
+- Additive only: `input` on interaction items and on first-click `click`. Older records have no `input` value (blank in CSV).
+
+---
+
 # v0.3.1 release notes — browser QA fixes (November 1, 2026)
 
 First full real-browser QA pass of v0.3. Every example study was completed end to end in Chromium (desktop and phone width), with the stored events, dashboard and all seven exports checked against the scripted runs: **218/218 checks pass**. Details: `docs/QA-REPORT-v0.3.1.md`.

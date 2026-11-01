@@ -75,7 +75,7 @@ export function collectAnswers(form, questions=[]) {
     if (q.type === 'multi') value = inputs.filter(i => i.checked).map(i => i.value);
     else if (['scale5','scale7','single'].includes(q.type)) value = inputs.find(i => i.checked)?.value ?? '';
     else value = inputs[0]?.value?.trim() ?? '';
-    if (q.required && (!value || (Array.isArray(value) && !value.length))) throw new Error(`Please answer: ${q.text}`);
+    if (q.required && (!value || (Array.isArray(value) && !value.length))) throw Object.assign(new Error(`Please answer: ${q.text}`), { questionId: q.id });
     result[q.id] = value;
   }
   return result;
@@ -103,7 +103,7 @@ export function flattenEvents(events) {
     if (e.kind === 'task_ended') tasks.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id,at:e.created_at,method:p.method||'prototype',result:p.result||{},experiment_id:p.experiment_id||p.result?.experiment_id||null,variant_id:p.variant_id||p.result?.variant_id||null,variant_revision:p.variant_revision||p.result?.variant_revision||null,self_report:p.self_report ?? '',observed_success:typeof p.observed_success === 'boolean' ? p.observed_success : null,tracker_connected:!!p.tracker_connected,time_seconds:p.time_seconds ?? 0,click_count:p.click_count ?? 0});
     if (e.kind === 'method_event') methodEvents.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id,at:e.created_at,action:p.action||'',method:p.method||'',detail:p.detail||{}});
     if (e.kind === 'answers') for (const [question_id, response] of Object.entries(p.answers || {})) answers.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id ?? '',stage:p.stage ?? '',question_id,response,at:e.created_at});
-    if (e.kind === 'interaction_batch') for (const [i, hit] of (p.items || []).entries()) interactions.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id ?? '',at:hit.at || e.created_at,type:hit.type,target:hit.target ?? '',page:hit.page ?? '',x_pct:hit.x_pct ?? '',y_pct:hit.y_pct ?? '',viewport_width:hit.viewport_width ?? '',viewport_height:hit.viewport_height ?? '',batch_index:i});
+    if (e.kind === 'interaction_batch') for (const [i, hit] of (p.items || []).entries()) interactions.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id ?? '',at:hit.at || e.created_at,type:hit.type,target:hit.target ?? '',page:hit.page ?? '',x_pct:hit.x_pct ?? '',y_pct:hit.y_pct ?? '',viewport_width:hit.viewport_width ?? '',viewport_height:hit.viewport_height ?? '',input:hit.input ?? '',batch_index:i});
   }
   const assignments=new Map(starts.filter(x=>x.variant_id).map(x=>[`${x.session_id}|${x.task_id}`,x]));
   for(const task of tasks){

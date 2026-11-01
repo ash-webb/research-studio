@@ -16,7 +16,7 @@
 | ab_test | `experiment_id`, `variant_id`, `variant_revision`, `success_signal_received`, `success_signal_status` (`received`, `not_observed`, `unavailable`) | Per-session allocation; a successful signal being observed is not proof of comprehension or a universally accurate success measure. See `AB-TESTING.md` |
 | card_sort | `sort_mode`, `groups` `{cardId:categoryId}`, `categories` array of IDs/names, `move_count`, `completed`, optional `participant_could_not_finish` | Raw group assignments; `completed` means every card was assigned, not that the grouping was correct |
 | tree_test | `success`, `direct`, `first_selection`, `first_branch_correct`, `backtracks`, `selected_node`, `selected_path`, `navigation_event_count`, `navigation_events`, `history_truncated`, optional `participant_could_not_find` | Rules-based navigation scoring against destination node IDs; no inference of user intention |
-| first_click | `click` `{x_pct,y_pct,at_ms}` or `null`, `hit_target` boolean or null, `scored`, optional `participant_could_not_choose` | First image click, with target correctness only if rectangles are configured. “Not sure” is only offered before a click; on a scored test it records `observed_success: false` (v0.3.1) |
+| first_click | `click` `{x_pct,y_pct,at_ms,input}` or `null` (`input`: `pointer` or `keyboard`, v0.3.2), `hit_target` boolean or null, `scored`, optional `participant_could_not_choose` | First image click, with target correctness only if rectangles are configured. “Not sure” is only offered before a click; on a scored test it records `observed_success: false` (v0.3.1) |
 | preference | `selected_id` or null, `no_preference`, `display_order` | Design order is randomized but not quota-balanced |
 | survey | `answered_question_ids`, `response_count` | Actual response values reside in `answers` events at stage `activity` |
 | prototype | `success_signal_received`, `success_signal_status` (v0.3.1; same values as A/B), plus event-level `observed_success`, `self_report`, `tracker_connected` | Signal fired by instrumented prototype, not independently verified completion. `observed_success` is omitted when no signal is configured or the tracker never connected |
@@ -28,6 +28,9 @@
 - `first_click`: first recorded percentage coordinates and elapsed milliseconds.
 - `preference_selected`: selected variant ID or `__none__`.
 - `first_click_unsure` (v0.3.1): participant chose “I'm not sure where to click” before clicking.
+
+## Interaction items (`interaction_batch.payload.items[]`, Clicks CSV)
+- `input` (v0.3.2): `pointer` for mouse/touch clicks, `keyboard` for Enter/Space activations. Keyboard activations are positioned at the centre of the activated element (they have no pointer position). Blank for records made with tracker v0.1 or earlier, where keyboard activations appear at 0%, 0%.
 
 ## Session fields
 - `session_started.payload.preview` (v0.3.1): `true` for a researcher “Preview locally” run. Such sessions are excluded from the dashboard and all exports unless “Include my ‘Preview locally’ runs” is ticked. Sessions recorded before v0.3.1 carry no flag and are always counted.
