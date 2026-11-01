@@ -13,7 +13,7 @@ const $main=()=>$('#participantMain');
 function alertMessage(msg){alertBox.textContent=msg;alertBox.classList.remove('hidden');setTimeout(()=>alertBox.classList.add('hidden'),6500);}
 function setSaveStatus(status,message=''){
   const el=$('#saveStatus');
-  if(status==='demo')el.textContent='Local demo · this browser only';
+  if(status==='demo')el.textContent=preview?'Preview · not counted in results':'Local demo · this browser only';
   else if(status==='saved')el.textContent='Responses synced';
   else if(status==='error'){el.textContent='Sync pending';if(message)alertMessage(`Some responses have not synced. ${message}`);}
 }
@@ -49,7 +49,7 @@ function welcome(){
   $('#consentCheck').onchange=e=>$('#startStudy').disabled=!e.target.checked;
   $('#startStudy').onclick=()=>{
     sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview);
-    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,consent:true});
+    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,consent:true,...(preview?{preview:true}:{})});
     if(study.preQuestions?.length)showPre();else startActivity();
   };
 }
@@ -129,9 +129,12 @@ function finishPrototype(){
     stage='activity';
     const isAB=normalizeMethod(activeTask)==='ab_test';
     const successStatus=activeTask.successSignal && trackerConnected?(observedSuccess?'received':'not_observed'):'unavailable';
-    const result={success_signal_received:observedSuccess,
-      ...(isAB?{experiment_id:activeTask.experimentId||activeTask.id,variant_id:activeVariant.id,variant_revision:activeVariant.revision||null,success_signal_status:successStatus}:{} )};
-    await completeActivity(result,{selfReport,...(isAB?{observedSuccess:successStatus==='received'?true:undefined}:{observedSuccess})});
+    const result={success_signal_received:observedSuccess,success_signal_status:successStatus,
+      ...(isAB?{experiment_id:activeTask.experimentId||activeTask.id,variant_id:activeVariant.id,variant_revision:activeVariant.revision||null}:{} )};
+    // Without a configured signal and a connected tracker there is no evidence either way,
+    // so observed_success is left out rather than recorded as false.
+    const observed=isAB?(successStatus==='received'?true:undefined):(successStatus==='unavailable'?undefined:observedSuccess);
+    await completeActivity(result,{selfReport,observedSuccess:observed});
   };
 }
 window.addEventListener('message',e=>{
@@ -206,7 +209,8 @@ function startFirstClick(){
   let first=null;
   const image=secureURL(activeTask.imageUrl,location.href);
   function show(){
-    render(methodTemplate(`<div class="image-test"><p class="helper">Click or tap the first place you would go. Your first selection is final.</p><div class="click-image-frame"><img id="firstClickImage" src="${esc(image)}" alt="${esc(activeTask.imageAlt||'Interface screenshot for first-click test')}" draggable="false">${first?`<span class="first-click-marker" style="left:${first.x_pct}%;top:${first.y_pct}%" aria-hidden="true"></span>`:''}</div></div><div class="method-actions">${first?cardButton('Continue →','submitFirstClick'):''}<button class="btn btn-outline" id="cannotChoose">I'm not sure where to click</button></div>`));
+    // Once the first click is made it is final, so the "not sure" option is withdrawn.
+    render(methodTemplate(`<div class="image-test"><p class="helper">Click or tap the first place you would go. Your first selection is final.</p><div class="click-image-frame"><img id="firstClickImage" src="${esc(image)}" alt="${esc(activeTask.imageAlt||'Interface screenshot for first-click test')}" draggable="false">${first?`<span class="first-click-marker" style="left:${first.x_pct}%;top:${first.y_pct}%" aria-hidden="true"></span>`:''}</div></div><div class="method-actions">${first?cardButton('Continue →','submitFirstClick'):'<button class="btn btn-outline" id="cannotChoose">I\'m not sure where to click</button>'}</div>`));
     const img=$('#firstClickImage');img.onerror=()=>alertMessage('Could not load the test image. Ask the researcher to check the URL.');
     img.onclick=e=>{
       if(first)return;const r=e.currentTarget.getBoundingClientRect();
@@ -214,7 +218,8 @@ function startFirstClick(){
       event('first_click',first);show();
     };
     if($('#submitFirstClick'))$('#submitFirstClick').onclick=()=>completeActivity({click:first,hit_target:scoreFirstClick(first,activeTask.targetAreas||[]),scored:!!activeTask.targetAreas?.length},{observedSuccess:scoreFirstClick(first,activeTask.targetAreas||[])??undefined});
-    $('#cannotChoose').onclick=()=>completeActivity({click:first,hit_target:first?scoreFirstClick(first,activeTask.targetAreas||[]):null,scored:!!activeTask.targetAreas?.length,participant_could_not_choose:true});
+    // "Not sure" on a scored test is an observed miss, like "I cannot find it" in a tree test.
+    if($('#cannotChoose'))$('#cannotChoose').onclick=()=>{event('first_click_unsure',{});const scored=!!activeTask.targetAreas?.length;completeActivity({click:null,hit_target:null,scored,participant_could_not_choose:true},{observedSuccess:scored?false:undefined});};
   }
   show();
 }

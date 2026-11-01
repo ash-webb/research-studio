@@ -1,4 +1,4 @@
-# Research Studio v0.3 — multi-method unmoderated UX research
+# Research Studio v0.3.1 — multi-method unmoderated UX research
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 
@@ -37,7 +37,7 @@ Every activity has its own introduction and may include follow-up questions. Eac
 5. On another tab, go to **Results & insights**. In *local demo mode*, results are visible only in the browser/profile that completed the studies, on the same site origin.
 6. Press **Control + C** in Terminal to stop the server.
 
-On Windows, double-click `START-DEMO-WINDOWS.bat` or run `python -m http.server 8000`. JavaScript requires no npm install to run. To run unit tests with Node.js, use `npm test`.
+On Windows, double-click `START-DEMO-WINDOWS.bat` or run `python -m http.server 8000`. JavaScript requires no npm install to run. To run unit tests with Node.js, use `npm test`. To run the browser end-to-end checks (needs Playwright with Chromium: `npm install --no-save playwright && npx playwright install chromium`), use `npm run test:e2e`.
 
 ### Built-in example participant links
 
@@ -205,6 +205,8 @@ An observed success event is evidence that a **configured detection rule fired**
 ## Quality checks and limitations
 
 - Run `npm test` to execute the deterministic validation, A/B assignment/scoring/export, parsing and legacy method tests.
+- Run `npm run test:e2e` to drive scripted, clearly synthetic participants through every example study (plus closed/hybrid card sorts, an unscored first-click test and an untracked prototype) in Chromium and check the stored events, dashboard and all seven exports against what the script did. Screenshots and `e2e-report.json` are written to `tests/e2e/output/`. See `docs/QA-REPORT-v0.3.1.md`.
+- “Preview locally” runs are labelled as previews and hidden from results and exports unless **Include my “Preview locally” runs** is ticked on the Results tab.
 - Source scripts are checked for JavaScript syntax. The included example JSON is validated.
 - This package has **not passed an end-to-end browser or production browser compatibility, accessibility or security audit**. Test real Safari, Chrome and mobile devices with actual prototype URLs before sharing externally.
 - Performance with very large trees or 100+ cards, researcher session authentication expiry, concurrent upload failure, offline resume and the optional Supabase integration have not been fully load-tested.

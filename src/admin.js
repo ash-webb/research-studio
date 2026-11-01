@@ -1,7 +1,7 @@
 import { renderAnalyses } from './results-ui.js';
 import { METHODS, normalizeMethod, methodOutcomeRows, exportMethodRows, experimentComparisonRows } from './methods.js';
 import { newActivity, methodOptions, methodEditorHTML, parseEditorValue } from './builder-ui.js';
-import { $, $$, escapeHTML as esc, validateStudy, prototypeURL, download, csv, flattenEvents, formatDate, formatDuration } from './shared.js';
+import { $, $$, escapeHTML as esc, validateStudy, prototypeURL, download, csv, flattenEvents, separatePreviewSessions, formatDate, formatDuration } from './shared.js';
 import { remoteEnabled, logIn, logOut, getAuth, registerStudy, listOwnedStudies, loadEvents } from './storage.js';
 
 let study, studyIndex=[], studyCache=new Map(), records=[], flat={sessions:[],tasks:[],starts:[],answers:[],interactions:[],methodEvents:[]};
@@ -123,9 +123,16 @@ async function refreshResults(){
   if(remoteEnabled && !getAuth()){records=[];flat=flattenEvents([]);renderResults();by('resultsStatus').textContent='Sign in on the Setup tab to view remote research data.';return;}
   try{
     if(!studyForId(id)){const item=studyIndex.find(x=>x.id===id);if(item)await loadStudy(item);}
-    records=await loadEvents(id);flat=flattenEvents(records);selectedSession=flat.sessions[0]?.session_id||null;selectedTask='';selectedPage='';
+    const loaded=await loadEvents(id);
+    // Researcher "Preview locally" runs are labelled at session start and kept out of
+    // participant results (dashboard and every export) unless explicitly included.
+    const includePreviews=by('includePreviews').checked;
+    const {events:kept,previewCount}=separatePreviewSessions(loaded,includePreviews);
+    records=kept;
+    flat=flattenEvents(records);selectedSession=flat.sessions[0]?.session_id||null;selectedTask='';selectedPage='';
     renderResults();
-    by('resultsStatus').textContent=`${records.length} collected event records. ${remoteEnabled?'Loaded from Supabase.':'Local demo records only; not centrally collected.'}`;
+    const previewNote=previewCount?` ${previewCount} preview run${previewCount===1?'':'s'} ${includePreviews?'included':'hidden'}.`:'';
+    by('resultsStatus').textContent=`${records.length} collected event records. ${remoteEnabled?'Loaded from Supabase.':'Local demo records only; not centrally collected.'}${previewNote}`;
   } catch(err){by('resultsStatus').textContent=`Unable to load results: ${err.message}`;records=[];flat=flattenEvents([]);renderResults();}
 }
 function metric(label,value,sub){return `<div class="metric-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div>`;}
@@ -154,7 +161,7 @@ function renderResults(){
     if(method==='ab_test')special=`${new Set(starts.map(t=>t.variant_id).filter(Boolean)).size} assigned design(s)`;
     return `<tr><td><strong>${esc(activity?.title||id)}</strong></td><td>${esc(METHODS[method]?.label||method)}</td><td>${starts.length}</td><td>${unfinished}</td><td>${scored.length?`${good} of ${scored.length}`:'Not scored'}</td><td>${formatDuration(mean)}</td><td>${esc(special)}</td></tr>`;
   }).join(''):'<tr><td colspan="7">No activity results yet.</td></tr>';
-  by('sessionsList').innerHTML=flat.sessions.length?flat.sessions.slice().reverse().map(s=>`<button class="session-item ${s.session_id===selectedSession?'active':''}" data-session="${esc(s.session_id)}"><strong>${esc(s.session_id.slice(0,8))}… · ${s.completed_at?'Finished':'In progress / left early'}</strong><small>${esc(formatDate(s.started_at))} · ${flat.tasks.filter(t=>t.session_id===s.session_id).length} completed activities</small></button>`).join(''):'<p class="muted small">No sessions recorded.</p>';
+  by('sessionsList').innerHTML=flat.sessions.length?flat.sessions.slice().reverse().map(s=>`<button class="session-item ${s.session_id===selectedSession?'active':''}" data-session="${esc(s.session_id)}"><strong>${esc(s.session_id.slice(0,8))}… · ${s.completed_at?'Finished':'In progress / left early'}${s.preview?' · Preview':''}</strong><small>${esc(formatDate(s.started_at))} · ${flat.tasks.filter(t=>t.session_id===s.session_id).length} completed activities</small></button>`).join(''):'<p class="muted small">No sessions recorded.</p>';
   renderMethodInsights();renderExplorer();
 }
 
@@ -215,7 +222,7 @@ function wireActions(){
   by('exportStudy').onclick=()=>{try{download(`${study.id}.json`,JSON.stringify(validatedCurrent(),null,2),'application/json');toast('Study configuration exported. Add the JSON file to GitHub.');}catch(err){toast(err.message);}};
   by('previewStudy').onclick=()=>{try{localStorage.setItem('utp-preview-study',JSON.stringify(validatedCurrent()));window.open('study.html?preview=1','_blank','noopener');}catch(err){toast(err.message);}};
   by('registerStudy').onclick=async()=>{try{const config=validatedCurrent();await registerStudy(config);toast(`Published ${config.id} for response collection. Ensure its JSON is also deployed to GitHub Pages.`);}catch(err){toast(`Publish failed: ${err.message}`);}};
-  by('resultsStudy').onchange=()=>refreshResults();by('refreshResults').onclick=refreshResults;
+  by('resultsStudy').onchange=()=>refreshResults();by('refreshResults').onclick=refreshResults;by('includePreviews').onchange=()=>refreshResults();
   by('exportTasks').onclick=()=>exportDataset('tasks');by('exportAnswers').onclick=()=>exportDataset('answers');by('exportClicks').onclick=()=>exportDataset('interactions');by('exportAll').onclick=()=>exportDataset('all');by('exportMethods').onclick=()=>exportDataset('methods');by('exportMethodEvents').onclick=()=>exportDataset('methodEvents');by('exportExperiments').onclick=()=>exportDataset('experiments');
   by('sessionsList').onclick=e=>{const b=e.target.closest('[data-session]');if(b){selectedSession=b.dataset.session;selectedTask='';selectedPage='';renderResults();}};
   by('explorerTask').onchange=e=>{selectedTask=e.target.value;selectedPage='';renderExplorer();};by('explorerPage').onchange=e=>{selectedPage=e.target.value;renderExplorer();};

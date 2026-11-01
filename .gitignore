@@ -3,3 +3,5 @@ node_modules/
 .env
 *.key
 *.pem
+
+tests/e2e/output/

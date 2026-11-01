@@ -24,11 +24,13 @@ function treeHTML(a,data,esc){
   return `<div class="method-summary">${pill('Success',`${successes}/${attempted} (${rate(successes,attempted)})`)}${pill('Direct paths',directs)}${pill('Correct first branch',firstCorrect)}${pill('Could not find',foundNone)}</div><h4>Recent navigation paths</h4><p class="analysis-subtitle">Direct path means no backtracking or detours before a correctly selected destination.</p><div class="table-scroll"><table class="data-table"><thead><tr><th>Session</th><th>Selected path</th><th>Success</th><th>Direct</th><th>Backtracks</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
 function clicksHTML(a,data,esc){
-  const clicked=data.filter(t=>t.result.click),scored=data.filter(t=>t.result.scored&&t.result.click),hits=scored.filter(t=>t.result.hit_target).length;
+  // Scored attempts include "not sure" (no click) answers, matching the Activity outcomes table.
+  const clicked=data.filter(t=>t.result.click),scored=data.filter(t=>t.result.scored),hits=scored.filter(t=>t.result.hit_target===true).length;
+  const unsure=data.filter(t=>t.result.participant_could_not_choose).length;
   const dots=clicked.slice(0,60).map((t,i)=>{const x=+t.result.click.x_pct,y=+t.result.click.y_pct;if(!Number.isFinite(x)||!Number.isFinite(y))return '';
     return `<span class="click-dot" style="left:${Math.min(100,Math.max(0,x))}%;top:${Math.min(100,Math.max(0,y))}%" title="${esc(t.session_id.slice(0,8))} · first click">${i+1}</span>`;
   }).join('');
-  return `<div class="method-summary">${pill('Recorded first clicks',`${clicked.length}/${data.length}`)}${pill('Target hit rate',scored.length?`${hits}/${scored.length} (${rate(hits,scored.length)})`:'Unscored')}</div><p class="analysis-subtitle">Dots show the first click reported by each completed session; positions are proportional to the source image.</p><div class="analysis-first-click"><img src="${esc(a.imageUrl)}" alt="${esc(a.imageAlt||'Test image')}">${dots}</div>`;
+  return `<div class="method-summary">${pill('Recorded first clicks',`${clicked.length}/${data.length}`)}${pill('Target hit rate',scored.length?`${hits}/${scored.length} (${rate(hits,scored.length)})`:'Unscored')}${pill('Not sure (no click)',unsure)}</div><p class="analysis-subtitle">Dots show the first click reported by each completed session; positions are proportional to the source image. On scored tests, "not sure" answers count as attempts that did not hit a target.</p><div class="analysis-first-click"><img src="${esc(a.imageUrl)}" alt="${esc(a.imageAlt||'Test image')}">${dots}</div>`;
 }
 function preferenceHTML(a,data,esc){
  const n=data.length,items=a.variants.map(v=>({label:v.label,n:data.filter(t=>t.result.selected_id===v.id).length}));
@@ -101,7 +103,7 @@ function surveyHTML(a,data,flat,esc){
 }
 function prototypeHTML(a,data,flat,esc){
   const connected=data.filter(t=>t.tracker_connected),observed=connected.filter(t=>t.observed_success),self=data.filter(t=>t.self_report==='completed');
-  return `<div class="method-summary">${pill('Attempts completed',data.length)}${pill('Tracker-connected',connected.length)}${pill('Observed signals',`${observed.length}/${connected.length}`)}${pill('Self-reported completion',self.length)}</div><p class="analysis-subtitle">No observed success signal is not necessarily evidence of failure. Open a session in Prototype interaction explorer to view click history.</p>`;
+  return `<div class="method-summary">${pill('Attempts completed',data.length)}${pill('Tracker-connected',connected.length)}${pill('Observed signals',a.successSignal?`${observed.length}/${connected.length}`:'No signal configured')}${pill('Self-reported completion',self.length)}</div><p class="analysis-subtitle">No observed success signal is not necessarily evidence of failure. Open a session in Prototype interaction explorer to view click history.</p>`;
 }
 export function renderAnalyses(study,flat,esc){
   if(!study?.tasks)return '<p class="muted small">Load the corresponding study JSON to view method analyses.</p>';
