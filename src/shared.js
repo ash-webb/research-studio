@@ -97,7 +97,7 @@ export function flattenEvents(events) {
   for (const e of events.slice().sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)))) {
     if (!sessions.has(e.session_id)) sessions.set(e.session_id, {session_id:e.session_id,study_id:e.study_id,started_at:null,completed_at:null,resumed_count:0});
     const s = sessions.get(e.session_id), p = e.payload || {};
-    if (e.kind === 'session_started') {s.started_at = e.created_at;s.study_version=p.study_version||null;s.preview=p.preview===true;s.external_id=p.external_id||'';}
+    if (e.kind === 'session_started') {s.started_at = e.created_at;s.study_version=p.study_version||null;s.preview=p.preview===true;s.external_id=p.external_id||'';s.viewport_width=p.viewport_width??null;s.device=p.device||null;s.imported=p.imported||null;}
     if (e.kind === 'session_completed') s.completed_at = e.created_at;
     if (e.kind === 'session_resumed') s.resumed_count++;
     if (e.kind === 'task_started') starts.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id,at:e.created_at,method:p.method||'prototype',experiment_id:p.experiment_id||null,variant_id:p.variant_id||null,variant_revision:p.variant_revision||null,assignment:p.assignment||null});

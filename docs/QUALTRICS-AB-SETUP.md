@@ -20,6 +20,7 @@ Per participant, in Survey 2:
 | `rs_pid` | Survey 1 response ID the participant arrived with | `R_3abcDEF123` |
 | `rs_session` | Research Studio session ID | `9f1c…` |
 | `rs_status` | `complete` when they finished the Research Studio part | `complete` |
+| `rs_device` | `phone`, `tablet` or `desktop`, from screen width at the start | `phone` |
 | `rs_variant` | Design shown (one experiment) | `design-b` |
 | `rs_ab1_task` | ID of the first A/B activity | `find-service-request` |
 | `rs_ab1_variant` | Design shown in that activity | `design-b` |
@@ -60,7 +61,7 @@ Per participant, in Survey 2:
 
 ## 3. Survey 2 (follow-up)
 
-1. In **Survey Flow**, make the first element an **Embedded Data** element listing these field names exactly as written (capitalisation matters) with no values: `rs_pid`, `rs_session`, `rs_status`, `rs_variant`, and for each A/B activity `rs_ab1_task`, `rs_ab1_variant`, `rs_ab1_success`, `rs_ab1_self`, `rs_ab1_time`, `rs_ab1_clicks` (then `rs_ab2_…`).
+1. In **Survey Flow**, make the first element an **Embedded Data** element listing these field names exactly as written (capitalisation matters) with no values: `rs_pid`, `rs_session`, `rs_status`, `rs_variant`, `rs_device`, and for each A/B activity `rs_ab1_task`, `rs_ab1_variant`, `rs_ab1_success`, `rs_ab1_self`, `rs_ab1_time`, `rs_ab1_clicks` (then `rs_ab2_…`).
 2. Add your follow-up questions. You can branch on `rs_variant` if questions differ by design.
 3. End with a thank-you message.
 
@@ -72,7 +73,15 @@ Per participant, in Survey 2:
 - [ ] In Survey 2's responses, the `rs_…` fields are filled and `rs_pid` matches a Survey 1 response ID.
 - [ ] Try once on a phone: the designs must work at phone width.
 
-## 5. Analysis
+## 5. See the results in Research Studio
+
+1. In Qualtrics, export **Survey 2** as CSV (and **Survey 1**, so people who never came back are counted). The default CSV export with the three header rows is fine.
+2. In Research Studio, open **Results & insights**, choose the study, select **Import Qualtrics results** and pick both files.
+3. The A/B section then shows, from your Qualtrics data: each design's success rate with its 95% range, the difference from the baseline design with its range, drop-out, self-reported completion and median time per design, data checks (group sizes, drop-out, tracking, devices) and a sample-size planner. The CSV export buttons work on the imported data too.
+
+The files are read in your browser only; nothing is uploaded or stored. Select **Show browser data instead** to leave the imported view.
+
+## 6. Analysis in your own tools
 
 1. Export Survey 1 (with `ResponseID` and `Variant`) and Survey 2 (with the `rs_…` fields).
 2. Join them: Survey 1 `ResponseID` = Survey 2 `rs_pid`.

@@ -1,4 +1,6 @@
 import { renderAnalyses } from './results-ui.js';
+import { plannerText } from './ab-results.js';
+import { qualtricsRecords, classifyExport, eventsFromQualtrics } from './qualtrics-import.js';
 import { METHODS, normalizeMethod, methodOutcomeRows, exportMethodRows, experimentComparisonRows } from './methods.js';
 import { newActivity, methodOptions, methodEditorHTML, parseEditorValue, variantRowError, nextVariant } from './builder-ui.js';
 import { $, $$, escapeHTML as esc, validateStudy, prototypeURL, download, csv, flattenEvents, separatePreviewSessions, formatDate, formatDuration } from './shared.js';
@@ -6,6 +8,8 @@ import { remoteEnabled, logIn, logOut, getAuth, registerStudy, listOwnedStudies,
 
 let study, studyIndex=[], studyCache=new Map(), records=[], flat={sessions:[],tasks:[],starts:[],answers:[],interactions:[],methodEvents:[]};
 let selectedSession=null, selectedTask='', selectedPage='';
+// Qualtrics data imported for one study (kept in memory only; never uploaded or stored).
+let imported=null;
 const by = id=>document.getElementById(id);
 const questionTypes=[['text','Short text'],['textarea','Long text'],['scale5','5-point scale'],['scale7','7-point scale'],['single','Single choice'],['multi','Multiple choice']];
 
@@ -205,6 +209,9 @@ async function refreshResults(){
   if(remoteEnabled && !getAuth()){records=[];flat=flattenEvents([]);renderResults();by('resultsStatus').textContent='Sign in on the Setup tab to view remote research data.';return;}
   try{
     if(!studyForId(id)){const item=studyIndex.find(x=>x.id===id);if(item)await loadStudy(item);}
+    if(imported&&imported.studyId===id){records=imported.events;flat=flattenEvents(records);selectedSession=flat.sessions[0]?.session_id||null;selectedTask='';selectedPage='';renderResults();
+      by('resultsStatus').innerHTML=`Showing imported Qualtrics data: ${imported.summary.responses} Survey 2 response${imported.summary.responses===1?'':'s'}${imported.summary.dropouts?`, plus ${imported.summary.dropouts} assigned in Survey 1 who did not return`:''}. Read in this browser only; nothing was uploaded. <button type="button" class="btn btn-small btn-outline" id="clearImport">Show browser data instead</button>`;
+      by('clearImport').onclick=()=>{imported=null;refreshResults();};return;}
     const loaded=await loadEvents(id);
     // Researcher "Preview locally" runs are labelled at session start and kept out of
     // participant results (dashboard and every export) unless explicitly included.
@@ -267,6 +274,11 @@ function renderResults(){
 function renderMethodInsights(){
  const current=studyForId(by('resultsStudy').value);
  by('methodInsights').innerHTML=renderAnalyses(current,flat,esc);
+ // Sample-size planners inside A/B results: recompute as the researcher types.
+ for(const box of by('methodInsights').querySelectorAll('[data-planner]')){
+   const update=()=>{const v=k=>Number(box.querySelector(`[data-plan="${k}"]`).value);box.querySelector('[data-plan-out]').textContent=plannerText({baseline:v('baseline'),difference:v('difference'),power:v('power'),designs:Number(box.dataset.designs),measured:Number(box.dataset.measured)});};
+   box.addEventListener('input',update);box.addEventListener('change',update);update();
+ }
 }
 function studyForId(id){return studyCache.get(id)||(study.id===id?study:null);}
 function renderExplorer(){
@@ -321,7 +333,24 @@ function wireActions(){
   by('exportStudy').onclick=()=>{try{download(`${study.id}.json`,JSON.stringify(validatedCurrent(),null,2),'application/json');toast('Study configuration exported. Add the JSON file to GitHub.');}catch(err){toast(err.message);}};
   by('previewStudy').onclick=()=>{try{localStorage.setItem('utp-preview-study',JSON.stringify(validatedCurrent()));window.open('study.html?preview=1','_blank','noopener');}catch(err){toast(err.message);}};
   by('registerStudy').onclick=async()=>{try{const config=validatedCurrent();await registerStudy(config);toast(`Published ${config.id} for response collection. Ensure its JSON is also deployed to GitHub Pages.`);}catch(err){toast(`Publish failed: ${err.message}`);}};
-  by('resultsStudy').onchange=()=>refreshResults();by('refreshResults').onclick=refreshResults;by('includePreviews').onchange=()=>refreshResults();
+  by('importQualtrics').onclick=()=>by('qualtricsFiles').click();
+  by('qualtricsFiles').onchange=async e=>{
+    const files=[...(e.target.files||[])];e.target.value='';if(!files.length)return;
+    try{
+      const id=by('resultsStudy').value;let current=studyForId(id);
+      if(!current){const item=studyIndex.find(x=>x.id===id);if(item)current=await loadStudy(item);}
+      if(!current)throw new Error('Choose the study these results belong to first.');
+      let s2=[],s1=[];const unknown=[];
+      for(const f of files){const recs=qualtricsRecords(await f.text());const kind=classifyExport(recs);if(kind==='survey2')s2=s2.concat(recs);else if(kind==='survey1')s1=s1.concat(recs);else unknown.push(f.name);}
+      if(unknown.length)toast(`Not recognised as Survey 1 or Survey 2: ${unknown.join(', ')}`,8000);
+      if(!s2.length)throw new Error('No Survey 2 export found. It should contain the rs_session and rs_ab1_… fields.');
+      const result=eventsFromQualtrics(current,s2,s1);
+      if(result.problems.length)throw new Error(result.problems.join(' '));
+      imported={studyId:id,events:result.events,summary:result.summary};
+      await refreshResults();toast('Qualtrics results imported.');
+    }catch(err){toast(`Import failed: ${err.message}`,9000);}
+  };
+  by('resultsStudy').onchange=()=>{if(imported&&imported.studyId!==by('resultsStudy').value)imported=null;refreshResults();};by('refreshResults').onclick=refreshResults;by('includePreviews').onchange=()=>refreshResults();
   by('exportTasks').onclick=()=>exportDataset('tasks');by('exportAnswers').onclick=()=>exportDataset('answers');by('exportClicks').onclick=()=>exportDataset('interactions');by('exportAll').onclick=()=>exportDataset('all');by('exportMethods').onclick=()=>exportDataset('methods');by('exportMethodEvents').onclick=()=>exportDataset('methodEvents');by('exportExperiments').onclick=()=>exportDataset('experiments');
   by('sessionsList').onclick=e=>{const b=e.target.closest('[data-session]');if(b){selectedSession=b.dataset.session;selectedTask='';selectedPage='';renderResults();}};
   by('explorerTask').onchange=e=>{selectedTask=e.target.value;selectedPage='';renderExplorer();};by('explorerPage').onchange=e=>{selectedPage=e.target.value;renderExplorer();};

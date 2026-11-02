@@ -79,3 +79,24 @@ dialog.design-check::backdrop{background:#0f2c3a80}
 .design-check-frame iframe{width:100%;height:min(520px,52vh);border:0;background:#fff}
 .check-field{display:flex;gap:9px;align-items:flex-start;font-size:12px;color:#334d5d;line-height:1.5;background:#f6fbf9;border:1px solid #d6ebe6;border-radius:8px;padding:10px 12px}
 .check-field input{margin-top:3px;accent-color:#087975}
+/* v0.3.7 A/B results */
+.ab-lead{background:#f6fbfa;border:1px solid #d6ebe6;border-radius:10px;padding:14px 16px;margin:12px 0;font-size:13px;line-height:1.55;color:#24434f}
+.ab-lead p{margin:0 0 6px}.ab-lead ul{margin:6px 0 0;padding-left:18px}.ab-lead li{margin:4px 0}.ab-lead .notice{margin:10px 0 0}
+.ab-charts{display:grid;gap:12px;margin:10px 0 6px}
+.ab-charts figure{margin:0;border:1px solid #e3ecef;border-radius:10px;padding:10px 12px;background:#fff}
+.ab-charts figcaption{font-size:12px;font-weight:750;color:#284652;margin-bottom:2px}.ab-charts figcaption span{font-weight:400;color:#5e6e7a;margin-left:6px}
+.ab-chart{width:100%;max-width:660px;height:auto;display:block;font-family:inherit}
+.ab-grid{stroke:#e6edf0;stroke-width:1}.ab-zero{stroke:#5e6e78;stroke-width:1.5;stroke-dasharray:4 3}
+.ab-tick{font-size:11px;fill:#5e6e7a}.ab-row-label{font-size:13px;fill:#24434f;font-weight:650}.ab-value{font-size:12px;fill:#3e5b67}
+.ab-whisker{stroke:#0a7473;stroke-width:2;stroke-linecap:round}.ab-dot{fill:#0a7473;stroke:#fff;stroke-width:2}
+.ab-table td small,.ab-table th small{display:block;color:#5e6e7a;font-size:11px;font-weight:400;margin-top:2px}
+.ab-checks{list-style:none;padding:0;margin:8px 0;display:grid;gap:6px}
+.ab-checks li{display:flex;gap:9px;align-items:flex-start;font-size:12px;line-height:1.5;padding:9px 11px;border-radius:8px;border:1px solid #e3ecef;background:#fbfcfd;color:#284652}
+.ab-check-icon{flex:none;width:20px;height:20px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;background:#dff2ef;color:#0a5f63}
+.ab-check-warn{background:#fffaf0!important;border-color:#f0d9a6!important}.ab-check-warn .ab-check-icon{background:#f6e2b3;color:#6b4a0a}
+.ab-planner{border:1px solid #e3ecef;border-radius:10px;padding:12px 14px;background:#fff}
+.ab-planner-inputs{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.ab-planner-out{font-size:13px;line-height:1.55;color:#24434f;margin:10px 0 0}
+
+.import-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-basis:100%}
+#resultsStatus .btn{margin-left:8px}

@@ -270,16 +270,16 @@ scenarios.ab = async browser => {
   });
   const r = await openResults(ctx, 'demo-ab-implementation');
   await screenshot(r, 'ab-results');
-  const outcome = await r.$$eval('#methodInsights .method-analysis', secs => [...secs[0].querySelectorAll('table')][0] ? [...[...secs[0].querySelectorAll('table')][0].querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.innerText.trim())) : []);
+  const outcome = await r.$$eval('#methodInsights .method-analysis', secs => { const t = secs[0].querySelector('table.ab-table'); return t ? [...t.querySelectorAll('tbody tr')].map(tr => [...tr.children].map(td => td.innerText.trim().replace(/\s*\n\s*/g, ' '))) : []; });
   const abStudy = JSON.parse(fs.readFileSync(path.join(ROOT, 'studies/demo-ab-implementation.json'), 'utf8'));
   for (const arm of ['design-a', 'design-b']) {
     const n = runs.filter(r => r.arm === arm).length, ok = runs.filter(r => r.arm === arm && r.success).length;
     const label = abStudy.tasks[0].variants.find(v => v.id === arm).label.toLowerCase();
-    const rowA = outcome.find(row => row[0].toLowerCase().startsWith(label)) || [];
-    eq(G, `insights ${arm}: exposed`, rowA[1], String(n));
-    eq(G, `insights ${arm}: submitted`, rowA[2], String(n));
-    eq(G, `insights ${arm}: self-reported complete`, rowA[4], `${ok}/${n}`);
-    check(G, `insights ${arm}: signal received ${ok}/${n}`, (rowA[5] || '').startsWith(`${ok}/${n}`), rowA[5]);
+    const rowA = outcome.find(row => row[0].toLowerCase().includes(label)) || [];
+    eq(G, `results ${arm}: started`, rowA[1], String(n));
+    eq(G, `results ${arm}: finished`, rowA[2], String(n));
+    check(G, `results ${arm}: success signal ${ok}/${n} with a range`, new RegExp(`${ok}/${n} · \\d+%–\\d+%`).test(rowA[4] || ''), rowA[4]);
+    check(G, `results ${arm}: self-reported ${ok}/${n}`, (rowA[5] || '').includes(`${ok}/${n}`), rowA[5]);
   }
   const x = await exportAll(r, 'demo-ab-implementation', G);
   eq(G, 'A/B exposures CSV: one row per session per activity', x.experiments.length, runs.length * 2);
@@ -363,6 +363,45 @@ scenarios.abLink = async browser => {
   const row = x.experiments.find(e => e.external_id === 'R_3abcDEF123');
   eq(G, 'A/B exposures CSV carries participant ID and assignment source', [row?.assignment, row?.variant_id], ['link', 'design-b']);
   check(G, 'Task CSV carries participant ID', x.tasks.some(t => t.external_id === 'R_3abcDEF123'));
+  await done();
+};
+
+scenarios.abQualtricsImport = async browser => {
+  const G = 'A/B results from imported Qualtrics exports (synthetic fixtures)';
+  const { ctx, done } = await newContext(browser, G);
+  const p = await ctx.newPage();
+  await p.goto(BASE + 'index.html');
+  await p.waitForFunction(() => document.querySelectorAll('#exampleStudy option').length > 0);
+  await p.click('.nav-option[data-tab="results"]');
+  await p.selectOption('#resultsStudy', 'demo-ab-implementation'); await p.waitForTimeout(300);
+  const fx = f => path.join(ROOT, 'tests/fixtures', f);
+  // Survey 1 alone is rejected with a clear message.
+  await p.setInputFiles('#qualtricsFiles', [fx('qualtrics-survey1-SYNTHETIC.csv')]);
+  await p.waitForFunction(() => /Import failed/.test(document.querySelector('#toast').textContent));
+  check(G, 'Survey 1 alone: explained that Survey 2 is needed', /No Survey 2 export/.test(await p.textContent('#toast')));
+  await p.setInputFiles('#qualtricsFiles', [fx('qualtrics-survey1-SYNTHETIC.csv'), fx('qualtrics-survey2-SYNTHETIC.csv')]);
+  await p.waitForFunction(() => /imported Qualtrics/.test(document.querySelector('#resultsStatus').textContent));
+  check(G, 'status names the source, counts and that nothing was uploaded', /59 Survey 2 responses, plus 11 assigned in Survey 1 who did not return\. Read in this browser only; nothing was uploaded/.test(await p.textContent('#resultsStatus')), await p.textContent('#resultsStatus'));
+  const lead = (await p.textContent('#methodInsights .ab-lead')).replace(/\s+/g, ' ');
+  check(G, 'lead states both rates with counts', /55% \(16 of 29 measured\).*85% \(22 of 26 measured\)/.test(lead), lead);
+  check(G, 'lead gives the difference with its 95% range', /B vs A: \+29 points \(95% range \+\d+ to \+\d+ points\)/.test(lead), lead);
+  check(G, 'lead never names a winner', !/winner|better design|best design/i.test(lead));
+  eq(G, 'two charts drawn (rates, differences)', await p.locator('#methodInsights .method-analysis').first().locator('svg.ab-chart').count(), 2);
+  const checks = await p.$$eval('#methodInsights .method-analysis:first-of-type .ab-checks li', l => l.map(x => x.textContent));
+  check(G, 'data checks include group sizes, drop-out, tracking and devices', ['Group sizes', 'Drop-out', 'Tracking', 'Devices'].every(t => checks.some(c => c.includes(t))), JSON.stringify(checks));
+  check(G, 'drop-outs counted from Survey 1', checks.some(c => /A 14%, B 17%/.test(c)));
+  check(G, 'imported data: follow-up and click sections replaced by an explanation', /follow-up answers stay in your Qualtrics export/.test(await p.textContent('#methodInsights')) && !(await p.textContent('#methodInsights')).includes('No clicks captured'));
+  const out = () => p.textContent('[data-plan-out]');
+  check(G, 'planner gives people per design', /About \d+ people per design/.test(await out()), await out());
+  const box = p.locator('[data-planner]').first();
+  await box.locator('[data-plan="difference"]').fill('30');
+  check(G, 'planner updates as you type (bigger difference → fewer people)', /About [1-4]\d people per design/.test(await out()), await out());
+  await screenshot(p, 'ab-imported-results');
+  const x = await exportAll(p, 'demo-ab-implementation', G);
+  eq(G, 'A/B exposures CSV from imported data: 70 people × 2 activities', x.experiments.length, 140);
+  await p.click('#clearImport');
+  await p.waitForFunction(() => !/imported Qualtrics/.test(document.querySelector('#resultsStatus').textContent));
+  check(G, '"Show browser data instead" returns to browser data', /Local demo records/.test(await p.textContent('#resultsStatus')));
   await done();
 };
 

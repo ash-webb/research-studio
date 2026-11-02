@@ -1,6 +1,7 @@
 import { $, escapeHTML as esc, validateStudy, prototypeURL, questionFields, collectAnswers, uuid, download } from './shared.js';
 import { normalizeMethod, scoreTree, scoreFirstClick, randomizeVariants, secureURL, resolveAssignments, variantForTask, cleanExternalId, safeReturnUrl, buildReturnUrl } from './methods.js';
 import { StudyWriter } from './storage.js';
+import { deviceClass } from './abstats.js';
 
 let study, writer, sessionId, activeTask=null, taskIndex=0;
 let taskStartedAt=0, clickCount=0, taskInteractions=[], trackerConnected=false, observedSuccess=false;
@@ -65,6 +66,7 @@ function sessionOpenElsewhere(id){
   return new Promise(resolve=>{const token=uuid();const on=e=>{if(e.data?.type==='here'&&e.data.token===token){sessionChannel.removeEventListener('message',on);resolve(true);}};
     sessionChannel.addEventListener('message',on);sessionChannel.postMessage({type:'ping',sessionId:id,token});setTimeout(()=>{sessionChannel.removeEventListener('message',on);resolve(false);},250);});
 }
+function sessionDevice(){try{return sessionHistory().find(e=>e.kind==='session_started')?.payload?.device||deviceClass(innerWidth);}catch{return deviceClass(innerWidth);}}
 function sessionHistory(){
   if(writer?.remote)return writer.history;
   try{return JSON.parse(localStorage.getItem('utp-demo-events-v1')||'[]').filter(e=>e.session_id===sessionId);}catch{return writer?.history||[];}
@@ -170,7 +172,7 @@ function welcome(){
     sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview);
     assignments=resolveAssignments(study,sessionId,query);
     const externalId=cleanExternalId(query.get('pid'));
-    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,consent:study.consentMode==='external'?'external':true,...(preview?{preview:true}:{}),...(externalId?{external_id:externalId}:{}),...(Object.keys(assignments).length?{assignments}:{}),...(returnUrl?{return_host:returnUrl.hostname}:{})});
+    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,device:deviceClass(innerWidth),consent:study.consentMode==='external'?'external':true,...(preview?{preview:true}:{}),...(externalId?{external_id:externalId}:{}),...(Object.keys(assignments).length?{assignments}:{}),...(returnUrl?{return_host:returnUrl.hostname}:{})});
     if(study.preQuestions?.length)showPre();else{persist('start',0);startActivity();}
   };
 }
@@ -242,7 +244,7 @@ async function finishStudy(){
 // already: true when the participant reloads after finishing; nothing new is recorded.
 async function showCompleted(already){
   stage='complete';progress(1,'Study complete');const ok=await writer.flush();
-  render(`<section class="done-card"><span class="eyebrow accent">STUDY COMPLETE</span><h1>${already?'You have already completed this study.':'Thank you for participating.'}</h1><p>${already?'Your earlier responses are kept. There is nothing more to do; you can close this tab.':'Your contributions to this research session have been recorded.'}</p><div id="finalSaveNotice" class="notice ${ok?'':'warning'}">${writer.isSaved?(writer.remote?'All responses have synced to the research database.':'This is a local demonstration. Your responses were saved only in this browser and were not sent to a researcher.'):'Some responses could not sync. You can retry or download a copy of this session.'}</div>${returnUrl?`<div class="return-to-survey"><p><strong>One more step:</strong> return to the survey to finish. Your design and task results go back with you; nothing that identifies you is included.</p><a class="btn btn-primary" id="returnToSurvey" href="${esc(buildReturnUrl(returnUrl,{sessionId,status:'complete',assignments,abResults,tasks:study.tasks,externalId:cleanExternalId(query.get('pid'))}))}">Return to the survey →</a></div>`:''}<div class="actions-row">${cardButton('Download a copy of this session','responseCopy','outline')}${writer.isSaved?'':cardButton('Retry sync','retrySave')}${already&&!writer.remote?cardButton('Start a new session','newSession','outline'):''}</div>${already&&!writer.remote?'<p class="small muted">“Start a new session” is only offered in local demo and preview mode, for piloting.</p>':''}</section>`);
+  render(`<section class="done-card"><span class="eyebrow accent">STUDY COMPLETE</span><h1>${already?'You have already completed this study.':'Thank you for participating.'}</h1><p>${already?'Your earlier responses are kept. There is nothing more to do; you can close this tab.':'Your contributions to this research session have been recorded.'}</p><div id="finalSaveNotice" class="notice ${ok?'':'warning'}">${writer.isSaved?(writer.remote?'All responses have synced to the research database.':'This is a local demonstration. Your responses were saved only in this browser and were not sent to a researcher.'):'Some responses could not sync. You can retry or download a copy of this session.'}</div>${returnUrl?`<div class="return-to-survey"><p><strong>One more step:</strong> return to the survey to finish. Your design and task results go back with you; nothing that identifies you is included.</p><a class="btn btn-primary" id="returnToSurvey" href="${esc(buildReturnUrl(returnUrl,{sessionId,status:'complete',assignments,abResults,tasks:study.tasks,externalId:cleanExternalId(query.get('pid')),device:sessionDevice()}))}">Return to the survey →</a></div>`:''}<div class="actions-row">${cardButton('Download a copy of this session','responseCopy','outline')}${writer.isSaved?'':cardButton('Retry sync','retrySave')}${already&&!writer.remote?cardButton('Start a new session','newSession','outline'):''}</div>${already&&!writer.remote?'<p class="small muted">“Start a new session” is only offered in local demo and preview mode, for piloting.</p>':''}</section>`);
   if($('#newSession'))$('#newSession').onclick=()=>{clearCheckpoint();location.reload();};
   $('#responseCopy').onclick=()=>download(`${study.id}-session-${sessionId}.json`,JSON.stringify(sessionHistory(),null,2),'application/json');
   if($('#retrySave'))$('#retrySave').onclick=async()=>{const synced=await writer.flush();if(synced)$('#retrySave').classList.add('hidden');$('#finalSaveNotice')?.replaceChildren(document.createTextNode(synced?'Responses synced.':'Sync still unavailable.'));};

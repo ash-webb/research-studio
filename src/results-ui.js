@@ -1,4 +1,5 @@
 import { normalizeMethod, METHODS, pairwiseSimilarity, flattenTree } from './methods.js';
+import { analyzeAB, renderABCore } from './ab-results.js';
 const fmt=n=>Number.isFinite(n)?`${Math.round(n)}%`:'—';
 const rate=(n,d)=>d?fmt(n/d*100):'—';
 const pill=(name,value)=>`<span>${name}: <strong>${value}</strong></span>`;
@@ -40,22 +41,8 @@ function preferenceHTML(a,data,esc){
 const median=value=>{const v=value.filter(Number.isFinite).sort((a,b)=>a-b);return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null;};
 function abHTML(a,data,flat,esc){
   const exposures=(flat.starts||[]).filter(x=>x.task_id===a.id&&x.method==='ab_test');
-  const rows=a.variants.map((variant,i)=>{
-    const armExposures=exposures.filter(x=>x.variant_id===variant.id);
-    const submissions=data.filter(x=>x.variant_id===variant.id);
-    const withTracker=submissions.filter(x=>x.tracker_connected);
-    const withSignal=withTracker.filter(x=>x.result.success_signal_status==='received');
-    const selfReport=submissions.filter(x=>x.self_report==='completed');
-    const times=submissions.map(x=>Number(x.time_seconds)).filter(Number.isFinite);
-    const clicks=withTracker.map(x=>Number(x.click_count)).filter(Number.isFinite);
-    const medianTime=median(times),medianClicks=median(clicks);
-    return {variant,control:i===0,assigned:armExposures.length,completed:submissions.length,
-      missing:Math.max(0,armExposures.length-submissions.length),connected:withTracker.length,
-      signal:withSignal.length,selfReport:selfReport.length,medianTime,medianClicks};
-  });
-  const resultRows=rows.map(r=>`<tr><th scope="row">${esc(r.variant.label)}${r.control?' <small>(baseline)</small>':''}${r.variant.revision?`<div class="muted tiny">Build: ${esc(r.variant.revision)}</div>`:''}</th><td>${r.assigned}</td><td>${r.completed}</td><td>${r.missing}</td><td>${r.selfReport}/${r.completed||0}</td><td>${a.successSignal?(r.connected?`${r.signal}/${r.connected} (${rate(r.signal,r.connected)})`:'No connected sessions'):'Unscored'}</td><td>${r.medianTime==null?'—':`${Math.round(r.medianTime)}s`}</td><td>${r.medianClicks==null?'—':r.medianClicks.toFixed(1)}</td></tr>`).join('');
   const total=exposures.length;
-  const barsRows=rows.map(r=>({label:r.variant.label,n:r.assigned}));
+  const analysis=analyzeAB(a,data,flat);
   const answers=(flat.answers||[]).filter(x=>x.task_id===a.id&&x.stage==='post_task');
   const questionRows=(a.questions||[]).map(q=>{
     const cells=a.variants.map(v=>{
@@ -85,11 +72,9 @@ function abHTML(a,data,flat,esc){
   const bySource=exposures.reduce((m,x)=>{const k=String(x.assignment||'stable-hash-equal').startsWith('link')?'link':(String(x.assignment||'').includes('not recognised')?'fallback':'builtin');m[k]=(m[k]||0)+1;return m;},{});
   const sourceText=[bySource.link?`${bySource.link} from study link`:'',bySource.builtin?`${bySource.builtin} built-in random`:'',bySource.fallback?`${bySource.fallback} built-in (link value not recognised)`:''].filter(Boolean).join(', ')||'None yet';
   return `<div class="method-summary">${pill('Assigned exposures',total)}${pill('Designs',a.variants.length)}${pill('Assigned by',esc(sourceText))}${pill('Experiment ID',esc(a.experimentId||a.id))}</div>${bySource.fallback?'<p class="notice warning">Some study links carried a design ID that this study does not have, so those sessions were assigned at random instead. Check the variant IDs in your survey randomizer.</p>':''}
-    <h4>Implementation outcomes by variant</h4><p class="analysis-subtitle">Exposure counts include incomplete tasks. Self-reports and instrumented signals are different measures. A missing success signal does not establish task failure.</p>
-    <div class="table-scroll"><table class="data-table"><thead><tr><th>Variant</th><th>Exposed</th><th>Submitted</th><th>Not submitted</th><th>Self-reported complete</th><th>Signal received / connected</th><th>Median task time</th><th>Median tracked clicks</th></tr></thead><tbody>${resultRows}</tbody></table></div>
-    <h4>Allocation by variant</h4>${bars(barsRows,total,esc)}
-    ${answerSummary}${clickSummary}
-    <p class="analysis-subtitle">The first configured variant is the descriptive baseline. Allocation is equal probability but not fixed quotas. Time metrics use submitted tasks; click metrics use tracker-connected tasks. No significance testing, sample-size determination, confidence claims, or automatic winner selection is performed. Use pinned design revisions and comparable recruitment/device conditions.</p>`;
+    ${renderABCore(analysis,esc)}
+    ${(flat.sessions||[]).some(x=>x.imported==='qualtrics')?'<p class="analysis-subtitle">Imported from Qualtrics: follow-up answers stay in your Qualtrics export, and click-by-click histories are not part of the return link, so those sections are not shown.</p>':`${answerSummary}${clickSummary}`}
+    <p class="analysis-subtitle">Design ${'A'} is the baseline. Results describe this sample; they do not pick a winner. Self-reported completion and the success signal measure different things, and a missing signal is never counted as failure. Compare designs only under similar recruitment and devices, using fixed design versions.</p>`;
 }
 function surveyHTML(a,data,flat,esc){
   const responses=flat.answers.filter(x=>x.task_id===a.id&&x.stage==='activity');

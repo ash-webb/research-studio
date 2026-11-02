@@ -215,10 +215,11 @@ export function safeReturnUrl(value,hosts=['qualtrics.com']){
 // rs_session, rs_pid (the pid the participant arrived with), rs_status, rs_variant (or rs_variant_<experiment> when several), and per A/B task in
 // study order k = 1, 2…: rs_ab<k>_task, _variant, _success (received/not_observed/unavailable),
 // _self (completed/unable), _time (seconds), _clicks. No personal data is included.
-export function buildReturnUrl(base,{sessionId,status,assignments,abResults,tasks=[],externalId=null}){
+export function buildReturnUrl(base,{sessionId,status,assignments,abResults,tasks=[],externalId=null,device=null}){
   const url=new URL(base.href);
   url.searchParams.set('rs_session',sessionId);
   if(externalId)url.searchParams.set('rs_pid',externalId);
+  if(device)url.searchParams.set('rs_device',device);
   url.searchParams.set('rs_status',status);
   const entries=Object.entries(assignments||{});
   if(entries.length===1)url.searchParams.set('rs_variant',entries[0][1].variant_id);
