@@ -5,6 +5,7 @@
 import { normalizeMethod } from './methods.js';
 import { planStudy } from './abstats.js';
 import { buildDocx } from './docx.js';
+import { PLANNED_METHODS, ensureActivityPlans, activityPlanHTML, activitySize, activityAnalysis, validateActivityPlans, activityDocxBlocks } from './method-plans.js';
 
 const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const letter = i => String.fromCharCode(65 + i);
@@ -52,7 +53,18 @@ export function ensurePlan(study) {
     const treatmentsNow = exp.variants.filter(v => v.id !== e.controlId).map(v => v.id);
     for (const h of e.hypotheses) if (!treatmentsNow.includes(h.treatmentId)) h.treatmentId = treatmentsNow[0] || '';
   }
+  ensureActivityPlans(study, p);
   return p;
+}
+// Non-A/B activities that have a planner.
+export const plannedActivities = study => (study.tasks || []).filter(t => PLANNED_METHODS.includes(normalizeMethod(t)));
+// Everyone in a study does every activity (A/B designs split people), so recruit for the largest need.
+export function sampleSummary(study) {
+  const p = study.plan || {}, rows = [];
+  for (const exp of experimentsOf(study)) { const e = p.experiments?.[exp.id]; const s = e && plannedSize(e, exp.variants.length); if (s) rows.push({ name: `A/B experiment ${exp.id}`, n: s.total, note: `${s.perDesign} per design × ${exp.variants.length}` }); }
+  for (const t of plannedActivities(study)) { const ap = p.activities?.[t.id]; const s = ap && activitySize(t, ap); if (s?.n) rows.push({ name: t.title || t.id, n: s.total || s.n, note: s.total ? `${s.n} per round across rounds` : '' }); }
+  const top = rows.reduce((a, r) => (!a || r.n > a.n ? r : a), null);
+  return { rows, top };
 }
 export function applyControl(study, expId, controlId) {
   for (const t of study.tasks || []) {
@@ -87,8 +99,15 @@ export function sizeText(e, designs) {
 }
 // Standard analysis plan, used unless the researcher writes their own.
 export function standardAnalysisPlan(study) {
+  const plan = study.plan || {};
+  const acts = plannedActivities(study).map(t => { const ap = plan.activities?.[t.id]; return ap ? `${t.title || t.id}: ${activityAnalysis(t, ap)}` : ''; }).filter(Boolean);
+  const ab = abAnalysis(study);
+  const all = [ab, ...acts].filter(Boolean).join('\n\n');
+  return all || 'Report each activity with the method-specific analysis in Research Studio. Describe results; do not generalise beyond the sample recruited.';
+}
+function abAnalysis(study) {
   const exps = experimentsOf(study), plan = study.plan || {};
-  if (!exps.length) return 'Report each activity with the method-specific analysis in Research Studio (completion, success where configured, time and follow-up answers). Describe results; do not generalise beyond the sample recruited.';
+  if (!exps.length) return '';
   return exps.map(exp => {
     const e = plan.experiments?.[exp.id] || newExperimentPlan(exp), n = exp.variants.length, s = plannedSize(e, n);
     const control = label(exp, e.controlId), measure = PRIMARY[e.primaryMeasure] || PRIMARY.success;
@@ -129,19 +148,24 @@ export function validatePlan(plan, study) {
     for (const [k, v] of Object.entries(e.treatments || {})) str(v, `treatment description for ${k}`, 2000);
     str(e.stoppingRule, 'stopping rule', 2000);
   }
+  validateActivityPlans(plan, study);
   if (plan.changes != null && !Array.isArray(plan.changes)) throw new Error('Study plan: change log must be a list.');
 }
 
 // ---------- editor ----------
 const ta = (attr, value, rows = 3, placeholder = '') => `<textarea rows="${rows}" ${attr} placeholder="${esc(placeholder)}">${esc(value)}</textarea>`;
 export function fmtDate(iso) { const d = new Date(iso); return Number.isNaN(+d) ? '' : d.toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' }); }
+export function sampleSummaryHTML(study) {
+  const sum = sampleSummary(study);
+  return sum.rows.length ? `<p><strong>Recruit for the largest need: about ${sum.top.n} people</strong> (${esc(sum.top.name)}), plus extra for drop-out. Everyone takes every activity, so this also covers the others.</p><ul>${sum.rows.map(r => `<li>${esc(r.name)}: ${r.n}${r.note ? ` <span class="muted">${esc(r.note)}</span>` : ''}</li>`).join('')}</ul>` : '';
+}
 export function planHTML(study) {
   const p = ensurePlan(study), exps = experimentsOf(study);
   const status = p.locked
     ? `<div class="plan-status plan-locked" role="status"><strong>Plan locked</strong> on ${esc(fmtDate(p.locked.at))}. You can still edit; every change is recorded in the change log below.</div>`
     : '<div class="plan-status"><strong>Draft.</strong> Lock the plan before the study goes live, so changes made after seeing results are on record.</div>';
   const rqs = p.researchQuestions.map((q, i) => `<div class="plan-list-row"><label class="field"><span>Research question ${i + 1}</span><input data-plan-rq="${i}" value="${esc(q)}" placeholder="e.g. Can taxpayers find the status of a service request?"></label><button type="button" class="btn btn-small btn-danger" data-plan-action="remove-rq" data-index="${i}" ${p.researchQuestions.length <= 1 ? 'disabled' : ''} aria-label="Remove research question ${i + 1}">Remove</button></div>`).join('');
-  const expHTML = exps.length ? exps.map(exp => {
+  let expHTML = exps.length ? exps.map(exp => {
     const e = p.experiments[exp.id], n = exp.variants.length;
     const titles = exp.tasks.map(t => t.title || t.id).join(', ');
     const designRows = exp.variants.map((v, i) => `<tr><th scope="row">${letter(i)} · ${esc(v.label)}<div class="muted tiny">${esc(v.id)}</div></th><td>${v.id === e.controlId ? '<span class="role-pill role-control">Control</span>' : '<span class="role-pill">Treatment</span>'}</td><td><label class="sr-only" for="tr-${esc(exp.id)}-${esc(v.id)}">What is different in ${esc(v.label)}</label><textarea id="tr-${esc(exp.id)}-${esc(v.id)}" rows="2" data-plan-exp="${esc(exp.id)}" data-plan-treatment="${esc(v.id)}" placeholder="${v.id === e.controlId ? 'e.g. Current live design' : 'What changes compared with the control'}">${esc(e.treatments[v.id] || '')}</textarea></td></tr>`).join('');
@@ -154,7 +178,12 @@ export function planHTML(study) {
       <h4>Measures</h4><div class="form-grid"><label class="field">Primary measure<select data-plan-exp="${esc(exp.id)}" data-field="primaryMeasure">${Object.entries(PRIMARY).map(([k, l]) => `<option value="${k}" ${e.primaryMeasure === k ? 'selected' : ''} ${k === 'success' && !exp.tasks.some(t => t.successSignal) ? 'disabled' : ''}>${l}</option>`).join('')}</select><small>Counted over everyone assigned to a design. ${exp.tasks.some(t => t.successSignal) ? '' : 'Task success needs a success signal in the activity.'}</small></label><fieldset class="plan-checks"><legend>Secondary measures <small>for context only</small></legend>${Object.entries(SECONDARY).map(([k, l]) => `<label><input type="checkbox" data-plan-exp="${esc(exp.id)}" data-plan-secondary="${k}" ${e.secondary.includes(k) ? 'checked' : ''}> ${l}</label>`).join('')}</fieldset></div>
       <h4>Sample size</h4><div class="form-grid plan-size"><label class="field">Expected ${e.primaryMeasure === 'self' ? 'completion' : 'success'} rate for the control (%)<input type="number" min="1" max="99" data-plan-exp="${esc(exp.id)}" data-field="baseline" value="${esc(e.baseline)}"></label><label class="field">Smallest difference worth finding (points)<input type="number" min="1" max="60" data-plan-exp="${esc(exp.id)}" data-field="difference" value="${esc(e.difference)}"></label><label class="field">Power<select data-plan-exp="${esc(exp.id)}" data-field="power"><option value="0.8" ${Number(e.power) !== 0.9 ? 'selected' : ''}>80% (common)</option><option value="0.9" ${Number(e.power) === 0.9 ? 'selected' : ''}>90%</option></select></label></div><p class="plan-size-out" data-plan-size="${esc(exp.id)}" aria-live="polite">${esc(sizeText(e, n))}</p>
       <label class="field">Stopping rule${ta(`data-plan-exp="${esc(exp.id)}" data-field="stoppingRule"`, e.stoppingRule, 2, STOP_DEFAULT)}</label></div>`;
-  }).join('') : '<p class="empty-hint">Add an A/B implementation test activity below to plan the control and treatment designs, hypotheses, measures and sample size.</p>';
+  }).join('') : '';
+  const acts = plannedActivities(study);
+  const actHTML = acts.map(t => activityPlanHTML(t, p.activities[t.id], p, (study.tasks || []).indexOf(t))).join('');
+  const sumHTML = sampleSummaryHTML(study);
+  const summary = sumHTML ? `<div class="plan-size-summary" data-plan-summary>${sumHTML}</div>` : '';
+  expHTML = (exps.length ? `<h3>A/B experiments</h3>${expHTML}` : '') + (acts.length ? `<h3>Activities: goals, criteria and sample size</h3><p class="helper">One plan per activity. Activity details (cards, tree, image, options, questions) are set in the steps below.</p>${actHTML}` : '') + (summary ? `<h3>Sample size</h3>${summary}` : '') || '<p class="empty-hint">Add activities below to plan them here.</p>';
   const activities = (study.tasks || []).map((t, i) => `<li>${i + 1}. ${esc(t.title || t.id)} <span class="muted">· ${(t.questions || []).length} follow-up question${(t.questions || []).length === 1 ? '' : 's'}</span></li>`).join('');
   return planBody(study, p, status, rqs, expHTML, activities);
 }
@@ -169,7 +198,7 @@ function planBody(study, p, status, rqs, expHTML, activities) {
     <div class="plan-list">${rqs}</div><button type="button" class="btn btn-small btn-outline" data-plan-action="add-rq">+ Add research question</button>
     <h3>Participants</h3>
     <div class="form-grid"><label class="field">Who takes part<input data-plan-field="participants.audience" value="${esc(p.participants.audience)}" placeholder="e.g. Taxpayers who used the portal in the last year"></label><label class="field">Recruitment<input data-plan-field="participants.recruitment" value="${esc(p.participants.recruitment)}" placeholder="e.g. Qualtrics panel, intake survey with screener"></label><label class="field">Devices<select data-plan-field="participants.devices">${Object.entries(DEVICES).map(([k, l]) => `<option value="${k}" ${p.participants.devices === k ? 'selected' : ''}>${l}</option>`).join('')}</select></label><label class="field">Exclusions <small>Optional</small><input data-plan-field="participants.exclusions" value="${esc(p.participants.exclusions)}" placeholder="e.g. IRS employees; duplicate responses"></label></div>
-    <h3>Designs, hypotheses and sample size</h3>${expHTML}
+    ${expHTML}
     <h3>Tasks and questions</h3><p class="helper">Set in the steps below and included in the plan document: ${study.preQuestions?.length || 0} pre-study question${study.preQuestions?.length === 1 ? '' : 's'}, ${(study.tasks || []).length} activit${(study.tasks || []).length === 1 ? 'y' : 'ies'}, ${study.postQuestions?.length || 0} post-study question${study.postQuestions?.length === 1 ? '' : 's'}.</p><ul class="plan-activities">${activities}</ul>
     <h3>Analysis plan</h3>
     ${p.analysis.trim() ? `<label class="field">Analysis plan <small>Your own text replaces the standard plan.</small>${ta('data-plan-field="analysis"', p.analysis, 10)}</label><button type="button" class="btn btn-small btn-outline" data-plan-action="clear-analysis">Use the standard analysis plan instead</button>` : `<div class="plan-standard"><p class="muted small">Standard analysis plan, used unless you write your own. It updates as you change the plan above.</p><div class="plan-standard-text" data-plan-standard>${standardHTML(study)}</div></div><button type="button" class="btn btn-small btn-outline" data-plan-action="copy-analysis">Edit a copy of this text</button>`}
@@ -188,15 +217,15 @@ export function planBlocks(study, now = new Date()) {
   add('title', study.title || 'Untitled study');
   add('p', [{ text: 'Study plan', bold: true }, { text: ` · Study ID ${study.id} · version ${study.version || '1.0.0'}` }]);
   add('note', `${p.locked ? `Plan locked on ${fmtDate(p.locked.at)}${p.changes.length ? `; ${p.changes.length} change${p.changes.length === 1 ? '' : 's'} recorded since (see Change log)` : '; no changes since'}.` : 'Draft plan (not locked).'} Generated by Research Studio on ${fmtDate(now.toISOString())}.`);
-  add('h1', '1. Background'); add('p', p.background.trim() || 'Not yet written.');
+  let h = 0;
+  add('h1', `${++h}. Background`); add('p', p.background.trim() || 'Not yet written.');
   if (study.description?.trim()) add('note', `Study description: ${study.description.trim()}`);
-  add('h1', '2. Research questions');
+  add('h1', `${++h}. Research questions`);
   const rq = p.researchQuestions.filter(q => q.trim());
   if (rq.length) rq.forEach((q, i) => add('number', q, { n: i + 1 })); else add('p', 'Not yet written.');
-  add('h1', '3. Participants');
+  add('h1', `${++h}. Participants`);
   add('table', null, { widths: [0.3, 0.7], rows: [['Item', 'Plan'], ['Who takes part', p.participants.audience || '—'], ['Recruitment', p.participants.recruitment || '—'], ['Devices', DEVICES[p.participants.devices] || '—'], ['Exclusions', p.participants.exclusions || '—'], ['Consent', study.consentMode === 'external' ? 'Collected in the survey before the study' : 'Collected at the start of the study']] });
-  add('h1', '4. Designs and hypotheses');
-  if (!exps.length) add('p', 'This study has no A/B experiment.');
+  if (exps.length) add('h1', `${++h}. A/B experiments`);
   for (const exp of exps) {
     const e = p.experiments[exp.id], n = exp.variants.length;
     add('h2', `Experiment: ${exp.id}`);
@@ -211,7 +240,18 @@ export function planBlocks(study, now = new Date()) {
     add('p', [{ text: 'Sample size: ', bold: true }, { text: sizeText(e, n) }]);
     add('p', [{ text: 'Stopping rule: ', bold: true }, { text: e.stoppingRule?.trim() || STOP_DEFAULT }]);
   }
-  add('h1', '5. Procedure');
+  const acts = plannedActivities(s);
+  if (acts.length) {
+    add('h1', `${++h}. Activity plans`);
+    for (const t of acts) { add('h2', `${(s.tasks || []).indexOf(t) + 1}. ${t.title || t.id}`); activityDocxBlocks(t, p.activities[t.id], p, add); }
+  }
+  const sum = sampleSummary(s);
+  if (sum.rows.length) {
+    add('h1', `${++h}. Sample size`);
+    add('p', `Recruit for the largest need: about ${sum.top.n} people (${sum.top.name}), plus extra for drop-out. Everyone takes every activity, so this also covers the others.`);
+    add('table', null, { rows: [['Activity', 'People needed', 'Note'], ...sum.rows.map(r => [r.name, String(r.n), r.note || '—'])], widths: [0.45, 0.2, 0.35] });
+  }
+  add('h1', `${++h}. Procedure`);
   add('p', [{ text: 'Welcome: ', bold: true }, { text: study.welcome?.trim() || '—' }]);
   add('h2', 'Pre-study questions');
   if (study.preQuestions?.length) add('table', null, { rows: qRows(study.preQuestions), widths: QW }); else add('p', 'None.');
@@ -228,11 +268,11 @@ export function planBlocks(study, now = new Date()) {
   });
   add('h2', 'Post-study questions');
   if (study.postQuestions?.length) add('table', null, { rows: qRows(study.postQuestions), widths: QW }); else add('p', 'None.');
-  add('h1', '6. Analysis plan');
+  add('h1', `${++h}. Analysis plan`);
   add('p', p.analysis.trim() || standardAnalysisPlan(s));
-  add('h1', '7. How results will be used'); add('p', p.decisions.trim() || 'Not yet written.');
+  add('h1', `${++h}. How results will be used`); add('p', p.decisions.trim() || 'Not yet written.');
   if (p.locked) {
-    add('h1', '8. Change log');
+    add('h1', `${++h}. Change log`);
     add('note', `Changes made after the plan was locked on ${fmtDate(p.locked.at)}.`);
     if (p.changes.length) add('table', null, { rows: [['When', 'What changed', 'Before', 'After', 'Reason'], ...p.changes.map(c => [fmtDate(c.at), c.what, c.before || '—', c.after || '—', c.reason || '—'])], widths: [0.16, 0.24, 0.22, 0.22, 0.16] });
     else add('p', 'No changes.');

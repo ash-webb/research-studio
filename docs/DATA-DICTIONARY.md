@@ -49,6 +49,7 @@
 Saved as `plan` in the working-copy JSON; removed from the published study file and from database registration.
 - `background`, `researchQuestions[]`, `participants {audience, recruitment, devices: any|mostly_phone|mostly_desktop|phone|desktop, exclusions}`, `analysis` (empty = standard plan), `decisions`.
 - `experiments.<experiment_id>`: `controlId` (always the first design in every activity of the experiment), `treatments {<variant_id>: text}`, `hypotheses[] {id, treatmentId, direction: higher|lower|different, measure: success|self|time, rationale}`, `primaryMeasure: success|self`, `secondary[]` (measured, self, time, success_time, clicks, dropout, followup), `baseline` (%), `difference` (points), `power`, `stoppingRule`.
+- `activities.<activity_id>` (v0.3.9): `method`, `objective`, `rqs[]` (research-question numbers, 0-based), `criteria`, `margin` (± points). By method: prototype `goal: measure|discover`, `measure: success|self`, `benchmark`, `perRound`, `rounds`; tree test `benchmark`, `directBenchmark`; first click `benchmark`; card sort `goal: explore|validate`, `threshold`, `target`; preference `split`, `power`; survey `constructs`. Benchmarks are percentages; blank means none.
 - `locked {at}` (ISO time from the researcher's computer), `changes[] {at, what, before, after, reason}`, `edited` (true once the researcher has changed the plan; untouched default plans are not shown in results).
 
 ## Interruptions (v0.3.3)

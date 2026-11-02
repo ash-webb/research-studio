@@ -1,5 +1,6 @@
 import { normalizeMethod, METHODS, pairwiseSimilarity, flattenTree } from './methods.js';
 import { analyzeAB, renderABCore } from './ab-results.js';
+import { activityPlanCheck, PLANNED_METHODS } from './method-plans.js';
 const fmt=n=>Number.isFinite(n)?`${Math.round(n)}%`:'—';
 const rate=(n,d)=>d?fmt(n/d*100):'—';
 const pill=(name,value)=>`<span>${name}: <strong>${value}</strong></span>`;
@@ -104,7 +105,10 @@ export function renderAnalyses(study,flat,esc){
     if(method==='preference')content=preferenceHTML(a,data,esc);
     if(method==='survey')content=surveyHTML(a,data,flat,esc);
     if(method==='prototype')content=prototypeHTML(a,data,flat,esc);
-    if(method==='ab_test')content=abHTML(a,data,flat,esc,study.plan&&(study.plan.locked||study.plan.edited)?study.plan:null);
+    const plan=study.plan&&(study.plan.locked||study.plan.edited)?study.plan:null;
+    if(method==='ab_test')content=abHTML(a,data,flat,esc,plan);
+    const ap=plan?.activities?.[a.id];
+    if(ap&&ap.method===method&&PLANNED_METHODS.includes(method))content=activityPlanCheck(a,ap,data,flat)+content;
     return `<section class="method-analysis"><p class="eyebrow accent">${esc(METHODS[method]?.label||method)}</p><h3>${esc(a.title||a.id)}</h3>${content}</section>`;
   });
   return output.join('');

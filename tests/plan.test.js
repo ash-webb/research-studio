@@ -54,9 +54,9 @@ test('plan editor escapes researcher text', () => {
 test('plan document covers every section, and the change log only when locked', () => {
   const s = load(); ensurePlan(s);
   const heads = planBlocks(s).filter(b => b.type === 'h1').map(b => b.text);
-  assert.deepEqual(heads, ['1. Background', '2. Research questions', '3. Participants', '4. Designs and hypotheses', '5. Procedure', '6. Analysis plan', '7. How results will be used']);
+  assert.deepEqual(heads, ['1. Background', '2. Research questions', '3. Participants', '4. A/B experiments', '5. Sample size', '6. Procedure', '7. Analysis plan', '8. How results will be used']);
   s.plan.locked = { at: '2026-11-02T10:00:00Z' }; s.plan.changes = [{ at: '2026-11-03T10:00:00Z', what: 'Study plan › Background', before: 'a', after: 'b', reason: '' }];
-  assert.ok(planBlocks(s).some(b => b.text === '8. Change log'));
+  assert.ok(planBlocks(s).some(b => b.text === '9. Change log'));
 });
 test('.docx is a valid package Word can open (checked with python-docx when available)', () => {
   const s = load(); ensurePlan(s); s.plan.background = 'Ampersand & <angle> "quote" — dash';

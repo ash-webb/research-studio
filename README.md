@@ -1,4 +1,4 @@
-# Research Studio v0.3.8 — multi-method unmoderated UX research
+# Research Studio v0.3.9 — multi-method unmoderated UX research
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 
@@ -72,13 +72,20 @@ The first step of the Study builder is a **Study plan**:
 - **Background and research questions.**
 - **Participants:** who takes part, recruitment, devices, exclusions.
 - **For each A/B experiment:** which design is the **control** (it becomes design A in every activity and in the results) and what is different in each **treatment**; **hypotheses** (design, expected direction, measure) written out as plain sentences; **primary and secondary measures**; **sample size** from the expected control rate and the smallest difference worth finding; **stopping rule**.
+- **For every other activity** (prototype, card sort, tree test, first click, preference, survey), added in v0.3.9: what the activity should tell you, which research questions it answers, a method-specific goal and success criterion, sample-size guidance and a standard analysis:
+  - *Prototype:* measure task success (success signal or self-report, optional benchmark and precision) or find usability problems (people per round × rounds).
+  - *Tree test and first click:* optional benchmark success rate (and directness for trees) with precision-based sample size.
+  - *Card sort:* explore (target participants; 15–30 is common for open sorts) or check agreement with your categories (agreement threshold and precision).
+  - *Preference:* smallest split worth detecting (e.g. 60/40) and power.
+  - *Survey:* what the questions measure and precision.
+- **Sample size summary:** everyone takes every activity, so the plan recommends recruiting for the activity with the largest need.
 - **Tasks and questions** are set in the later builder steps and included in the plan document.
 - **Analysis plan:** a standard plan written from your choices (everyone-assigned denominator, Wilson and Newcombe intervals, Bonferroni for 3 designs, target size, data checks). Use it as is or edit a copy.
 - **How results will be used.**
 
 **Lock plan** before fielding. You can still edit afterwards, but every change anywhere in the builder is recorded in a **change log** (what, before, after, when, and an optional reason). **Download plan (.docx)** creates a Word document of the whole plan, procedure and change log, in the browser.
 
-In **Results & insights**, the A/B section shows the plan: lock status, control, primary measure, target size, and each hypothesis next to the matching result (consistent, opposite, inconclusive or too early). The plan's primary measure and target size are used for the main measure and the provisional banner.
+In **Results & insights**, each planned activity shows its plan check: rates counted over everyone who started, with 95% ranges compared with your benchmark (above, below or inconclusive), card-sort agreement against your threshold, the preference split against 50/50, and progress towards the target sample. The A/B section shows the plan: lock status, control, primary measure, target size, and each hypothesis next to the matching result (consistent, opposite, inconclusive or too early). The plan's primary measure and target size are used for the main measure and the provisional banner.
 
 The plan lives in your working copy only. **Export study JSON** leaves it out, so hypotheses and analysis notes are never in the public study file participants load. Lock and change times come from your computer's clock.
 

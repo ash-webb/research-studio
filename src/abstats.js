@@ -141,3 +141,28 @@ export function deviceClass(width) {
   if (!Number.isFinite(w) || w <= 0) return 'unknown';
   return w < 700 ? 'phone' : w < 1100 ? 'tablet' : 'desktop';
 }
+
+// ---------- single-group planning (v0.3.9) ----------
+// People needed so a 95% interval around a rate near p is about ±margin wide (normal approximation).
+export function sampleSizeForMargin(p, margin, conf = 0.95) {
+  if (!(p > 0 && p < 1) || !(margin > 0 && margin < 0.5)) return null;
+  const z = qnorm(1 - (1 - conf) / 2);
+  return Math.ceil(z * z * p * (1 - p) / (margin * margin));
+}
+// Half-width of the 95% Wilson interval for n people at rate p (for "with n people, about ±x").
+export function marginAt(n, p = 0.5, conf = 0.95) {
+  if (!(n > 0)) return null;
+  const w = wilson(Math.round(p * n), n, conf);
+  return w ? (w.hi - w.lo) / 2 : null;
+}
+// Two options: people needed to tell a split of p (e.g. 0.6) from 50/50 (two-sided one-sample test).
+export function sampleSizeVsHalf(p, { power = 0.8, alpha = 0.05 } = {}) {
+  if (!(p > 0 && p < 1) || p === 0.5) return null;
+  const za = qnorm(1 - alpha / 2), zb = qnorm(power);
+  return Math.ceil(((za * 0.5 + zb * Math.sqrt(p * (1 - p))) / (p - 0.5)) ** 2);
+}
+// Compare a rate's 95% interval with a benchmark (proportion): above, below or inconclusive.
+export function benchmarkVerdict(w, benchmark) {
+  if (!w || !(benchmark > 0 && benchmark < 1)) return null;
+  return w.lo > benchmark ? 'above' : w.hi < benchmark ? 'below' : 'inconclusive';
+}

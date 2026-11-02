@@ -492,7 +492,7 @@ scenarios.studyPlan = async browser => {
   eq(G, 'plan downloads as a .docx file', [d.suggestedFilename(), bytes.slice(0, 2).toString()], ['demo-ab-implementation-study-plan.docx', 'PK']);
   try {
     const text = require('child_process').execFileSync('python3', ['-c', 'import sys,docx;d=docx.Document(sys.argv[1]);print("\\n".join(p.text for p in d.paragraphs));print("TABLES",len(d.tables))', docPath]).toString();
-    check(G, 'Word document has the plan sections, hypothesis and change log', ['1. Background', 'Changed after locking', '4. Designs and hypotheses', 'H1.', 'lower task success rate', '6. Analysis plan', '8. Change log'].every(t => text.includes(t)), text.slice(0, 400));
+    check(G, 'Word document has the plan sections, hypothesis and change log', ['1. Background', 'Changed after locking', '4. A/B experiments', 'H1.', 'lower task success rate', '7. Analysis plan', '9. Change log'].every(t => text.includes(t)), text.slice(0, 400));
   } catch (err) { if (!/No module named/.test(String(err.stderr))) throw err; }
   const [wc] = await Promise.all([p.waitForEvent('download'), p.click('#saveWorkingCopy')]);
   const working = JSON.parse(fs.readFileSync(await wc.path(), 'utf8'));
@@ -507,6 +507,44 @@ scenarios.studyPlan = async browser => {
   await p2.click('.nav-option[data-tab="results"]'); await p2.selectOption('#resultsStudy', 'demo-ab-implementation'); await p2.waitForTimeout(400);
   check(G, 'A/B results show the plan and its hypothesis', /Study plan · locked/.test(await p2.textContent('#methodInsights .ab-plan')) && /H1\./.test(await p2.textContent('#methodInsights .ab-plan')));
   // Phone width: the plan step must not scroll the page sideways.
+  await p.setViewportSize({ width: 360, height: 800 }); await p.waitForTimeout(150);
+  check(G, 'no sideways page scroll at 360px', await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  await done();
+};
+
+scenarios.activityPlans = async browser => {
+  const G = 'Activity planners: card sort, tree, first click, preference, survey';
+  const { ctx, done } = await newContext(browser, G);
+  const p = await ctx.newPage();
+  await p.goto(BASE + 'index.html');
+  await p.waitForFunction(() => document.querySelectorAll('#exampleStudy option').length > 0);
+  await p.selectOption('#exampleStudy', 'demo-mixed'); await p.click('#loadExample');
+  await p.waitForFunction(() => document.querySelector('#studyId').value === 'demo-mixed');
+  eq(G, 'one planner per activity', await p.$$eval('[data-plan-act-block]', e => e.map(x => x.dataset.planActBlock)), ['organize-content', 'find-transcript', 'first-click-records', 'choose-layout', 'survey-questions']);
+  await p.fill('[data-plan-rq="0"]', 'Do people understand our record categories?'); await p.locator('[data-plan-rq="0"]').blur(); await p.waitForTimeout(100);
+  await p.check('[data-plan-act="find-transcript"][data-plan-act-rq="0"]');
+  await p.fill('[data-plan-act="find-transcript"][data-field="objective"]', 'Can people find a transcript?');
+  await p.fill('[data-plan-act="find-transcript"][data-field="benchmark"]', '70');
+  check(G, 'tree test: sample size follows the benchmark and precision', /About 81 people.*near 70%/.test(await p.textContent('[data-plan-act-size="find-transcript"]')), await p.textContent('[data-plan-act-size="find-transcript"]'));
+  check(G, 'tree test: standard analysis states the benchmark', /benchmark of 70%/.test(await p.textContent('[data-plan-act-analysis="find-transcript"]')));
+  await p.selectOption('[data-plan-act="organize-content"][data-field="goal"]', 'explore');
+  await p.fill('[data-plan-act="organize-content"][data-field="target"]', '25');
+  check(G, 'card sort (explore): participant target with guidance', /About 25 people.*15–30/.test(await p.textContent('[data-plan-act-size="organize-content"]')));
+  await p.fill('[data-plan-act="choose-layout"][data-field="split"]', '65');
+  check(G, 'preference: split-based sample size', /to tell a 65\/35 split from 50\/50/.test(await p.textContent('[data-plan-act-size="choose-layout"]')));
+  check(G, 'study summary recruits for the largest need', /Recruit for the largest need: about \d+ people/.test(await p.textContent('[data-plan-summary]')));
+  await screenshot(p, 'activity-plans');
+  await p.click('[data-plan-action="lock"]');
+  await p.fill('[data-plan-act="find-transcript"][data-field="benchmark"]', '75'); await p.locator('[data-plan-act="find-transcript"][data-field="benchmark"]').blur(); await p.waitForTimeout(100);
+  check(G, 'locked: planner edits are logged with the activity name', await p.$eval('.plan-changes tbody tr', r => /Study plan › 2\. Find a transcript › Benchmark success rate/.test(r.cells[1].textContent) && r.cells[2].textContent === '70' && r.cells[3].textContent === '75'));
+  const [d] = await Promise.all([p.waitForEvent('download'), p.click('[data-plan-action="docx"]')]);
+  try {
+    const text = require('child_process').execFileSync('python3', ['-c', 'import sys,docx;d=docx.Document(sys.argv[1]);print("\\n".join(p.text for p in d.paragraphs));print("\\n".join(c.text for t in d.tables for r in t.rows for c in r.cells))', await d.path()]).toString();
+    check(G, 'Word plan includes activity plans, links to RQs and sample size', ['Activity plans', 'Can people find a transcript?', 'RQ1', '75% task success', 'Sample size', 'Recruit for the largest need'].every(t => text.includes(t)), text.slice(0, 300));
+  } catch (err) { if (!/No module named/.test(String(err.stderr))) throw err; }
+  const [wc] = await Promise.all([p.waitForEvent('download'), p.click('#saveWorkingCopy')]);
+  const working = JSON.parse(fs.readFileSync(await wc.path(), 'utf8'));
+  check(G, 'working copy keeps activity plans', working.plan.activities['find-transcript'].benchmark === 75 && working.plan.activities['find-transcript'].rqs[0] === 0);
   await p.setViewportSize({ width: 360, height: 800 }); await p.waitForTimeout(150);
   check(G, 'no sideways page scroll at 360px', await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
   await done();

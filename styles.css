@@ -140,3 +140,10 @@ dialog.design-check::backdrop{background:#0f2c3a80}
 @media(max-width:660px){.plan-list-row{flex-direction:column;align-items:stretch}}
 .builder-main{min-width:0}
 .table-scroll{position:relative}
+/* v0.3.9 activity planners */
+.plan-activity>h4{margin:0 0 12px;font-size:14px}.plan-activity>h4 .muted{font-weight:500}
+.plan-activity .form-grid{margin:12px 0}
+.plan-rq-links{margin:12px 0}.plan-rq-links label{line-height:1.45}
+.plan-act-analysis{margin-top:10px;font-size:12px;color:#3e5b67}.plan-act-analysis summary{cursor:pointer;font-weight:720;color:#0a5f63}.plan-act-analysis p{margin:8px 0 0;line-height:1.55}
+.plan-size-summary{border:1px solid #bfe2dc;border-left:3px solid #0a7473;border-radius:8px;background:#f6fbfa;padding:12px 14px;font-size:13px;color:#1f4b52}
+.plan-size-summary p{margin:0 0 6px}.plan-size-summary ul{margin:0;padding-left:18px;line-height:1.7}

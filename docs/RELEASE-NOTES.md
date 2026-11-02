@@ -1,3 +1,27 @@
+# v0.3.9 release notes — planners for every method (November 2, 2026)
+
+## Added
+- **Activity planners** in the Study plan for prototype, card sort, tree test, first click, preference and survey activities. Each has:
+  - what it should tell you, and links to the research questions it answers;
+  - a method-specific goal and success criterion (benchmarks for task success, first-click success and tree directness; agreement threshold for card sorts; smallest split worth detecting for preference tests);
+  - sample-size guidance: precision-based (±points at 95%), problem-discovery rounds for prototypes, participant targets for open card sorts, and power for two-option preference tests;
+  - a standard analysis, included in the study's analysis plan.
+- **Sample size summary:** the plan recommends recruiting for the activity with the largest need.
+- **Plan checks with results:** each planned activity's results open with its plan check:
+  - rates counted over everyone who started, with 95% ranges compared with the benchmark;
+  - card-sort pairs and cards against the agreement threshold;
+  - the preference split against 50/50;
+  - progress towards the target sample.
+- The Word plan gains **Activity plans** and **Sample size** sections; headings are numbered by what the study contains.
+
+## Fixed
+- Editing a research question and then clicking a button in the plan no longer swallows the click.
+
+## Validation
+- `npm test` 108/108 (new `tests/method-plans.test.js`; planning formulas cross-checked with SciPy) · `npm run test:e2e` 344/344 (new activity planner scenario) · `npm run test:resume` 71/71 · `npm run test:keyboard` 43/43 · `npm run test:a11y` 0 violations across 96 screen states.
+
+---
+
 # v0.3.8 release notes — study planner (November 2, 2026)
 
 ## Added

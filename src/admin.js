@@ -3,7 +3,8 @@ import { plannerText } from './ab-results.js';
 import { qualtricsRecords, classifyExport, eventsFromQualtrics } from './qualtrics-import.js';
 import { METHODS, normalizeMethod, methodOutcomeRows, exportMethodRows, experimentComparisonRows } from './methods.js';
 import { newActivity, methodOptions, methodEditorHTML, parseEditorValue, variantRowError, nextVariant } from './builder-ui.js';
-import { ensurePlan, planHTML, changeLogHTML, applyControl, renamePlanVariant, hypothesisSentence, experimentsOf, sizeText, standardAnalysisPlan, standardHTML, planDocx, validatePlan } from './plan.js';
+import { renamePlanActivity, removeResearchQuestion, activitySize, activityAnalysis, rqLinksHTML } from './method-plans.js';
+import { sampleSummaryHTML, ensurePlan, planHTML, changeLogHTML, applyControl, renamePlanVariant, hypothesisSentence, experimentsOf, sizeText, standardAnalysisPlan, standardHTML, planDocx, validatePlan } from './plan.js';
 import { $, $$, escapeHTML as esc, validateStudy, prototypeURL, download, csv, flattenEvents, separatePreviewSessions, formatDate, formatDuration } from './shared.js';
 import { remoteEnabled, logIn, logOut, getAuth, registerStudy, listOwnedStudies, loadEvents } from './storage.js';
 
@@ -63,7 +64,7 @@ function handleEdit(e){
   if(idToField[el.id]){study[idToField[el.id]]=el.value;updateSummary();return;}
   if(el.matches('[data-task-lines],[data-task-tree]')){
     const ti=+el.closest('[data-task-index]').dataset.taskIndex;const t=study.tasks[ti];
-    try {parseEditorValue(t,el);t._editorErrors={};el.setCustomValidity('');}
+    try {parseEditorValue(t,el);t._editorErrors={};el.setCustomValidity('');renderPlan();}
     catch(err){t._editorErrors||={};t._editorErrors[el.dataset.taskLines||el.dataset.taskTree]=err.message;el.setCustomValidity(err.message);}
     return;
   }
@@ -80,8 +81,9 @@ function handleEdit(e){
     if(field==='method'){
       const old=study.tasks[ti];const next=newActivity(el.value,ti+1);next.id=old.id;next.title=old.title;next.instructions=old.instructions;study.tasks[ti]=next;renderTasks();updateSummary();return;
     }
-    if(field==='correctNodeIds'){parseEditorValue(study.tasks[ti],el);return;}
-    study.tasks[ti][field]=el.value;updateSummary();if(['experimentId','successSignal','title'].includes(field))renderPlan();return;
+    if(field==='correctNodeIds'){parseEditorValue(study.tasks[ti],el);renderPlan();return;}
+    if(field==='id')renamePlanActivity(study.plan,study.tasks[ti].id,el.value);
+    study.tasks[ti][field]=el.value;updateSummary();if(['experimentId','successSignal','title','id','sortMode'].includes(field))renderPlan();return;
   }
   if(el.matches('[data-question-field]')){
     const div=el.closest('[data-q-stage]');const stage=div.dataset.qStage;const index=+div.dataset.qIndex;const taskIndex=div.dataset.qTask===undefined?null:+div.dataset.qTask;
@@ -181,6 +183,10 @@ function refreshPlanSummary(){
 function refreshPlanDerived(expId){
   const box=by('planEditor'),p=study.plan;
   const std=box.querySelector('[data-plan-standard]');if(std)std.innerHTML=standardHTML(study);
+  const sum=box.querySelector('[data-plan-summary]');if(sum)sum.innerHTML=sampleSummaryHTML(study);
+  for(const t of study.tasks){const ap=p.activities?.[t.id];if(!ap)continue;
+    const sz=box.querySelector(`[data-plan-act-size="${CSS.escape(t.id)}"]`);if(sz)sz.textContent=activitySize(t,ap).text;
+    const an=box.querySelector(`[data-plan-act-analysis="${CSS.escape(t.id)}"]`);if(an)an.textContent=activityAnalysis(t,ap);}
   for(const exp of experimentsOf(study)){
     if(expId&&exp.id!==expId)continue;
     const e=p.experiments[exp.id];
@@ -194,7 +200,18 @@ function handlePlanEdit(e){
   p.edited=true;
   if(el.dataset.planReason!==undefined){const c=p.changes[+el.dataset.planReason];if(c)c.reason=el.value;return;}
   if(el.dataset.planField){const [a,b]=el.dataset.planField.split('.');if(b)p[a][b]=el.value;else p[a]=el.value;refreshPlanDerived();return;}
-  if(el.dataset.planRq!==undefined){p.researchQuestions[+el.dataset.planRq]=el.value;return;}
+  if(el.dataset.planRq!==undefined){p.researchQuestions[+el.dataset.planRq]=el.value;
+    // Update only the activity links (a full re-render here would swallow a click on the next button).
+    if(e.type==='change')for(const box of by('planEditor').querySelectorAll('[data-plan-rq-links]')){const t=study.tasks.find(x=>x.id===box.dataset.planRqLinks),ap=p.activities?.[box.dataset.planRqLinks];if(t&&ap)box.innerHTML=rqLinksHTML(t,ap,p);}
+    return;}
+  if(el.dataset.planAct){
+    const ap=p.activities?.[el.dataset.planAct];if(!ap)return;
+    if(el.dataset.planActRq!==undefined){const i=+el.dataset.planActRq;ap.rqs=ap.rqs.filter(x=>x!==i);if(el.checked)ap.rqs.push(i);ap.rqs.sort((a,b)=>a-b);return;}
+    const f=el.dataset.field;
+    ap[f]=el.type==='number'?(el.value===''?null:Number(el.value)):f==='power'?Number(el.value):el.value;
+    if(f==='goal'){renderPlan();return;}
+    refreshPlanDerived();return;
+  }
   const expId=el.dataset.planExp;if(!expId)return;
   const x=p.experiments[expId];if(!x)return;
   if(el.dataset.planTreatment){x.treatments[el.dataset.planTreatment]=el.value;return;}
@@ -212,7 +229,7 @@ function planAction(t){
   if(a==='lock'){p.locked={at:new Date().toISOString()};p.changes=[];renderPlan();by('planEditor').querySelector('.plan-status')?.focus?.();toast('Plan locked. Changes from now on are recorded in the change log.');return;}
   if(a==='docx'){try{download(`${study.id}-study-plan.docx`,planDocx(study),'application/vnd.openxmlformats-officedocument.wordprocessingml.document');toast('Plan downloaded as a Word document.');}catch(err){toast(`Could not create the document: ${err.message}`);}return;}
   if(a==='add-rq'){p.researchQuestions.push('');renderPlan();by('planEditor').querySelector(`[data-plan-rq="${p.researchQuestions.length-1}"]`)?.focus();return;}
-  if(a==='remove-rq'){if(p.researchQuestions.length>1)p.researchQuestions.splice(+t.dataset.index,1);renderPlan();return;}
+  if(a==='remove-rq'){if(p.researchQuestions.length>1){removeResearchQuestion(p,+t.dataset.index);p.researchQuestions.splice(+t.dataset.index,1);}renderPlan();return;}
   if(a==='add-hyp'){const exp=experimentsOf(study).find(x=>x.id===t.dataset.exp),x=p.experiments[t.dataset.exp];const tr=exp.variants.find(v=>v.id!==x.controlId);x.hypotheses.push({id:`h${x.hypotheses.length+1}`,treatmentId:tr?.id||'',direction:'higher',measure:x.primaryMeasure,rationale:''});renderPlan();return;}
   if(a==='remove-hyp'){p.experiments[t.dataset.exp].hypotheses.splice(+t.dataset.index,1);renderPlan();return;}
   if(a==='copy-analysis'){p.analysis=standardAnalysisPlan(study);renderPlan();by('planEditor').querySelector('[data-plan-field="analysis"]')?.focus();return;}
@@ -234,6 +251,7 @@ function describe(el){
   const q=el.closest('[data-q-index]');if(q)parts.push(`Question ${+q.dataset.qIndex+1}`);
   const v=el.closest('[data-variant-index]');if(v)parts.push(`Design ${String.fromCharCode(65+ +v.dataset.variantIndex)}`);
   const exp=el.closest('[data-plan-exp-block]');if(exp)parts.push(`Experiment ${exp.dataset.planExpBlock}`);
+  const act=el.closest('[data-plan-act-block]');if(act)parts.push(act.querySelector('h4')?.childNodes[0]?.textContent.trim());
   const fs=el.closest('fieldset');if(fs)parts.push(fs.querySelector('legend')?.childNodes[0]?.textContent.trim());
   parts.push(labelText(el));
   return parts.filter(Boolean).join(' › ');
