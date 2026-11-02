@@ -22,8 +22,11 @@
 | prototype | `success_signal_received`, `success_signal_status` (v0.3.1; same values as A/B), plus event-level `observed_success`, `self_report`, `tracker_connected` | Signal fired by instrumented prototype, not independently verified completion. `observed_success` is omitted when no signal is configured or the tracker never connected |
 
 ## Method events
-- `card_assignment`: `card_id`, assigned `category_id` or null (moving back to Unsorted).
-- `category_created`: stable category ID and participant-created label.
+- `card_assignment`: `card_id`, assigned `category_id` or null (moving back to Cards to sort); `via` (v0.3.4): `drag` (mouse/pen), `touch` (press-and-hold drag) or `menu` (the card's Move-to list; keyboard, screen reader or tap).
+- `category_created`: stable category ID (`created-N`) and label. Since v0.3.4 groups are created by dropping a card on “New group” (or choosing it from the Move-to list), so `label` is usually empty at creation; `via` says how.
+- `category_renamed` (v0.3.4): `category_id`, new `label`, `previous_label`; written when a participant names or renames a group.
+- `category_removed` (v0.3.4): `category_id`, `label`, `reason: "empty"`; participant-created groups are removed automatically when their last card leaves.
+- Final group names are in `task_ended.result.categories`. A completed sort always has a non-empty, unique name for every group; a sort ended with “I cannot finish grouping” can contain unnamed groups (`label: ""`, shown as “(unnamed group)” in the dashboard).
 - `tree_open`, `tree_back`, `tree_selected`, `tree_unable`: path choices with elapsed milliseconds.
 - `first_click`: first recorded percentage coordinates and elapsed milliseconds.
 - `preference_selected`: selected variant ID or `__none__`.

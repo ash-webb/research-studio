@@ -14,6 +14,7 @@ const { chromium } = require('playwright');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const cs = require('./cardsort-helpers.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PORT = Number(process.env.E2E_PORT || 8123);
@@ -44,7 +45,7 @@ async function startServer() {
 
 // ---------- browser helpers ----------
 async function newContext(browser, group, viewport = { width: 1360, height: 900 }) {
-  const ctx = await browser.newContext({ viewport, acceptDownloads: true });
+  const ctx = await browser.newContext({ viewport, acceptDownloads: true, ...(viewport.width < 500 ? { hasTouch: true, isMobile: true } : {}) });
   const errors = [];
   const watch = p => {
     p.on('console', m => { if (m.type() === 'error') errors.push(`console: ${m.text()}`); });
@@ -294,29 +295,40 @@ scenarios.cardSort = async browser => {
   const { ctx, done } = await newContext(browser, G);
   let { p } = await startSession(ctx, 'demo-card-sort');
   check(G, 'finish disabled before any card is sorted', await p.isDisabled('#submitSort'));
-  for (const name of ['Money', 'Records', 'Account']) {
-    await p.fill('#newGroupName', name);
-    await rerender(p, () => p.click('#addGroupForm button[type=submit]'));
-  }
-  await p.fill('#newGroupName', 'money');
-  await p.click('#addGroupForm button[type=submit]');
-  await p.waitForTimeout(150);
-  check(G, 'duplicate group name (different case) is rejected', /already exists/.test(await p.textContent('#participantAlert')));
-  eq(G, 'still 3 groups after duplicate attempt', await p.locator('.sort-dropzone').count(), 3);
-  const plan = { payments: 'created-1', 'payment-history': 'created-1', 'payment-plan': 'created-1', 'tax-documents': 'created-2', notices: 'created-2', support: 'created-3', profile: 'created-3' };
-  for (const [card, cat] of Object.entries(plan)) await rerender(p, () => p.selectOption(`select[data-assign-card="${card}"]`, cat));
-  check(G, 'finish still disabled with 1 card unsorted', await p.isDisabled('#submitSort'));
-  await rerender(p, () => p.locator('[data-drag-card="refund"]').dragTo(p.locator('[data-drop-category="created-1"]')));
-  check(G, 'drag-and-drop placed the last card; finish enabled', !(await p.isDisabled('#submitSort')));
+  check(G, 'no group needs naming before sorting starts (no name form up front)', !(await p.$('#newGroupName')) && await p.isVisible('[data-drop-category="__new__"]'));
+  // Drag first, name later.
+  await cs.dragCard(p, 'payments', '__new__');
+  check(G, 'dropping on "New group" creates an unnamed group holding the card', await p.locator('[data-drop-category="created-1"] [data-card="payments"]').count() === 1 && (await p.inputValue('[data-group-name="created-1"]')) === '');
+  await cs.dragCard(p, 'payment-history', 'created-1');
+  await cs.dragCard(p, 'tax-documents', '__new__');
+  await cs.dragCard(p, 'support', '__new__');
+  await cs.dragCard(p, 'notices', 'created-2');
+  await cs.dragCard(p, 'profile', 'created-3');
+  // A card dragged out of a one-card group empties it: the empty group disappears.
+  await cs.dragCard(p, 'payment-plan', '__new__');
+  await cs.dragCard(p, 'payment-plan', 'created-1');
+  check(G, 'an emptied group is removed automatically', await p.locator('[data-drop-category="created-4"]').count() === 0);
+  // Drag a card back to "Cards to sort", then use the Move-to list for the last one.
+  await cs.dragCard(p, 'notices', '');
+  check(G, 'a card can be dragged back to "Cards to sort"', await p.locator('.sort-unsorted [data-card="notices"]').count() === 1);
+  await cs.moveViaMenu(p, 'notices', 'created-2');
+  check(G, 'finish blocked while cards remain', await p.isDisabled('#submitSort') && /1 card still to sort/.test(await p.textContent('#sortBlocker')));
+  await cs.dragCard(p, 'refund', 'created-1');
+  check(G, 'all sorted but unnamed groups still block finishing, with a reason', await p.isDisabled('#submitSort') && /name 3 groups/.test(await p.textContent('#sortBlocker')), await p.textContent('#sortBlocker'));
+  await cs.nameGroup(p, 'created-1', 'Money');
+  await cs.nameGroup(p, 'created-2', 'Records');
+  await cs.nameGroup(p, 'created-3', 'money');
+  check(G, 'duplicate group name (different case) is flagged and blocks finishing', await p.isVisible('.group-name-error') && await p.isDisabled('#submitSort'));
+  await cs.nameGroup(p, 'created-3', 'Account');
+  check(G, 'all named and sorted: finish enabled', !(await p.isDisabled('#submitSort')));
   await screenshot(p, 'card-sort-complete');
   await rerender(p, () => p.click('#submitSort'));
   await fillForm(p, { 'grouping-notes': 'S1 notes' });
   await p.waitForSelector('.done-card');
+  const plan = { payments: 'created-1', 'payment-history': 'created-1', 'payment-plan': 'created-1', refund: 'created-1', 'tax-documents': 'created-2', notices: 'created-2', support: 'created-3', profile: 'created-3' };
   ({ p } = await startSession(ctx, 'demo-card-sort', p));
-  await p.fill('#newGroupName', 'Stuff');
-  await rerender(p, () => p.click('#addGroupForm button[type=submit]'));
-  await rerender(p, () => p.selectOption('select[data-assign-card="payments"]', 'created-1'));
-  await rerender(p, () => p.selectOption('select[data-assign-card="refund"]', 'created-1'));
+  await cs.dragCard(p, 'payments', '__new__');
+  await cs.dragCard(p, 'refund', 'created-1');
   await rerender(p, () => p.click('#skipSort'));
   await fillForm(p, { 'grouping-notes': '' });
   await p.waitForSelector('.done-card');
@@ -324,7 +336,7 @@ scenarios.cardSort = async browser => {
   const evs = await events(p);
   const [e1, e2] = bySession(evs, 'task_ended').map(e => e.payload.result);
   const sortKeys = o => Object.fromEntries(Object.entries(o || {}).sort(([a], [b]) => a.localeCompare(b)));
-  eq(G, 'S1 groups stored exactly', sortKeys(e1.groups), sortKeys({ ...plan, refund: 'created-1' }));
+  eq(G, 'S1 groups stored exactly', sortKeys(e1.groups), sortKeys(plan));
   eq(G, 'S1 completed', e1.completed, true);
   eq(G, 'S1 category labels', e1.categories.map(c => c.label), ['Money', 'Records', 'Account']);
   eq(G, 'S2 marked could-not-finish', [e2.completed, e2.participant_could_not_finish], [false, true]);
@@ -341,7 +353,31 @@ scenarios.cardSort = async browser => {
   const rows = await tableRows(r, '#tasksTable');
   eq(G, 'dashboard: "1 fully sorted"', rows[0]?.[6], '1 fully sorted');
   const x = await exportAll(r, 'demo-card-sort', G);
-  eq(G, 'method events CSV: assignments + group creations', x.methodEvents.length, 3 + 8 + 1 + 2);
+  const actions = x.methodEvents.reduce((m, e) => (m[e.action] = (m[e.action] || 0) + 1, m), {});
+  eq(G, 'method events: creations, removal, renames and moves recorded', [actions.category_created, actions.category_removed, actions.category_renamed, actions.card_assignment], [4 + 1, 1, 4, 11 + 2]);
+  await done();
+};
+
+scenarios.touchCardSort = async browser => {
+  const G = 'Card sort with touch on a phone (390px, press-and-hold drag)';
+  const { ctx, done } = await newContext(browser, G, { width: 390, height: 700 });
+  const { p } = await startSession(ctx, 'demo-card-sort');
+  check(G, 'touch hint shown on a touch screen', /press and hold/.test(await p.textContent('#sortHelp')));
+  const y0 = await p.evaluate(() => scrollY);
+  await cs.touchSwipe(p, 'tax-documents', -260);
+  check(G, 'a quick swipe that starts on a card scrolls the page', (await p.evaluate(() => scrollY)) > y0 + 100);
+  eq(G, '…and does not move the card', await p.locator('.sort-unsorted [data-card]').count(), 8);
+  await p.evaluate(() => scrollTo(0, 0));
+  await cs.touchDrag(p, 'payments', '__new__');
+  check(G, 'press-and-hold then drag reaches "New group" below the fold (auto-scroll)', await p.locator('[data-drop-category="created-1"] [data-card="payments"]').count() === 1);
+  await p.evaluate(() => scrollTo(0, 0));
+  await cs.touchDrag(p, 'refund', 'created-1');
+  eq(G, 'second touch drag into the same group', await p.locator('[data-drop-category="created-1"] [data-card]').count(), 2);
+  await cs.nameGroup(p, 'created-1', 'Money');
+  await screenshot(p, 'touch-card-sort');
+  await noHorizontalScroll(p, G, 'card sort while sorting');
+  const evs = await events(p);
+  check(G, 'touch moves are labelled via "touch" in the data', evs.filter(e => e.payload?.action === 'card_assignment').every(e => e.payload.detail.via === 'touch'));
   await done();
 };
 
@@ -506,9 +542,10 @@ scenarios.survey = async browser => {
 async function mixedRun(p, G, mobile) {
   const shot = async n => { await screenshot(p, `${mobile ? 'mobile' : 'mixed'}-${n}`); if (mobile) await noHorizontalScroll(p, G, n); };
   await shot('0-consent-done');
-  await p.fill('#newGroupName', 'Everything');
-  await rerender(p, () => p.click('#addGroupForm button[type=submit]'));
-  for (const card of await p.$$eval('select[data-assign-card]', s => s.map(x => x.dataset.assignCard))) await rerender(p, () => p.selectOption(`select[data-assign-card="${card}"]`, 'created-1'));
+  const all = await p.$$eval('[data-card]', s => s.map(x => x.dataset.card));
+  if (mobile) await cs.touchDrag(p, all[0], '__new__'); else await cs.dragCard(p, all[0], '__new__');
+  for (const card of all.slice(1)) await cs.moveViaMenu(p, card, 'created-1');
+  await cs.nameGroup(p, 'created-1', 'Everything');
   await shot('1-card-sort');
   await rerender(p, () => p.click('#submitSort'));
   await fillForm(p, { 'grouping-notes': '' });
@@ -627,14 +664,14 @@ scenarios.customCoverage = async browser => {
   await p.check('#consentCheck');
   await rerender(p, () => p.click('#startStudy'));
   // Closed sort: no way to add groups.
-  check(G, 'closed sort offers no "add group" form', !(await p.$('#addGroupForm')));
-  for (const [c, cat] of [['pay-bill', 'money'], ['view-notice', 'mail'], ['set-plan', 'money']]) await rerender(p, () => p.selectOption(`select[data-assign-card="${c}"]`, cat));
+  check(G, 'closed sort offers no "New group" area', !(await p.$('[data-drop-category="__new__"]')));
+  await cs.dragCard(p, 'pay-bill', 'money'); await cs.dragCard(p, 'view-notice', 'mail'); await cs.moveViaMenu(p, 'set-plan', 'money');
   await rerender(p, () => p.click('#submitSort'));
   // Hybrid sort: predefined group plus a participant-created one.
   check(G, 'hybrid sort shows the predefined group', await p.locator('[data-drop-category="money"]').count() === 1);
-  await p.fill('#newGroupName', 'Letters');
-  await rerender(p, () => p.click('#addGroupForm button[type=submit]'));
-  for (const [c, cat] of [['pay-bill', 'money'], ['view-notice', 'created-1'], ['set-plan', 'money']]) await rerender(p, () => p.selectOption(`select[data-assign-card="${c}"]`, cat));
+  await cs.dragCard(p, 'pay-bill', 'money'); await cs.dragCard(p, 'view-notice', '__new__'); await cs.dragCard(p, 'set-plan', 'money');
+  check(G, 'hybrid: predefined group names are fixed (not editable)', !(await p.$('[data-group-name="money"]')));
+  await cs.nameGroup(p, 'created-1', 'Letters');
   await screenshot(p, 'hybrid-sort');
   await rerender(p, () => p.click('#submitSort'));
   // Unscored first click.

@@ -10,6 +10,7 @@ const { chromium } = require('playwright');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const cs = require('./cardsort-helpers.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PORT = Number(process.env.E2E_PORT || 8127);
@@ -145,19 +146,23 @@ scenarios.prototype = async ctx => {
 scenarios.cardSort = async ctx => {
   const g = 'Card sort reload (demo-card-sort)';
   const p = await open(ctx, 'demo-card-sort');
-  await p.fill('#newGroupName', 'Money'); await rerender(p, () => p.click('#addGroupForm button[type=submit]'));
-  for (const c of ['payments', 'payment-history', 'refund']) await rerender(p, () => p.selectOption(`select[data-assign-card="${c}"]`, 'created-1'));
+  await cs.dragCard(p, 'payments', '__new__');
+  await cs.dragCard(p, 'payment-history', 'created-1');
+  await cs.dragCard(p, 'refund', 'created-1');
+  await cs.dragCard(p, 'notices', '__new__');
+  await cs.nameGroup(p, 'created-1', 'Money');
   await reload(p);
-  eq(g, 'group survives reload', await p.$$eval('.sort-dropzone strong', s => s.map(x => x.textContent)), ['Money']);
-  eq(g, 'placed cards survive reload', await p.$$eval('[data-drop-category="created-1"] [data-drag-card]', s => s.map(x => x.dataset.dragCard).sort()), ['payment-history', 'payments', 'refund']);
-  check(g, 'progress text reflects restored placements', /3 of 8/.test(await p.textContent('.sort-progress')));
-  for (const c of await p.$$eval('select[data-assign-card]', s => s.filter(x => !x.value).map(x => x.dataset.assignCard))) await rerender(p, () => p.selectOption(`select[data-assign-card="${c}"]`, 'created-1'));
+  eq(g, 'named and unnamed groups survive reload', await p.$$eval('[data-group-name]', s => s.map(x => x.value)), ['Money', '']);
+  eq(g, 'placed cards survive reload', await p.$$eval('[data-drop-category="created-1"] [data-card]', s => s.map(x => x.dataset.card).sort()), ['payment-history', 'payments', 'refund']);
+  check(g, 'progress text reflects restored placements', /4 of 8/.test(await p.textContent('.sort-progress')));
+  for (const c of await p.$$eval('.sort-unsorted [data-card]', s => s.map(x => x.dataset.card))) await cs.moveViaMenu(p, c, 'created-1');
+  await cs.nameGroup(p, 'created-2', 'Notices');
   await rerender(p, () => p.click('#submitSort'));
   const evs = await events(p);
   const r = kinds(evs, 'task_ended')[0].payload;
   eq(g, 'one task_started', kinds(evs, 'task_started').length, 1);
   eq(g, 'all 8 cards in the final result', Object.values(r.result.groups).filter(Boolean).length, 8);
-  eq(g, 'move count includes moves before the reload (1 group + 8 cards)', r.result.move_count, 9);
+  eq(g, 'move count includes moves before the reload (2 groups + 8 cards + 2 names)', r.result.move_count, 12);
   eq(g, '1 interruption recorded', r.interruptions, 1);
 };
 
@@ -276,11 +281,11 @@ scenarios.safeguards = async ctx => {
   await dup.waitForTimeout(400);
   check(g, 'duplicated tab is told the study is open in another tab', /open in another tab/i.test(await dup.textContent('#participantMain h1')), await dup.textContent('#participantMain h1'));
   eq(g, 'duplicated tab records nothing', (await events(a)).length, before);
-  check(g, 'original tab keeps working', await a.isVisible('#newGroupName'));
+  check(g, 'original tab keeps working', await a.isVisible('[data-drop-category="__new__"]'));
   // After the original tab closes, the duplicate can resume.
   await a.close();
   await reload(dup);
-  check(g, 'once the original tab is closed, the other tab resumes the session', await dup.isVisible('#newGroupName'));
+  check(g, 'once the original tab is closed, the other tab resumes the session', await dup.isVisible('[data-drop-category="__new__"]'));
 };
 
 (async () => {

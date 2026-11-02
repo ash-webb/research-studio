@@ -283,31 +283,155 @@ window.addEventListener('message',e=>{
   }
 });
 
-// Card sort: native drag/drop plus a labeled select on every card for keyboard and mobile.
+// Card sort (v0.3.4): drag-first. Participants drag cards straight into groups, drop a card on
+// "New group" to start one, and name groups whenever they like (names are required to finish).
+// Dragging uses pointer events so it works with mouse, pen and touch (press-and-hold on touch,
+// so the page still scrolls). Every card is also a button that opens a "Move to" list, for
+// keyboard, screen-reader and switch users or anyone who prefers tapping.
 function startCardSort(saved={}){
-  const groups=Object.fromEntries((activeTask.cards||[]).map(c=>[c.id,saved.groups?.[c.id]||'']));
-  const created=Array.isArray(saved.created)?saved.created.filter(c=>/^created-\d+$/.test(c.id)&&typeof c.label==='string'):[];
+  const cards=activeTask.cards||[];
+  const groups=Object.fromEntries(cards.map(c=>[c.id,saved.groups?.[c.id]||'']));
+  const created=Array.isArray(saved.created)?saved.created.filter(c=>/^created-\d+$/.test(c.id)).map(c=>({id:c.id,label:typeof c.label==='string'?c.label:''})):[];
   let moves=Number(saved.moves)||0;
-  const keep=()=>saveActivity({groups:{...groups},created:[...created],moves});
-  const categories=()=>[...(activeTask.sortMode==='open'?[]:activeTask.categories||[]),...created];
+  const canCreate=activeTask.sortMode!=='closed';
+  const predefined=activeTask.sortMode==='open'?[]:activeTask.categories||[];
+  const categories=()=>[...predefined,...created];
+  const keep=()=>saveActivity({groups:{...groups},created:created.map(c=>({...c})),moves});
   const methodAction=(action,detail)=>{moves++;event(action,detail);};
-  function assign(cardId,categoryId){if(!Object.hasOwn(groups,cardId))return;if(categoryId&&!categories().some(c=>c.id===categoryId))return;groups[cardId]=categoryId;methodAction('card_assignment',{card_id:cardId,category_id:categoryId||null});keep();show(`select[data-assign-card="${CSS.escape(cardId)}"]`);
-    const card=activeTask.cards.find(c=>c.id===cardId),cat=categories().find(c=>c.id===categoryId),done=Object.values(groups).filter(Boolean).length;
-    announce(`${card?.label||cardId} moved to ${cat?.label||'Unsorted'}. ${done} of ${activeTask.cards.length} cards grouped.`);}
+  const unnamedLabel=cat=>`Unnamed group ${created.indexOf(cat)+1}`;
+  const labelOf=id=>{const c=categories().find(x=>x.id===id);return !c?'Cards to sort':(c.label||unnamedLabel(c));};
+  const duplicateOf=cat=>cat.label.trim()&&categories().some(o=>o!==cat&&o.label.trim().toLocaleLowerCase()===cat.label.trim().toLocaleLowerCase());
+  function blockers(){
+    const left=cards.filter(c=>!groups[c.id]).length;
+    const unnamed=created.filter(c=>!c.label.trim()).length;
+    const dupes=created.filter(duplicateOf).length;
+    const out=[];
+    if(left)out.push(`${left} card${left===1?'':'s'} still to sort`);
+    if(unnamed)out.push(`name ${unnamed===1?'1 group':`${unnamed} groups`}`);
+    if(dupes)out.push('give each group a different name');
+    return out;
+  }
+  function newGroup(via){
+    const n=created.reduce((m,c)=>Math.max(m,Number(c.id.split('-')[1])||0),0)+1;
+    const cat={id:`created-${n}`,label:''};created.push(cat);
+    methodAction('category_created',{category_id:cat.id,label:'',via});
+    return cat.id;
+  }
+  // Moves a card; '__new__' starts a new group. Empty participant-created groups are removed.
+  function assign(cardId,target,via){
+    if(!Object.hasOwn(groups,cardId))return;
+    let categoryId=target;
+    if(target==='__new__'){if(!canCreate)return;categoryId=newGroup(via);}
+    if(categoryId&&!categories().some(c=>c.id===categoryId))return;
+    if(groups[cardId]===categoryId){show(`[data-card="${CSS.escape(cardId)}"]`);return;}
+    groups[cardId]=categoryId;
+    methodAction('card_assignment',{card_id:cardId,category_id:categoryId||null,via});
+    for(const cat of [...created])if(!Object.values(groups).includes(cat.id)){created.splice(created.indexOf(cat),1);methodAction('category_removed',{category_id:cat.id,label:cat.label,reason:'empty'});}
+    keep();show(`[data-card="${CSS.escape(cardId)}"]`);
+    const card=cards.find(c=>c.id===cardId),done=Object.values(groups).filter(Boolean).length;
+    announce(`${card?.label||cardId} moved to ${categoryId?labelOf(categoryId):'Cards to sort'}${target==='__new__'?' (a new group you can name any time)':''}. ${done} of ${cards.length} cards sorted.`);
+  }
   function show(focus='h1'){
     const cats=categories();const assigned=Object.values(groups).filter(Boolean).length;
-    const cardMarkup=c=>`<div class="sort-card" draggable="true" data-drag-card="${esc(c.id)}"><span class="sort-grip" aria-hidden="true">⠿</span><span class="sort-card-title">${esc(c.label)}</span><label class="sort-card-select"><span class="sr-only">Category for ${esc(c.label)}</span><select data-assign-card="${esc(c.id)}" aria-label="Category for ${esc(c.label)}"><option value="">Unsorted</option>${cats.map(cat=>`<option value="${esc(cat.id)}" ${groups[c.id]===cat.id?'selected':''}>${esc(cat.label)}</option>`).join('')}</select></label></div>`;
-    const groupsMarkup=cats.map(cat=>`<section class="sort-dropzone" data-drop-category="${esc(cat.id)}"><div class="sort-zone-heading"><strong>${esc(cat.label)}</strong><small>${Object.values(groups).filter(x=>x===cat.id).length} cards</small></div><div class="sort-zone-cards">${activeTask.cards.filter(c=>groups[c.id]===cat.id).map(cardMarkup).join('')||'<div class="drop-placeholder">Drag a card here or use its category menu</div>'}</div></section>`).join('');
-    render(methodTemplate(`<div class="sort-progress"><strong>${assigned} of ${activeTask.cards.length} cards grouped</strong><span>${esc(activeTask.sortMode)} sort</span></div><div class="sort-layout"><section class="sort-unsorted" data-drop-category=""><div class="sort-zone-heading"><strong>Unsorted cards</strong><small>${activeTask.cards.length-assigned} remaining</small></div>${activeTask.cards.filter(c=>!groups[c.id]).map(cardMarkup).join('')||'<p class="muted small">All cards have been assigned.</p>'}</section><div class="sort-zones">${groupsMarkup||'<div class="notice">Create a group to begin sorting.</div>'}${activeTask.sortMode!=='closed'?`<form id="addGroupForm" class="add-group-form"><label for="newGroupName" class="field">New category name<input id="newGroupName" required maxlength="80" placeholder="Enter a group name"></label><button class="btn btn-outline" type="submit">+ Add group</button></form>`:''}</div></div><div class="method-actions"><button id="submitSort" class="btn btn-primary" ${assigned!==activeTask.cards.length?'disabled':''}>Finish card sort →</button><button id="skipSort" class="btn btn-outline">I cannot finish grouping</button></div>`),focus);
-    $main().querySelectorAll('[data-assign-card]').forEach(el=>el.onchange=e=>assign(e.target.dataset.assignCard,e.target.value));
-    if($('#addGroupForm'))$('#addGroupForm').onsubmit=e=>{e.preventDefault();const label=$('#newGroupName').value.trim();if(!label)return;
-      if(categories().some(cat=>cat.label.toLocaleLowerCase()===label.toLocaleLowerCase()))return alertMessage('That category name already exists.');
-      const id=`created-${created.length+1}`;created.push({id,label});methodAction('category_created',{category_id:id,label});keep();show('#newGroupName');announce(`Group "${label}" added. Cards can now be moved to it.`);};
-    $main().querySelectorAll('[data-drag-card]').forEach(el=>el.addEventListener('dragstart',e=>{e.dataTransfer.setData('text/plain',el.dataset.dragCard);e.dataTransfer.effectAllowed='move';}));
-    $main().querySelectorAll('[data-drop-category]').forEach(el=>{el.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';});el.addEventListener('drop',e=>{e.preventDefault();const id=e.dataTransfer.getData('text/plain');if(Object.hasOwn(groups,id))assign(id,el.dataset.dropCategory);});});
-    $('#submitSort').onclick=()=>completeActivity({sort_mode:activeTask.sortMode,groups,categories:cats,move_count:moves,completed:true});
-    $('#skipSort').onclick=()=>completeActivity({sort_mode:activeTask.sortMode,groups,categories:cats,move_count:moves,completed:false,participant_could_not_finish:true});
+    const cardMarkup=c=>`<div class="sort-card-wrap" data-card-wrap="${esc(c.id)}"><button type="button" class="sort-card" data-card="${esc(c.id)}" aria-haspopup="true" aria-expanded="false" aria-describedby="sortHelp"><span class="sort-grip" aria-hidden="true">⠿</span><span class="sort-card-title">${esc(c.label)}</span><span class="sr-only">, ${groups[c.id]?`in ${esc(labelOf(groups[c.id]))}`:'not sorted yet'}. Select to move.</span></button><div class="move-menu" hidden></div></div>`;
+    const heading=cat=>predefined.includes(cat)
+      ?`<strong>${esc(cat.label)}</strong>`
+      :`<label class="group-name-field"><span class="sr-only">Name for ${esc(unnamedLabel(cat))}</span><input class="group-name" data-group-name="${esc(cat.id)}" value="${esc(cat.label)}" maxlength="80" placeholder="Name this group" autocomplete="off" ${duplicateOf(cat)?'aria-invalid="true"':''}></label>`;
+    const groupsMarkup=cats.map(cat=>{const inGroup=cards.filter(c=>groups[c.id]===cat.id);return `<section class="sort-dropzone ${!predefined.includes(cat)&&!cat.label.trim()?'needs-name':''}" data-drop-category="${esc(cat.id)}" aria-label="${esc(cat.label||unnamedLabel(cat))}"><div class="sort-zone-heading">${heading(cat)}<small>${inGroup.length} card${inGroup.length===1?'':'s'}</small></div>${!predefined.includes(cat)&&duplicateOf(cat)?'<p class="group-name-error" role="alert">Another group already has this name.</p>':''}<div class="sort-zone-cards">${inGroup.map(cardMarkup).join('')||'<div class="drop-placeholder">Drag cards here</div>'}</div></section>`;}).join('');
+    const newZone=canCreate?`<section class="sort-dropzone sort-new-group" data-drop-category="__new__" aria-label="New group"><strong>+ New group</strong><span>Drag a card here to start a new group. You can name it later.</span></section>`:'';
+    const blocked=blockers();
+    render(methodTemplate(`<p class="helper sort-help" id="sortHelp">${canCreate?'Drag each card into a group. Drop a card on “New group” to start one, and name your groups whenever you like.':'Drag each card into the group where you think it belongs.'}${matchMedia('(pointer: coarse)').matches?' On a touch screen, press and hold a card, then drag it.':''} You can also select a card to choose where it goes.</p><div class="sort-progress"><strong>${assigned} of ${cards.length} cards sorted</strong><span>${esc(activeTask.sortMode)} sort</span></div><div class="sort-layout"><section class="sort-unsorted" data-drop-category="" aria-label="Cards to sort"><div class="sort-zone-heading"><strong>Cards to sort</strong><small>${cards.length-assigned} left</small></div>${cards.filter(c=>!groups[c.id]).map(cardMarkup).join('')||'<p class="muted small">All cards are sorted. Drag a card here to unsort it.</p>'}</section><div class="sort-zones">${groupsMarkup}${newZone}</div></div><div class="method-actions"><button id="submitSort" class="btn btn-primary" ${blocked.length?'disabled aria-describedby="sortBlocker"':''}>Finish card sort →</button><button id="skipSort" class="btn btn-outline">I cannot finish grouping</button><span id="sortBlocker" class="small muted" aria-live="polite">${blocked.length?`To finish: ${esc(blocked.join(', '))}.`:''}</span></div>`),focus);
+    wire();
   }
+  function refreshBlockers(){
+    const b=blockers(),btn=$('#submitSort'),msg=$('#sortBlocker');if(!btn)return;
+    btn.disabled=!!b.length;if(b.length)btn.setAttribute('aria-describedby','sortBlocker');else btn.removeAttribute('aria-describedby');
+    msg.textContent=b.length?`To finish: ${b.join(', ')}.`:'';
+  }
+  // ----- "Move to" list (click, tap, Enter or Space on a card) -----
+  function closeMenus(){$main().querySelectorAll('.move-menu').forEach(m=>{m.hidden=true;m.innerHTML='';});$main().querySelectorAll('[data-card][aria-expanded="true"]').forEach(b=>b.setAttribute('aria-expanded','false'));}
+  function openMenu(btn){
+    const id=btn.dataset.card,menu=btn.nextElementSibling,current=groups[id];
+    const was=btn.getAttribute('aria-expanded')==='true';closeMenus();if(was){btn.focus();return;}
+    const opts=categories().filter(c=>c.id!==current).map(c=>[c.id,c.label||unnamedLabel(c)]);
+    if(canCreate)opts.push(['__new__','+ New group']);
+    if(current)opts.push(['','Back to cards to sort']);
+    menu.innerHTML=`<p class="move-menu-title">Move “${esc(cards.find(c=>c.id===id)?.label||id)}” to</p>${opts.map(([v,l])=>`<button type="button" data-move-to="${esc(v)}">${esc(l)}</button>`).join('')}`;
+    menu.hidden=false;btn.setAttribute('aria-expanded','true');
+    menu.querySelectorAll('[data-move-to]').forEach(o=>o.onclick=()=>assign(id,o.dataset.moveTo,'menu'));
+    menu.onkeydown=e=>{const items=[...menu.querySelectorAll('[data-move-to]')],k=items.indexOf(document.activeElement);
+      if(e.key==='Escape'){e.preventDefault();closeMenus();btn.focus();}
+      else if(e.key==='ArrowDown'){e.preventDefault();items[(k+1)%items.length]?.focus();}
+      else if(e.key==='ArrowUp'){e.preventDefault();items[(k-1+items.length)%items.length]?.focus();}};
+    menu.querySelector('[data-move-to]')?.focus();
+  }
+  // ----- pointer dragging (mouse, pen, touch) -----
+  let drag=null,suppressClickUntil=0,suppressCard=null;
+  const preventScroll=e=>{if(drag?.active)e.preventDefault();};
+  function dropTarget(x,y){return document.elementFromPoint(x,y)?.closest('[data-drop-category]')||null;}
+  function beginDrag(x,y){
+    const d=drag;if(!d||d.active)return;d.active=true;closeMenus();
+    const r=d.card.getBoundingClientRect();d.offset={x:x-r.left,y:y-r.top};
+    d.ghost=d.card.cloneNode(true);d.ghost.classList.add('sort-ghost');d.ghost.removeAttribute('data-card');d.ghost.setAttribute('aria-hidden','true');
+    Object.assign(d.ghost.style,{width:`${r.width}px`,left:`${x-d.offset.x}px`,top:`${y-d.offset.y}px`});
+    document.body.appendChild(d.ghost);d.card.classList.add('drag-source');document.body.classList.add('sorting');
+    const scroll=()=>{if(!drag?.active)return;const edge=70,yy=drag.y;if(yy<edge)window.scrollBy(0,-Math.ceil((edge-yy)/5));else if(yy>innerHeight-edge)window.scrollBy(0,Math.ceil((yy-innerHeight+edge)/5));drag.raf=requestAnimationFrame(scroll);};
+    d.raf=requestAnimationFrame(scroll);moveDrag(x,y);
+  }
+  function moveDrag(x,y){
+    const d=drag;d.x=x;d.y=y;d.ghost.style.left=`${x-d.offset.x}px`;d.ghost.style.top=`${y-d.offset.y}px`;
+    const t=dropTarget(x,y);if(t!==d.over){d.over?.classList.remove('drop-over');t?.classList.add('drop-over');d.over=t;}
+  }
+  function endDrag(commit){
+    const d=drag;drag=null;if(!d)return;
+    clearTimeout(d.timer);cancelAnimationFrame(d.raf);
+    document.removeEventListener('pointermove',onMove);document.removeEventListener('pointerup',onUp);document.removeEventListener('pointercancel',onCancel);
+    document.removeEventListener('touchmove',preventScroll);
+    d.card.classList.remove('pressing');
+    if(!d.active)return;
+    suppressClickUntil=Date.now()+150;suppressCard=d.id; // ignore only the click that ends this card's drag
+    d.ghost.remove();d.card.classList.remove('drag-source');document.body.classList.remove('sorting');d.over?.classList.remove('drop-over');
+    if(commit&&d.over)assign(d.id,d.over.dataset.dropCategory,d.touch?'touch':'drag');
+  }
+  function onMove(e){
+    if(!drag||e.pointerId!==drag.pointerId)return;
+    if(drag.active){e.preventDefault();moveDrag(e.clientX,e.clientY);return;}
+    const dist=Math.hypot(e.clientX-drag.sx,e.clientY-drag.sy);
+    if(drag.touch){if(dist>10)endDrag(false);}       // finger moved before the hold: it is a scroll
+    else if(dist>4)beginDrag(e.clientX,e.clientY);    // mouse/pen: start dragging straight away
+  }
+  function onUp(e){if(drag&&e.pointerId===drag.pointerId)endDrag(true);}
+  function onCancel(e){if(drag&&e.pointerId===drag.pointerId)endDrag(false);}
+  function onDown(e){
+    if(drag||(e.pointerType==='mouse'&&e.button!==0))return;
+    const card=e.currentTarget;
+    drag={card,id:card.dataset.card,pointerId:e.pointerId,sx:e.clientX,sy:e.clientY,x:e.clientX,y:e.clientY,touch:e.pointerType==='touch',active:false};
+    document.addEventListener('pointermove',onMove,{passive:false});document.addEventListener('pointerup',onUp);document.addEventListener('pointercancel',onCancel);
+    document.addEventListener('touchmove',preventScroll,{passive:false});
+    if(drag.touch){card.classList.add('pressing');const d=drag;d.timer=setTimeout(()=>{if(drag===d){navigator.vibrate?.(10);beginDrag(d.x,d.y);}},230);}
+  }
+  function wire(){
+    $main().querySelectorAll('[data-card]').forEach(btn=>{
+      btn.addEventListener('pointerdown',onDown);
+      btn.addEventListener('contextmenu',e=>{if(drag)e.preventDefault();});
+      btn.onclick=e=>{if(Date.now()<suppressClickUntil&&suppressCard===btn.dataset.card){e.preventDefault();return;}openMenu(btn);};
+    });
+    $main().querySelectorAll('[data-group-name]').forEach(input=>{
+      const cat=created.find(c=>c.id===input.dataset.groupName);if(!cat)return;
+      const before={v:cat.label};
+      input.oninput=()=>{cat.label=input.value;keep();refreshBlockers();
+        const zone=input.closest('.sort-dropzone');zone.classList.toggle('needs-name',!cat.label.trim());
+        input.toggleAttribute('aria-invalid',!!duplicateOf(cat));
+        let err=zone.querySelector('.group-name-error');
+        if(duplicateOf(cat)&&!err){err=document.createElement('p');err.className='group-name-error';err.setAttribute('role','alert');err.textContent='Another group already has this name.';zone.querySelector('.sort-zone-heading').after(err);}
+        else if(!duplicateOf(cat))err?.remove();};
+      input.onchange=()=>{if(cat.label!==before.v){methodAction('category_renamed',{category_id:cat.id,label:cat.label.trim(),previous_label:before.v});before.v=cat.label;keep();}};
+      input.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();input.blur();}};
+    });
+    $('#submitSort').onclick=()=>{if(blockers().length)return;created.forEach(c=>c.label=c.label.trim());completeActivity({sort_mode:activeTask.sortMode,groups,categories:categories().map(c=>({...c})),move_count:moves,completed:true});};
+    $('#skipSort').onclick=()=>completeActivity({sort_mode:activeTask.sortMode,groups,categories:categories().map(c=>({...c,label:c.label.trim()})),move_count:moves,completed:false,participant_could_not_finish:true});
+  }
+  document.addEventListener('pointerdown',e=>{if(stage==='activity'&&!e.target.closest?.('.sort-card-wrap'))closeMenus();});
   show();
 }
 

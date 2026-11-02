@@ -1,3 +1,23 @@
+# v0.3.4 release notes — drag-first card sorting (November 1, 2026)
+
+Based on hands-on feedback: participants expected to start dragging cards into groups straight away, not to name a group first.
+
+## Changed
+- **Group first, name later.** Drop a card on **New group** to start a group; name groups whenever you like by typing in the group's heading. Names (unique, case-insensitive) are required only to finish, and the page says what is still missing ("2 cards still to sort, name 1 group").
+- **Just drag.** Cards can be dragged between groups and back to “Cards to sort”. Dragging is rebuilt on pointer events, so it now works with touch as well as mouse and pen (the old browser drag-and-drop did not work on iPhones). On touch screens: press and hold, then drag; a quick swipe still scrolls; dragging near the screen edge auto-scrolls to off-screen groups.
+- The per-card dropdowns and the “New category name” form are gone. Selecting a card (click, tap, Enter/Space) opens a **Move to** list instead, which keeps the activity fully usable by keyboard, screen reader and switch.
+- Empty participant-created groups are removed automatically. Predefined (hybrid/closed) group names stay fixed.
+
+## Data
+- New method events `category_renamed` and `category_removed`; `via` (`drag`, `touch`, `menu`) on `card_assignment` and `category_created`. `category_created` labels are usually empty now (named later). Final names remain in `result.categories`. See `docs/DATA-DICTIONARY.md`.
+- Sorts saved mid-way by v0.3.3 still resume (same saved state shape).
+
+## Validation
+- `npm test` 55/55 · `npm run test:e2e` 233/233 (new touch scenario: swipe scrolls, press-and-hold drags, auto-scroll) · `npm run test:resume` 71/71 · `npm run test:keyboard` 41/41 · `npm run test:a11y` 0 violations across 84 screen states.
+- Touch dragging was tested with Chrome's touch input emulation, not on a physical iPhone yet.
+
+---
+
 # v0.3.3 release notes — resume after refresh (November 1, 2026)
 
 ## Added

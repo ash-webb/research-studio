@@ -1,4 +1,4 @@
-# Research Studio v0.3.3 — multi-method unmoderated UX research
+# Research Studio v0.3.4 — multi-method unmoderated UX research
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 
@@ -94,6 +94,8 @@ Select **Card sorting** and a sort type:
 - **Open:** participants create and name all groups.
 - **Closed:** define at least two groups; participants cannot create others.
 - **Hybrid:** define initial groups, and participants can also create their own.
+
+What participants do (v0.3.4): drag cards straight into groups. In open and hybrid sorts they drop a card on **New group** to start a group and can name groups whenever they like; every group needs a unique name before **Finish card sort** is enabled, and the page says what is still missing. Dragging works with mouse, pen and touch (on touch screens: press and hold a card, then drag; a quick swipe still scrolls). Selecting a card (click, tap, or Enter/Space) opens a **Move to** list as an alternative to dragging, for keyboard, screen-reader and switch users. Empty participant-created groups disappear automatically.
 
 Under **Cards**, enter one item per line: `card-id | Card label`. Under **Predefined categories**, enter `category-id | Category label`, one per line. For example:
 

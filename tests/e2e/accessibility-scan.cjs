@@ -9,6 +9,7 @@ const { chromium } = require('playwright');
 const { spawn } = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
+const cs = require('./cardsort-helpers.cjs');
 
 const ROOT = path.resolve(__dirname, '..', '..');
 const PORT = Number(process.env.E2E_PORT || 8125);
@@ -70,10 +71,14 @@ async function participantScreens(p, vp) {
   await scan(p, 'A/B task (assigned design)', vp);
 
   await begin(p, 'demo-mixed'); await consent(p); await scan(p, 'Card sort (empty)', vp);
-  await p.fill('#newGroupName', 'Money'); await rerender(p, () => p.click('#addGroupForm button[type=submit]'));
-  await rerender(p, () => p.selectOption('select[data-assign-card="payments"]', 'created-1'));
+  await cs.dragCard(p, 'payments', '__new__');
+  await scan(p, 'Card sort (unnamed group after a drop)', vp);
+  await p.click('[data-card="refund"]');
+  await scan(p, 'Card sort ("Move to" list open)', vp);
+  await p.keyboard.press('Escape');
+  await cs.nameGroup(p, 'created-1', 'Money');
   await scan(p, 'Card sort (group created, card placed)', vp);
-  for (const c of await p.$$eval('select[data-assign-card]', s => s.map(x => x.dataset.assignCard))) await rerender(p, () => p.selectOption(`select[data-assign-card="${c}"]`, 'created-1'));
+  for (const c of await p.$$eval('.sort-unsorted [data-card]', s => s.map(x => x.dataset.card))) await cs.moveViaMenu(p, c, 'created-1');
   await rerender(p, () => p.click('#submitSort')); await rerender(p, () => p.click('#questionForm button[type=submit]'));
   await scan(p, 'Tree test (top level)', vp);
   await rerender(p, () => p.click('[data-tree-node="records"]')); await scan(p, 'Tree test (inside a section)', vp);

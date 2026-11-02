@@ -134,25 +134,34 @@ scenarios.cardSort = async ctx => {
   const g = 'Card sort by keyboard (demo-card-sort)';
   const p = await ctx.newPage(); await p.goto(BASE + 'study.html?study=demo-card-sort'); await p.waitForSelector('#consentCheck');
   await consentByKeyboard(p, g);
-  await tabTo(p, byId('newGroupName'), { g, label: 'new group name' });
-  await p.keyboard.type('Money');
-  const f1 = await screenChange(p, g, 'Add group', () => p.keyboard.press('Enter'));
-  check(g, 'after adding a group, focus returns to the group-name field', f1.id === 'newGroupName', `focus on ${f1.tag}#${f1.id} "${f1.text}"`);
-  check(g, 'adding a group is announced', /Money/.test(await liveText(p)), `live regions: "${await liveText(p)}"`);
-  // Move the first card using its menu.
-  await p.keyboard.press('Shift+Tab'); // leave field, find first card select
-  await tabTo(p, f => f.tag === 'select' && f.dataset.assignCard === 'payments', { g, label: 'menu for first card', shift: true, max: 40 });
-  const f2 = await screenChange(p, g, 'Assign card with its menu', async () => { await p.keyboard.press('ArrowDown'); await p.keyboard.press('Enter').catch(() => {}); });
-  check(g, 'after moving a card, focus stays on that card\'s menu', f2.tag === 'select' && f2.dataset.assignCard === 'payments', `focus on ${f2.tag} ${JSON.stringify(f2.dataset)} "${f2.text}"`);
-  check(g, 'moving a card is announced', /Make a payment/.test(await liveText(p)), `live regions: "${await liveText(p)}"`);
-  // Assign the rest via select.selectOption-equivalent keyboard: focus each menu and press ArrowDown.
-  for (const card of await p.$$eval('select[data-assign-card]', s => s.filter(x => !x.value).map(x => x.dataset.assignCard))) {
-    await p.focus(`select[data-assign-card="${card}"]`);
-    await screenChange(p, g, `assign ${card}`, () => p.keyboard.press('ArrowDown'));
+  // First card: open its "Move to" list with Enter, choose New group.
+  await tabTo(p, f => f.dataset.card === 'payments', { g, label: 'first card' });
+  await p.keyboard.press('Enter');
+  const menuFocus = await describeFocus(p);
+  check(g, 'Enter on a card opens its "Move to" list and focuses the first choice', menuFocus.dataset.moveTo !== undefined, `focus on ${menuFocus.tag} "${menuFocus.text}"`);
+  check(g, 'card announces that its list is open', await p.getAttribute('[data-card="payments"]', 'aria-expanded') === 'true');
+  await p.keyboard.press('Escape');
+  const back = await describeFocus(p);
+  check(g, 'Escape closes the list and returns to the card', back.dataset.card === 'payments', `focus on ${back.tag} "${back.text}"`);
+  await p.keyboard.press('Enter');
+  for (let i = 0; i < 6 && !(await p.evaluate(() => document.activeElement.dataset.moveTo === '__new__')); i++) await p.keyboard.press('ArrowDown');
+  const f2 = await screenChange(p, g, 'Move card to a new group', () => p.keyboard.press('Enter'));
+  check(g, 'after moving a card, focus stays on that card', f2.dataset.card === 'payments', `focus on ${f2.tag} ${JSON.stringify(f2.dataset)} "${f2.text}"`);
+  check(g, 'moving a card is announced (and says the new group can be named later)', /Make a payment moved to .*name any time/.test(await liveText(p)), `live regions: "${await liveText(p)}"`);
+  // Name the group from the keyboard.
+  await tabTo(p, f => f.tag === 'input' && f.dataset.groupName === 'created-1', { g, label: 'group name field', max: 40 });
+  check(g, 'group name field has an accessible name', await p.evaluate(() => { const i = document.activeElement; return !!i.labels?.[0]?.textContent.trim(); }));
+  await p.keyboard.type('Money'); await p.keyboard.press('Enter');
+  // Remaining cards via their lists.
+  for (const card of await p.$$eval('.sort-unsorted [data-card]', s => s.map(x => x.dataset.card))) {
+    await p.focus(`[data-card="${card}"]`); await p.keyboard.press('Enter');
+    await screenChange(p, g, `move ${card}`, () => p.keyboard.press('Enter'));
   }
   checks.splice(checks.length - 7, 7); // per-card focus checks are covered by the first one
   await tabTo(p, byId('submitSort'), { g, label: 'Finish card sort', max: 60 });
   await screenChange(p, g, 'Finish card sort → follow-up', () => p.keyboard.press('Enter'));
+  const r = (await events(p)).find(e => e.kind === 'task_ended')?.payload?.result;
+  eq(g, 'keyboard-only sort completed with the named group', [r?.completed, r?.categories?.map(c => c.label)], [true, ['Money']]);
   await p.close();
 };
 
