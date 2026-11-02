@@ -94,3 +94,7 @@ The files are read in your browser only; nothing is uploaded or stored. Select *
 - **Refreshes are safe.** A participant who reloads Research Studio continues in the same session with the same design.
 - **Values in links are visible.** A participant could, in principle, edit the address bar. Keep design IDs neutral (`design-a`, not `new-improved`) and treat odd values with care. A design ID that the study doesn't have is replaced by a random design and flagged in the Research Studio results.
 - **Without Qualtrics** (for example when piloting), Research Studio assigns designs at random itself. Group sizes are then not guaranteed to be even.
+
+## Optional: test whether custom JavaScript works in your Qualtrics account
+
+Custom JavaScript would let a survey show Research Studio inside a page and store full results (including click histories) in Qualtrics. To find out whether your account allows it, build a two-page test survey with `qualtrics-test.html` (served by this site) shown in an iframe and the script in `docs/qualtrics-js-test.js` added to that question. The test page reports whether the survey's script answered, and the embedded data fields `rs_js_ran`, `rs_frame_ok`, `rs_small`, `rs_large` and `rs_huge` (declared with and without the `__js_` prefix) show what Qualtrics stored. The test data is synthetic.

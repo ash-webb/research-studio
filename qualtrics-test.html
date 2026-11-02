@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Research Studio · Qualtrics connection test</title>
+<style>
+  :root{color-scheme:light}
+  body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#163041;background:#f5f8fa}
+  main{max-width:640px;margin:0 auto;padding:16px}
+  h1{font-size:18px;margin:0 0 6px}
+  p{margin:0 0 10px;color:#3e5b67}
+  .status{list-style:none;padding:0;margin:12px 0;display:grid;gap:6px}
+  .status li{background:#fff;border:1px solid #dce5e9;border-radius:8px;padding:8px 10px}
+  .status strong{display:inline-block;min-width:1.4em}
+  .ok{color:#0a6b5a}.wait{color:#5e6e7a}.bad{color:#a24b45}
+  .buttons{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
+  button{font:inherit;font-weight:700;border-radius:8px;padding:10px 14px;border:1px solid #0a7473;background:#0a7473;color:#fff;cursor:pointer}
+  button.secondary{background:#fff;color:#0a5f63}
+  button:focus-visible{outline:3px solid #0a5f63;outline-offset:2px}
+  small{color:#5e6e7a}
+</style>
+</head>
+<body>
+<main>
+  <h1>Qualtrics connection test</h1>
+  <p>This panel is part of a test and records nothing about you. It checks whether the survey around it can receive results from Research Studio.</p>
+  <ul class="status" aria-live="polite">
+    <li id="framed"></li>
+    <li id="hello"><strong class="wait">…</strong> Waiting for the survey to answer</li>
+    <li id="small"><strong class="wait">○</strong> Small result (about 1 KB): not sent yet</li>
+    <li id="large"><strong class="wait">○</strong> Large result (about 20 KB): not sent yet</li>
+    <li id="huge"><strong class="wait">○</strong> Very large result (about 100 KB): not sent yet</li>
+  </ul>
+  <div class="buttons">
+    <button type="button" data-size="small">Send small result</button>
+    <button type="button" data-size="large">Send large result</button>
+    <button type="button" data-size="huge" class="secondary">Send very large result</button>
+  </div>
+  <p><small>After sending, select the survey's Next button so Qualtrics saves what it received. Test page version 1.</small></p>
+</main>
+<script>
+(function () {
+  'use strict';
+  var NS = 'RS_QX_TEST', SIZES = { small: 1000, large: 20000, huge: 100000 };
+  var framed = window.parent !== window;
+  var parentOrigin = null; // learned from the survey's first reply
+  function set(id, cls, mark, text) { var li = document.getElementById(id); li.innerHTML = ''; var s = document.createElement('strong'); s.className = cls; s.textContent = mark; li.appendChild(s); li.appendChild(document.createTextNode(' ' + text)); }
+  set('framed', framed ? 'ok' : 'bad', framed ? '✓' : '✗', framed ? 'Shown inside another page (the survey)' : 'Not inside a survey: open the Qualtrics test survey instead');
+  // Synthetic test data only. Starts and ends with markers so a cut-off value is easy to spot in the export.
+  function payload(size) { var head = 'RS-TEST-START|' + size + '|', tail = '|RS-TEST-END', filler = '', unit = 'click:a-nav-requests@12.5,40.2;'; while (head.length + filler.length + tail.length < size) filler += unit; return head + filler.slice(0, Math.max(0, size - head.length - tail.length)) + tail; }
+  function send(type, extra) { if (!framed) return; var msg = { namespace: NS, version: 1, type: type, sent_at: new Date().toISOString() }; for (var k in extra) msg[k] = extra[k]; window.parent.postMessage(msg, parentOrigin || '*'); }
+  window.addEventListener('message', function (e) {
+    var m = e.data; if (!m || m.namespace !== NS || m.type !== 'ack' || e.source !== window.parent) return;
+    parentOrigin = parentOrigin || e.origin;
+    if (m.received === 'hello') set('hello', 'ok', '✓', 'The survey\'s JavaScript answered (' + e.origin + ')');
+    else if (SIZES[m.received]) set(m.received, 'ok', '✓', 'Survey received ' + m.size.toLocaleString() + ' characters. Select Next in the survey to save it.');
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-size]'), function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-size'), p = payload(SIZES[k]);
+      set(k, 'wait', '…', 'Sent ' + p.length.toLocaleString() + ' characters; waiting for the survey');
+      send('result', { kind: k, payload: p });
+    });
+  });
+  // Say hello now and again shortly, in case the survey's script attached after the page loaded.
+  send('hello', {}); setTimeout(function () { send('hello', {}); }, 1500); setTimeout(function () { send('hello', {}); }, 4000);
+})();
+</script>
+</body>
+</html>
