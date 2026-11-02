@@ -1,3 +1,21 @@
+# v0.3.3 release notes — resume after refresh (November 1, 2026)
+
+## Added
+- **Resume after refresh:** reloading the participant page (or a restored crashed tab) continues the same session at the same point: current step, card placements and groups, tree position and path, recorded first click, randomised design order, prototype clicks/success signal, and half-typed answers. Prototypes restart from their first screen, with a note to the participant.
+- No duplicate records: `session_resumed` event per reload; `interruptions` and `interrupted_seconds` on interrupted activities (Task and Method CSVs); "Resumed ×n" in the session list.
+- Reloading after finishing shows "You have already completed this study"; **Start a new session** is offered only in local demo and preview mode.
+- Safeguards: tab-only storage cleared on tab close; no resume if the study changed, after 24 hours, or while the session is open in another tab.
+- `npm run test:resume`: 71 browser checks reloading at every stage of every study type plus the safeguards.
+
+## Changed
+- A same-tab refresh now keeps the participant's A/B design (it is the same session). New tabs, browsers or devices still start new sessions.
+
+## Validation
+- `npm test` 55/55 · `npm run test:e2e` all pass · `npm run test:resume` 71/71 · `npm run test:keyboard` 39/39 · `npm run test:a11y` 0 violations across 78 screen states.
+- Not tested: remote (Supabase) mode with resume. The outbox for unsent records already lives in the same tab storage and is retried after a reload, but this has not been exercised against a live database.
+
+---
+
 # v0.3.2 release notes — accessibility pass (November 1, 2026)
 
 Accessibility review against WCAG 2.2 A/AA. Automated scan of 72 screen states (desktop, phone, 400% zoom): **0 violations** (was 3 rule types). Keyboard-only runs through every study type: **39/39 checks** (was 5/35). Details: `docs/ACCESSIBILITY-REPORT-v0.3.2.md`.

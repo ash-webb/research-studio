@@ -120,7 +120,7 @@ export function pairwiseSimilarity(sorts,cards){
 }
 export function methodOutcomeRows(events){
   const versions=new Map((events||[]).filter(e=>e.kind==='session_started').map(e=>[e.session_id,e.payload?.study_version||null]));
-  return (events||[]).filter(e=>e.kind==='task_ended').map(e=>({study_id:e.study_id,session_id:e.session_id,study_version:versions.get(e.session_id)||null,activity_id:e.task_id,method:e.payload?.method||'prototype',experiment_id:e.payload?.experiment_id||e.payload?.result?.experiment_id||null,variant_id:e.payload?.variant_id||e.payload?.result?.variant_id||null,variant_revision:e.payload?.variant_revision||e.payload?.result?.variant_revision||null,ended_at:e.created_at,time_seconds:e.payload?.time_seconds??null,result:e.payload?.result||{},self_report:e.payload?.self_report??null,observed_success:e.payload?.observed_success??null}));
+  return (events||[]).filter(e=>e.kind==='task_ended').map(e=>({study_id:e.study_id,session_id:e.session_id,study_version:versions.get(e.session_id)||null,activity_id:e.task_id,method:e.payload?.method||'prototype',experiment_id:e.payload?.experiment_id||e.payload?.result?.experiment_id||null,variant_id:e.payload?.variant_id||e.payload?.result?.variant_id||null,variant_revision:e.payload?.variant_revision||e.payload?.result?.variant_revision||null,ended_at:e.created_at,time_seconds:e.payload?.time_seconds??null,result:e.payload?.result||{},self_report:e.payload?.self_report??null,observed_success:e.payload?.observed_success??null,interruptions:e.payload?.interruptions??0,interrupted_seconds:e.payload?.interrupted_seconds??0}));
 }
 export function exportMethodRows(rows){
   // CSV-friendly; preserves nested data as JSON for further coding or computation.

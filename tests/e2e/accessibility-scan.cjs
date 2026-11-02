@@ -46,6 +46,7 @@ async function rerender(p, action) {
   await p.waitForFunction(() => !document.querySelector('#participantMain [data-e2e-old]'), null, { timeout: 8000 });
 }
 async function begin(p, id) {
+  await p.evaluate(() => { try { sessionStorage.clear(); } catch {} }).catch(() => {}); // fresh session in this tab
   await p.goto(`${BASE}study.html?study=${id}`);
   await p.waitForSelector('#consentCheck');
 }
@@ -58,6 +59,8 @@ async function participantScreens(p, vp) {
   await rerender(p, () => p.click('#questionForm button[type=submit]'));
   await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
   await scan(p, 'Prototype task (with embedded prototype)', vp);
+  await p.reload(); await p.waitForSelector('#resumeNotice'); await p.waitForTimeout(300);
+  await scan(p, 'Prototype task after a reload (resume notice)', vp);
   await rerender(p, () => p.click('#finishTask')); await scan(p, 'Prototype "How did that task go?"', vp);
   await p.locator('.reflection-choice label:has(input[value="completed"])').click();
   await rerender(p, () => p.click('#reflectionForm button[type=submit]')); await scan(p, 'Follow-up questions (scales + text)', vp);
@@ -94,6 +97,7 @@ async function participantScreens(p, vp) {
   await p.locator('label.choice:has(input[value="Find records"])').click();
   await rerender(p, () => p.click('#questionForm button[type=submit]'));
   await p.waitForSelector('.done-card'); await scan(p, 'Completion page', vp);
+  await p.reload(); await p.waitForSelector('#newSession'); await scan(p, 'Already completed (reload after finishing)', vp);
   await p.goto(`${BASE}study.html?study=does-not-exist`); await p.waitForSelector('h1'); await scan(p, 'Study unavailable page', vp);
 }
 

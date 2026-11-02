@@ -178,7 +178,7 @@ function renderResults(){
     if(method==='ab_test')special=`${new Set(starts.map(t=>t.variant_id).filter(Boolean)).size} assigned design(s)`;
     return `<tr><td><strong>${esc(activity?.title||id)}</strong></td><td>${esc(METHODS[method]?.label||method)}</td><td>${starts.length}</td><td>${unfinished}</td><td>${scored.length?`${good} of ${scored.length}`:'Not scored'}</td><td>${formatDuration(mean)}</td><td>${esc(special)}</td></tr>`;
   }).join(''):'<tr><td colspan="7">No activity results yet.</td></tr>';
-  by('sessionsList').innerHTML=flat.sessions.length?flat.sessions.slice().reverse().map(s=>`<button class="session-item ${s.session_id===selectedSession?'active':''}" data-session="${esc(s.session_id)}"><strong>${esc(s.session_id.slice(0,8))}… · ${s.completed_at?'Finished':'In progress / left early'}${s.preview?' · Preview':''}</strong><small>${esc(formatDate(s.started_at))} · ${flat.tasks.filter(t=>t.session_id===s.session_id).length} completed activities</small></button>`).join(''):'<p class="muted small">No sessions recorded.</p>';
+  by('sessionsList').innerHTML=flat.sessions.length?flat.sessions.slice().reverse().map(s=>`<button class="session-item ${s.session_id===selectedSession?'active':''}" data-session="${esc(s.session_id)}"><strong>${esc(s.session_id.slice(0,8))}… · ${s.completed_at?'Finished':'In progress / left early'}${s.preview?' · Preview':''}${s.resumed_count?` · Resumed ×${s.resumed_count}`:''}</strong><small>${esc(formatDate(s.started_at))} · ${flat.tasks.filter(t=>t.session_id===s.session_id).length} completed activities</small></button>`).join(''):'<p class="muted small">No sessions recorded.</p>';
   renderMethodInsights();renderExplorer();labelScrollRegions();
 }
 
@@ -212,10 +212,10 @@ function renderExplorer(){
 function exportDataset(kind){
   const id=by('resultsStudy').value;
   if(kind==='all')return download(`${id}-all-events.json`,JSON.stringify(records,null,2),'application/json');
-  if(kind==='methods')return download(`${id}-method-outcomes.csv`,csv(exportMethodRows(methodOutcomeRows(records)),['study_id','session_id','study_version','activity_id','method','experiment_id','variant_id','variant_revision','ended_at','time_seconds','result','self_report','observed_success']),'text/csv;charset=utf-8');
+  if(kind==='methods')return download(`${id}-method-outcomes.csv`,csv(exportMethodRows(methodOutcomeRows(records)),['study_id','session_id','study_version','activity_id','method','experiment_id','variant_id','variant_revision','ended_at','time_seconds','interruptions','interrupted_seconds','result','self_report','observed_success']),'text/csv;charset=utf-8');
   if(kind==='experiments')return download(`${id}-ab-exposures.csv`,csv(experimentComparisonRows(records),['study_id','study_version','session_id','experiment_id','activity_id','variant_id','variant_revision','assigned_at','ended_at','status','time_seconds','click_count','tracker_connected','success_signal_status','self_report']),'text/csv;charset=utf-8');
   const fields={
-    tasks:['session_id','study_id','task_id','at','method','experiment_id','variant_id','variant_revision','self_report','observed_success','tracker_connected','time_seconds','click_count'],
+    tasks:['session_id','study_id','task_id','at','method','experiment_id','variant_id','variant_revision','self_report','observed_success','tracker_connected','time_seconds','interruptions','interrupted_seconds','click_count'],
     answers:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','stage','question_id','response','at'],
     interactions:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','type','input','target','page','x_pct','y_pct','viewport_width','viewport_height'],
     methodEvents:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','method','action','detail']

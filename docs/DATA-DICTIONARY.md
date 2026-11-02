@@ -33,7 +33,14 @@
 - `input` (v0.3.2): `pointer` for mouse/touch clicks, `keyboard` for Enter/Space activations. Keyboard activations are positioned at the centre of the activated element (they have no pointer position). Blank for records made with tracker v0.1 or earlier, where keyboard activations appear at 0%, 0%.
 
 ## Session fields
+- `session_resumed` (v0.3.3): written each time the participant page is reloaded (or a crashed tab restored) and the session continues. Payload: `stage` (`pre`, `start`, `activity`, `reflection`, `followup`, `post`, `finish`), `order` (activity number), `gap_seconds` (time between leaving and returning), viewport size. `task_id` is set when the reload happened during an activity or its follow-up.
 - `session_started.payload.preview` (v0.3.1): `true` for a researcher “Preview locally” run. Such sessions are excluded from the dashboard and all exports unless “Include my ‘Preview locally’ runs” is ticked. Sessions recorded before v0.3.1 carry no flag and are always counted.
+
+## Interruptions (v0.3.3)
+- `task_ended.payload.interruptions`: number of reloads during that activity (omitted when none; 0 in CSVs).
+- `task_ended.payload.interrupted_seconds`: total time away during those reloads.
+- `time_seconds` remains wall-clock from activity start to end, including time away. Active time ≈ `time_seconds − interrupted_seconds`.
+- Task CSV and Method CSV include `interruptions` and `interrupted_seconds`.
 
 ## Observed success (`observed_success`)
 - `true` / `false` only when the method produced evidence (tree destination, scored first click, connected tracker with a configured signal).

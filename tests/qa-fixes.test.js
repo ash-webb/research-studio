@@ -72,3 +72,15 @@ test('interaction input type (keyboard/pointer) survives flattening for the Clic
   assert.deepEqual(flat.interactions.map(i => i.input), ['keyboard', 'pointer', '']);
   assert.ok(csv(flat.interactions, ['target', 'input']).includes('"nav","keyboard"'));
 });
+
+test('resumed sessions and per-activity interruptions are counted and exported', () => {
+  const flat = flattenEvents([
+    started('one'),
+    {kind:'session_resumed', study_id:'s', session_id:'one', task_id:'t', created_at:'2026-11-01T10:00:05Z', payload:{stage:'activity', gap_seconds:4}},
+    {kind:'session_resumed', study_id:'s', session_id:'one', task_id:'t', created_at:'2026-11-01T10:00:09Z', payload:{stage:'activity', gap_seconds:2}},
+    ended('one', 't', {method:'tree_test', time_seconds:30, interruptions:2, interrupted_seconds:6, result:{success:true}}),
+    ended('one', 'u', {method:'survey', time_seconds:10, result:{}})
+  ]);
+  assert.equal(flat.sessions[0].resumed_count, 2);
+  assert.deepEqual(flat.tasks.map(t => [t.interruptions, t.interrupted_seconds]), [[2, 6], [0, 0]]);
+});

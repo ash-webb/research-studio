@@ -1,4 +1,4 @@
-# Research Studio v0.3.2 — multi-method unmoderated UX research
+# Research Studio v0.3.3 — multi-method unmoderated UX research
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 
@@ -22,7 +22,7 @@ This is a runnable **demonstration and researcher-controlled starter**, not a pr
 
 Every activity has its own introduction and may include follow-up questions. Each study can also include pre-study and post-study questions. Exports include task outcomes CSV, survey answers CSV, prototype click events CSV, **method outcomes CSV**, **method events CSV**, **A/B exposure CSV (including incomplete tasks)**, and full event JSON.
 
-**Not included yet:** full screen recordings or replay, participant recruitment, personalized invitation links, branching logic, secure resume after browser refresh, authoring images via a built-in upload tool, automated significance/sample-size testing, allocation quotas, multi-session identity-based assignment, automatic clustering/dendrograms, automated transcription, and one-click GitHub publishing.
+**Not included yet:** full screen recordings or replay, participant recruitment, personalized invitation links, branching logic, resume on a different device or browser, authoring images via a built-in upload tool, automated significance/sample-size testing, allocation quotas, multi-session identity-based assignment, automatic clustering/dendrograms, automated transcription, and one-click GitHub publishing.
 
 ## Run on a Mac
 
@@ -151,6 +151,17 @@ Participants can select an option or **I do not have a preference**. The orderin
 
 Select the **Survey** activity type, and add questions under **Survey questions**. Available answer types are short text, long text, single choice, multiple choice, five-point scale, and seven-point scale. Questions can be marked required. Pre-/post-study sections use the same question editor.
 
+## Resume after refresh (v0.3.3)
+
+If a participant reloads the page, or the browser restores a crashed tab, they continue the **same session** from where they were:
+
+- **What is kept:** the current step, card placements and new groups, tree position and path so far, a recorded first click, the randomised design order, prototype click count and success signal, and half-typed answers on any question page.
+- **Prototypes restart from their first screen** after a reload (the app cannot restore the inside of someone else's page). The participant sees a note saying so; time and clicks so far are kept.
+- **Nothing is recorded twice.** Each reload adds a `session_resumed` event. Activities interrupted by a reload record `interruptions` and `interrupted_seconds` (time away). `time_seconds` stays wall-clock, so subtract `interrupted_seconds` if you need active time. The session list marks resumed sessions ("Resumed ×2").
+- **Reloading after finishing** shows "You have already completed this study" and records nothing. In local demo and preview mode only, a **Start a new session** button lets you pilot again in the same tab.
+- **Safeguards:** progress is kept in the tab's own storage (sessionStorage), so it is cleared when the tab is closed and is never shared with other tabs or people on the same computer. It is not restored if the study configuration changed, after 24 hours, or if the same session is still open in another tab (a duplicated tab is told to continue in the original).
+- **Not covered:** switching device or browser, or reopening the link in a new tab after closing the old one. Those start a new session.
+
 ## Connect a GitHub Pages prototype
 
 For prototype usability **and A/B/n experiments**, enter your own prototype URL (`https://USERNAME.github.io/REPO/index.html`) at the study level or within that activity. Add the provided tracking script to each prototype HTML page you control:
@@ -176,7 +187,7 @@ A separate database is required for participants to submit responses from differ
 6. Open a participant study link from another browser/device, submit fictional test responses, sign back in as the study owner, and verify rows and exports. Check RLS for anonymous read denial before any real deployment.
 7. Close collection by changing `studies.published` to `false` using the database administrator UI. The current interface does not manage enrollment, study closure, deletion, or study owners.
 
-**Before real research:** perform consent/privacy review, security authorization, accessible interaction testing, data minimization, retention/deletion design, invitation security, anti-abuse/rate limiting and reliability/restore tests. The anonymous insert endpoint is deliberately write-only but is susceptible to spam/fabricated events. Local browser data is not durable central storage. The browser's outbox is not a guaranteed offline/refresh-resume mechanism.
+**Before real research:** perform consent/privacy review, security authorization, accessible interaction testing, data minimization, retention/deletion design, invitation security, anti-abuse/rate limiting and reliability/restore tests. The anonymous insert endpoint is deliberately write-only but is susceptible to spam/fabricated events. Local browser data is not durable central storage. Resume after refresh (v0.3.3) works within the same browser tab only; the outbox is not a guaranteed offline mechanism.
 
 ## GitHub Pages deployment
 
@@ -206,6 +217,7 @@ An observed success event is evidence that a **configured detection rule fired**
 
 - Run `npm test` to execute the deterministic validation, A/B assignment/scoring/export, parsing and legacy method tests.
 - Run `npm run test:e2e` to drive scripted, clearly synthetic participants through every example study (plus closed/hybrid card sorts, an unscored first-click test and an untracked prototype) in Chromium and check the stored events, dashboard and all seven exports against what the script did. Screenshots and `e2e-report.json` are written to `tests/e2e/output/`. See `docs/QA-REPORT-v0.3.1.md`.
+- Run `npm run test:resume` to reload the participant page at every kind of point in every study type and check that the session continues without duplicate records.
 - Run `npm run test:keyboard` to complete every study type with the keyboard only, and `npm run test:a11y` for an automated WCAG 2.2 A/AA scan (axe-core) of every screen at desktop, phone and 400% zoom width. `npm run test:all` runs every suite. See `docs/ACCESSIBILITY-REPORT-v0.3.2.md`.
 - “Preview locally” runs are labelled as previews and hidden from results and exports unless **Include my “Preview locally” runs** is ticked on the Results tab.
 - Source scripts are checked for JavaScript syntax. The included example JSON is validated.

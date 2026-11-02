@@ -62,8 +62,10 @@ async function rerender(p, action) {
   await p.waitForFunction(() => !document.querySelector('#participantMain [data-e2e-old]'), null, { timeout: 8000 });
 }
 
+// Each session uses a new tab: reloading the same tab now resumes the earlier session.
 async function startSession(ctx, studyId, page) {
-  const p = page || await ctx.newPage();
+  if (page) await page.close();
+  const p = await ctx.newPage();
   await p.goto(`${BASE}study.html?study=${studyId}`);
   await p.waitForSelector('#consentCheck');
   const disabled = await p.isDisabled('#startStudy');
@@ -552,11 +554,11 @@ scenarios.mobile = async browser => {
   const { ctx, done } = await newContext(browser, G, { width: 390, height: 844 });
   const { p } = await startSession(ctx, 'demo-mixed');
   await mixedRun(p, G, true);
-  await startSession(ctx, 'demo-portal', p);
-  await fillForm(p, { experience: 'Daily' });
-  await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
-  await screenshot(p, 'mobile-7-prototype');
-  await noHorizontalScroll(p, G, 'prototype task');
+  const { p: p2 } = await startSession(ctx, 'demo-portal', p);
+  await fillForm(p2, { experience: 'Daily' });
+  await p2.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
+  await screenshot(p2, 'mobile-7-prototype');
+  await noHorizontalScroll(p2, G, 'prototype task');
   const r = await openResults(ctx, 'demo-mixed');
   await screenshot(r, 'mobile-8-results');
   await noHorizontalScroll(r, G, 'results dashboard');
