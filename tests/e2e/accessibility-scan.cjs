@@ -88,6 +88,9 @@ async function participantScreens(p, vp) {
   await rerender(p, () => p.click('#questionForm button[type=submit]'));
   await p.waitForFunction(() => document.querySelector('#firstClickImage')?.complete);
   await scan(p, 'First-click test (before click)', vp);
+  await p.click('[data-zoom="in"]'); await p.click('[data-zoom="in"]');
+  await scan(p, 'First-click test (zoomed to 200%)', vp);
+  await p.click('[data-zoom="fit"]');
   const box = await p.locator('#firstClickImage').boundingBox();
   await rerender(p, () => p.locator('#firstClickImage').click({ position: { x: box.width * .1, y: box.height * .4 } }));
   await scan(p, 'First-click test (after click)', vp);

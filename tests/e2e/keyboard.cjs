@@ -191,6 +191,9 @@ scenarios.firstClick = async ctx => {
   catch { reached = false; }
   check(g, 'the screenshot can be reached with the keyboard', reached, 'only "I\'m not sure where to click" is reachable; a keyboard user cannot take the test');
   if (reached) {
+    await p.keyboard.press('+');
+    check(g, '+ key zooms the screenshot', (await p.textContent('#zoomLevel')) === '150%', await p.textContent('#zoomLevel'));
+    check(g, 'zoom controls are reachable buttons with names', await p.evaluate(() => [...document.querySelectorAll('[data-zoom]')].every(b => b.tagName === 'BUTTON' && (b.getAttribute('aria-label') || b.textContent).trim())));
     await p.keyboard.press('Enter');
     for (let i = 0; i < 8; i++) await p.keyboard.press('Shift+ArrowLeft');
     await p.keyboard.press('ArrowUp');

@@ -469,6 +469,47 @@ scenarios.firstClick = async browser => {
   await done();
 };
 
+scenarios.firstClickZoom = async browser => {
+  const G = 'First-click zoom on a phone (360px touch)';
+  const { ctx, done } = await newContext(browser, G, { width: 360, height: 740 });
+  const { p } = await startSession(ctx, 'demo-first-click');
+  await p.waitForFunction(() => document.querySelector('#firstClickImage')?.complete);
+  check(G, 'opens at "Fit" with zoom controls', (await p.textContent('#zoomLevel')) === 'Fit' && await p.isDisabled('[data-zoom="out"]'));
+  check(G, 'keyboard instructions are not shown visually on a touch screen', (await p.locator('.keyboard-hint').boundingBox())?.width <= 1);
+  const fitW = (await p.locator('#firstClickImage').boundingBox()).width;
+  await p.tap('[data-zoom="in"]'); await p.tap('[data-zoom="in"]');
+  const zW = (await p.locator('#firstClickImage').boundingBox()).width;
+  check(G, 'zooming to 200% doubles the screenshot width', Math.abs(zW / fitW - 2) < 0.05, `${fitW} → ${zW}`);
+  eq(G, 'zoom level shown', await p.textContent('#zoomLevel'), '200%');
+  const cdp = await ctx.newCDPSession(p);
+  const fr = await p.locator('.click-image-frame').boundingBox();
+  const sx = fr.x + fr.width * 0.6, sy = fr.y + fr.height * 0.5;
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: sx, y: sy }] });
+  for (let i = 1; i <= 10; i++) { await cdp.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x: sx - i * 14, y: sy - i * 6 }] }); await p.waitForTimeout(16); }
+  await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  await p.waitForTimeout(400);
+  check(G, 'dragging around the zoomed screenshot does not record a click', !(await p.$('#submitFirstClick')));
+  await p.evaluate(() => { const f = document.querySelector('.click-image-frame'), img = document.querySelector('#firstClickImage'); f.scrollLeft = 0; f.scrollTop = img.offsetHeight * 0.40 - f.clientHeight / 2; });
+  await p.waitForTimeout(150);
+  const ib = await p.locator('#firstClickImage').boundingBox();
+  await rerender(p, async () => {
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: ib.x + ib.width * 0.11, y: ib.y + ib.height * 0.40 }] });
+    await p.waitForTimeout(60);
+    await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+  });
+  await screenshot(p, 'first-click-zoomed-tap');
+  await rerender(p, () => p.tap('#submitFirstClick'));
+  const evs = await events(p);
+  const r = bySession(evs, 'task_ended')[0]?.payload.result;
+  near(G, 'tap at 200% recorded at the right image position (x ≈ 11%)', r?.click?.x_pct, 11, 1);
+  near(G, '…(y ≈ 40%)', r?.click?.y_pct, 40, 1);
+  eq(G, 'tap on the target while zoomed scores a hit', r?.hit_target, true);
+  eq(G, 'zoom level recorded with the click', r?.click?.zoom, 2);
+  eq(G, 'zoom changes recorded as method events', evs.filter(e => e.payload?.action === 'first_click_zoom').map(e => e.payload.detail.zoom), [1.5, 2]);
+  await cdp.detach();
+  await done();
+};
+
 scenarios.preference = async browser => {
   const G = 'Preference test (demo-preference)';
   const { ctx, done } = await newContext(browser, G);

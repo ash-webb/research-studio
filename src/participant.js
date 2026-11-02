@@ -466,32 +466,69 @@ function startTreeTest(saved={}){
   show();
 }
 
+// First-click test. v0.3.5: zoom controls so details stay readable on small screens. The test
+// still opens at "Fit" (the whole screen visible, as a first impression should be); participants
+// can zoom in and drag to look around. Only a tap/click records the first click, never a pan.
+// The zoom level at the moment of the click is recorded with it.
+const FIRST_CLICK_ZOOMS=[1,1.5,2,3];
 function startFirstClick(saved={}){
   let first=saved.first&&Number.isFinite(saved.first.x_pct)?saved.first:null,pending=null;
+  let zoomIndex=Math.max(0,FIRST_CLICK_ZOOMS.indexOf(Number(saved.zoom)||1));
   const image=secureURL(activeTask.imageUrl,location.href);
   const alt=activeTask.imageAlt||'Interface screenshot for first-click test';
+  const coarse=matchMedia('(pointer: coarse)').matches;
+  const zoom=()=>FIRST_CLICK_ZOOMS[zoomIndex];
   // input records how the position was chosen: 'pointer' (mouse/touch) or 'keyboard'.
   function record(x,y,input){
-    first={x_pct:Math.round(x*100)/100,y_pct:Math.round(y*100)/100,at_ms:Date.now()-taskStartedAt,input};
-    event('first_click',first);saveActivity({first});show('#submitFirstClick');announce('First click recorded. Select Continue when ready.');
+    const stage=$main().querySelector('.click-stage');
+    first={x_pct:Math.round(x*100)/100,y_pct:Math.round(y*100)/100,at_ms:Date.now()-taskStartedAt,input,zoom:zoom(),display_width_px:Math.round(stage?.getBoundingClientRect().width||0)};
+    event('first_click',first);saveActivity({first,zoom:zoom()});show('#submitFirstClick');announce('First click recorded. Select Continue when ready.');
+  }
+  // Fit = the image's size when it fits the frame; zoomed = a multiple of that width.
+  function applyZoom(keepCentre=true){
+    const frame=$main().querySelector('.click-image-frame'),stage=$main().querySelector('.click-stage'),img=$('#firstClickImage');if(!frame||!stage||!img)return;
+    const cx=frame.scrollLeft+frame.clientWidth/2,cy=frame.scrollTop+frame.clientHeight/2,before=stage.getBoundingClientRect();
+    stage.classList.toggle('zoomed',zoom()>1);stage.style.width='';
+    if(zoom()>1){
+      if(!stage.dataset.fitWidth){stage.classList.remove('zoomed');stage.dataset.fitWidth=String(img.getBoundingClientRect().width||frame.clientWidth);stage.classList.add('zoomed');}
+      stage.style.width=`${Math.round(Number(stage.dataset.fitWidth)*zoom())}px`;
+    }
+    frame.classList.toggle('pannable',zoom()>1);
+    const after=stage.getBoundingClientRect(),k=before.width?after.width/before.width:1;
+    if(keepCentre){frame.scrollLeft=cx*k-frame.clientWidth/2;frame.scrollTop=cy*k-frame.clientHeight/2;}
+    const label=$('#zoomLevel');if(label)label.textContent=zoom()===1?'Fit':`${Math.round(zoom()*100)}%`;
+    const out=$main().querySelector('[data-zoom="out"]'),inn=$main().querySelector('[data-zoom="in"]'),fit=$main().querySelector('[data-zoom="fit"]');
+    if(out)out.disabled=zoomIndex===0;if(inn)inn.disabled=zoomIndex===FIRST_CLICK_ZOOMS.length-1;if(fit)fit.disabled=zoomIndex===0;
+  }
+  function setZoom(index){
+    const next=Math.max(0,Math.min(FIRST_CLICK_ZOOMS.length-1,index));if(next===zoomIndex)return;
+    zoomIndex=next;applyZoom();event('first_click_zoom',{zoom:zoom()});saveActivity({first,zoom:zoom()});
+    announce(zoom()===1?'Zoomed to fit the screen.':`Zoomed to ${Math.round(zoom()*100)} percent. ${coarse?'Drag to look around.':'Scroll to look around.'}`);
   }
   function show(focus='h1'){
     // Once the first click is made it is final, so the "not sure" option and keyboard marker are withdrawn.
     const interactive=!first;
-    render(methodTemplate(`<div class="image-test"><p class="helper" id="firstClickHelp">Click or tap the first place you would go. Your first selection is final.${interactive?' <span class="keyboard-hint">Using a keyboard? Move to the screenshot, press Enter to show a marker, move it with the arrow keys (hold Shift for bigger steps), then press Enter again to confirm. Escape removes the marker.</span>':''}</p><div class="click-image-frame" ${interactive?`tabindex="0" role="application" aria-label="${esc(alt)}. First-click area" aria-describedby="firstClickHelp"`:''}><img id="firstClickImage" src="${esc(image)}" alt="${esc(alt)}" draggable="false">${first?`<span class="first-click-marker" style="left:${first.x_pct}%;top:${first.y_pct}%" aria-hidden="true"></span>`:'<span class="first-click-marker pending" hidden aria-hidden="true"></span>'}</div></div><div class="method-actions">${first?cardButton('Continue →','submitFirstClick'):'<button class="btn btn-outline" id="cannotChoose">I\'m not sure where to click</button>'}</div>`),focus);
+    const tools=interactive?`<div class="zoom-tools" role="group" aria-label="Zoom the screenshot"><button type="button" class="btn btn-outline btn-small" data-zoom="out" aria-label="Zoom out">−</button><span id="zoomLevel" class="zoom-level" aria-hidden="true">Fit</span><button type="button" class="btn btn-outline btn-small" data-zoom="in" aria-label="Zoom in">+</button><button type="button" class="btn btn-outline btn-small" data-zoom="fit">Fit to screen</button></div>`:'';
+    const hint=interactive?(coarse?' Use + to zoom in if details are hard to read, and drag to look around. A single tap chooses your answer.':' Use + to zoom in if details are hard to read.'):'';
+    render(methodTemplate(`<div class="image-test"><p class="helper" id="firstClickHelp">Click or tap the first place you would go. Your first selection is final.${hint}${interactive?' <span class="keyboard-hint">Using a keyboard? Move to the screenshot, press Enter to show a marker, move it with the arrow keys (hold Shift for bigger steps), then press Enter again to confirm. Escape removes the marker.</span>':''}</p>${tools}<div class="click-image-frame" ${interactive?`tabindex="0" role="application" aria-label="${esc(alt)}. First-click area" aria-describedby="firstClickHelp"`:''}><div class="click-stage"><img id="firstClickImage" src="${esc(image)}" alt="${esc(alt)}" draggable="false">${first?`<span class="first-click-marker" style="left:${first.x_pct}%;top:${first.y_pct}%" aria-hidden="true"></span>`:'<span class="first-click-marker pending" hidden aria-hidden="true"></span>'}</div></div></div><div class="method-actions">${first?cardButton('Continue →','submitFirstClick'):'<button class="btn btn-outline" id="cannotChoose">I\'m not sure where to click</button>'}</div>`),focus);
     const img=$('#firstClickImage');img.onerror=()=>alertMessage('Could not load the test image. Ask the researcher to check the URL.');
+    const ready=()=>applyZoom(false);if(img.complete)ready();else img.addEventListener('load',ready,{once:true});
+    $main().querySelectorAll('[data-zoom]').forEach(b=>b.onclick=()=>setZoom(b.dataset.zoom==='in'?zoomIndex+1:b.dataset.zoom==='out'?zoomIndex-1:0));
+    // A click on the image is the answer; panning a zoomed image (touch or scrollbar) never fires one.
     img.onclick=e=>{
       if(first)return;const r=e.currentTarget.getBoundingClientRect();
       record((e.clientX-r.left)/r.width*100,(e.clientY-r.top)/r.height*100,'pointer');
     };
     const frame=$main().querySelector('.click-image-frame[tabindex]'),marker=$main().querySelector('.first-click-marker.pending');
     if(frame)frame.onkeydown=e=>{
-      const place=()=>{marker.hidden=false;marker.style.left=`${pending.x}%`;marker.style.top=`${pending.y}%`;};
+      const place=()=>{marker.hidden=false;marker.style.left=`${pending.x}%`;marker.style.top=`${pending.y}%`;marker.scrollIntoView({block:'nearest',inline:'nearest'});};
       if(e.key==='Enter'||e.key===' '){e.preventDefault();
         if(!pending){pending={x:50,y:50};place();announce('Marker shown in the centre of the screenshot. Move it with the arrow keys, press Enter to confirm, or Escape to remove it.');}
         else record(pending.x,pending.y,'keyboard');
         return;}
       if(e.key==='Escape'&&pending){e.preventDefault();pending=null;marker.hidden=true;announce('Marker removed.');return;}
+      if((e.key==='+'||e.key==='=')&&!pending){e.preventDefault();setZoom(zoomIndex+1);return;}
+      if(e.key==='-'&&!pending){e.preventDefault();setZoom(zoomIndex-1);return;}
       const step=e.shiftKey?10:2,moves={ArrowLeft:[-step,0],ArrowRight:[step,0],ArrowUp:[0,-step],ArrowDown:[0,step]}[e.key];
       if(moves&&pending){e.preventDefault();pending.x=Math.min(100,Math.max(0,pending.x+moves[0]));pending.y=Math.min(100,Math.max(0,pending.y+moves[1]));place();}
     };

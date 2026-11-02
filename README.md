@@ -1,4 +1,4 @@
-# Research Studio v0.3.4 — multi-method unmoderated UX research
+# Research Studio v0.3.5 — multi-method unmoderated UX research
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 
@@ -137,6 +137,8 @@ Optional success areas are described one per line as `x, y, width, height | Labe
 ```
 
 If you leave success areas blank, results are **unscored** rather than classified as incorrect. The author-defined target is never displayed to participants. Click plots are approximate when screenshot layout or scaling changes. The current click-on-image task requires pointer/touch input; a keyboard-accessible equivalent and formal accessibility review remain outstanding.
+
+What participants see (v0.3.5): the screenshot opens at **Fit** (the whole screen visible) with **−**, **+** and **Fit to screen** controls (up to 300%). When zoomed they can drag or scroll to look around; only a tap or click records the answer. The zoom level at the moment of the click is saved with it, so you can see who zoomed in. Use screenshots wide enough to be legible when zoomed (the demo image is 980px wide).
 
 ### Preference-test authoring
 

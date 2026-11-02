@@ -1,3 +1,17 @@
+# v0.3.5 release notes — first-click zoom (November 1, 2026)
+
+From hands-on testing on an Android phone: at phone width the first-click screenshot was too small to read, so the tap was effectively blind.
+
+## Added
+- **Zoom for first-click tests:** −, + and **Fit to screen** (fit, 150%, 200%, 300%). The test still opens at Fit so the whole screen is seen first. When zoomed, participants drag (touch) or scroll to look around; panning never records a click, only a tap/click does. Keyboard: + and − zoom when the screenshot has focus; the arrow-key marker scrolls into view.
+- Recorded with the click: `zoom` and `display_width_px`; zoom changes as `first_click_zoom` method events. Positions stay relative to the whole image, so heatmaps and target scoring are unaffected.
+- On touch screens the long keyboard instructions are hidden visually (still read by screen readers).
+
+## Validation
+- `npm test` 55/55 · `npm run test:e2e` 252/252 (new phone zoom scenario with real touch input: pan does not record, tap at 200% lands at the right image position and scores a hit) · `npm run test:resume` 71/71 · `npm run test:keyboard` 43/43 · `npm run test:a11y` 0 violations across 87 screen states.
+
+---
+
 # v0.3.4 release notes — drag-first card sorting (November 1, 2026)
 
 Based on hands-on feedback: participants expected to start dragging cards into groups straight away, not to name a group first.
