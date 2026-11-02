@@ -45,7 +45,7 @@ export function chiSquareSurvival(x, df) { return gammq(df / 2, x / 2); }
 // ---------- proportions ----------
 // Wilson score interval: well behaved for small samples and rates near 0% or 100%.
 export function wilson(k, n, conf = 0.95) {
-  if (!n) return null;
+  if (!n || !(k >= 0) || k > n) return null;
   const z = qnorm(1 - (1 - conf) / 2), p = k / n, z2 = z * z;
   const centre = (p + z2 / (2 * n)) / (1 + z2 / n);
   const half = z * Math.sqrt(p * (1 - p) / n + z2 / (4 * n * n)) / (1 + z2 / n);
@@ -115,11 +115,24 @@ export function sampleSizePerGroup(p1, p2, { alpha = 0.05, power = 0.8 } = {}) {
   const n = (za * Math.sqrt(2 * pbar * (1 - pbar)) + zb * Math.sqrt(p1 * (1 - p1) + p2 * (1 - p2))) ** 2 / (p1 - p2) ** 2;
   return Math.ceil(n);
 }
+// The target is baseline + difference; when that would pass 100% the drop baseline − difference
+// is planned instead (never a silently capped, impossible target).
 export function planStudy({ baseline, difference, designs = 2, power = 0.8, alpha = 0.05 }) {
-  const p2 = Math.min(0.999, Math.max(0.001, baseline + difference));
+  if (!(baseline > 0 && baseline < 1) || !(difference > 0 && difference < 1)) return null;
+  let target = baseline + difference;
+  if (target >= 1) target = baseline - difference;
+  if (!(target > 0 && target < 1)) return null;
   const perComparison = designs <= 2 ? alpha : alpha / (designs - 1);
-  const n = sampleSizePerGroup(baseline, p2, { alpha: perComparison, power });
-  return n ? { perDesign: n, total: n * designs, alpha: perComparison, power } : null;
+  const n = sampleSizePerGroup(baseline, target, { alpha: perComparison, power });
+  return n ? { perDesign: n, total: n * designs, alpha: perComparison, power, target, direction: target > baseline ? 'up' : 'down' } : null;
+}
+// Smallest difference (as a proportion, in whole points) that n people per design would detect
+// with the given power. Null when even a very large difference would not be reliably detected.
+export function detectableDifference(n, baseline, { designs = 2, power = 0.8, alpha = 0.05 } = {}) {
+  if (!(n > 0)) return null;
+  const b = Math.min(0.95, Math.max(0.05, baseline ?? 0.5));
+  for (let d = 1; d <= 90; d++) { const plan = planStudy({ baseline: b, difference: d / 100, designs, power, alpha }); if (plan && plan.perDesign <= n) return d / 100; }
+  return null;
 }
 
 // ---------- device class from viewport width (CSS px) ----------

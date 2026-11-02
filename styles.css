@@ -100,3 +100,6 @@ dialog.design-check::backdrop{background:#0f2c3a80}
 
 .import-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;flex-basis:100%}
 #resultsStatus .btn{margin-left:8px}
+.ab-secondary{font-size:12px;color:#3e5b67;margin:8px 0 0}
+.ab-provisional{font-size:12px;color:#3e5b67;margin:8px 0 0;padding:8px 10px;border-left:3px solid #8fc9c2;background:#fff}
+.ab-check-info .ab-check-icon{background:#e6edf0;color:#3e5b67}

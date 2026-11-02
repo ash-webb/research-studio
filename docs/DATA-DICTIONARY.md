@@ -42,6 +42,7 @@
 - `session_started.payload.consent` (v0.3.6): `true`, or `"external"` when the study is set to *Consent is collected in the survey before this study*.
 - `session_started.payload.return_host` (v0.3.6): host of an allow-listed return address, when present. Values sent back in the return link are listed in `docs/QUALTRICS-AB-SETUP.md`.
 - `session_resumed` (v0.3.3): written each time the participant page is reloaded (or a crashed tab restored) and the session continues. Payload: `stage` (`pre`, `start`, `activity`, `reflection`, `followup`, `post`, `finish`), `order` (activity number), `gap_seconds` (time between leaving and returning), viewport size. `task_id` is set when the reload happened during an activity or its follow-up.
+- Imported Qualtrics sessions (v0.3.6–0.3.7) carry `imported: "qualtrics"` on every event and `survey1_provided` on `session_started`: `true` only when Survey 1 was imported and every Survey 2 row could be matched to it. When `false`, drop-out is reported as unknown. Survey 1 people with no Survey 2 row get session IDs `qualtrics-<ResponseId>`.
 - `session_started.payload.preview` (v0.3.1): `true` for a researcher “Preview locally” run. Such sessions are excluded from the dashboard and all exports unless “Include my ‘Preview locally’ runs” is ticked. Sessions recorded before v0.3.1 carry no flag and are always counted.
 
 ## Interruptions (v0.3.3)
@@ -55,7 +56,8 @@
 - Absent in stored events, and a **blank cell** in the Task CSV, when there is no evidence either way (unscored methods, card sorts, preferences, surveys, untracked prototypes). Before v0.3.1 the Task CSV showed `false` in these cases; treat older `false` values for those methods as unknown.
 
 ## Calculation definitions
-- **A/B exposure:** each `task_started` for an A/B/n activity counts once as an exposure; unfinished starts are retained. Compare rates at the experiment and activity level with denominators and missingness explicitly stated.
+- **A/B exposure:** each session counts once per A/B/n activity, however many `task_started` records it has; unfinished starts are retained. Since v0.3.7 the dashboard's main A/B measure divides successes by everyone assigned (see `docs/AB-TESTING.md`).
+- **Missing values (v0.3.7):** a blank or absent `time_seconds` or `click_count` stays blank (null) and is left out of medians and means; it is never treated as 0.
 - **Card similarity:** `matched pair assignments / sorts where both cards were placed` × 100. The dashboard currently uses only completed sorts.
 - **Tree success:** final selected destination is among `correctNodeIds`.
 - **Tree direct success:** success, no recorded backtracks, and no selected detours beyond ancestors of the chosen correct destination.

@@ -67,7 +67,7 @@ test('results show per-arm assignment, missing sessions and no automatic winner'
  assert.ok(out.includes('All results by design'));
  assert.ok(out.includes('Dropped out'));
  assert.match(out, /<td>1<\/td><td>0<\/td><td>1 <small>100%<\/small>/, 'design B: 1 started, 0 finished, 1 dropped out');
- assert.ok(out.includes('not enough results yet'), 'no comparison with too little data');
+ assert.ok(out.includes('too wide to compare'), 'no comparison with too little data');
  assert.ok(out.includes('they do not pick a winner'));
  assert.ok(!/is the winner|declared winner/i.test(out));
 });

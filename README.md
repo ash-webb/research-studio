@@ -1,4 +1,4 @@
-# Research Studio v0.3.6 — multi-method unmoderated UX research
+# Research Studio v0.3.7 — multi-method unmoderated UX research
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 

@@ -34,17 +34,34 @@ CSV exports:
 
 Study-level pre/post questions have no single `variant_id` when a study has multiple experiments; join using `session_id` plus exposure records for the experiment of interest.
 
-### Dashboard metric definitions
+### Dashboard metric definitions (v0.3.7)
 
-- **Exposed / assigned**: logged `task_started` records per variant. This is a task-exposure count, not unique human respondents.
-- **Submitted**: `task_ended` event received for that activity/session.
-- **Not submitted**: exposed minus submitted. Could indicate withdrawal, closing the browser, connectivity issues, or a technical problem; do not label it a failed task.
-- **Signal received / connected**: `success_signal_status === received` divided by completed activities whose tracker connected. Interpret as **instrumented signal observation**, not independently verified task correctness. `not_observed` does not necessarily establish failure. If a shared signal is not configured, the metric is **Unscored**.
-- **Self-reported complete**: respondents selecting *Yes, I completed it* divided by submitted activities. This is distinct from signal observation.
-- **Median time on task**: middle elapsed-time value among submitted activities; excludes not-submitted attempts and can therefore be affected by differential attrition.
-- **Median tracked clicks**: middle tracked click count among completed activities where the tracker was connected. Does not necessarily equal efficiency.
+- **Assigned**: people with a `task_started` record for that design, counted once per session. For imported Qualtrics data, people assigned in Survey 1 who never reached Survey 2 are included.
+- **Finished**: a `task_ended` record for that activity and session. **Dropped out** = assigned − finished. This can mean withdrawal, a closed browser or a technical problem.
+- **Main measure: success signal, everyone assigned.** Successes ÷ everyone assigned. People who dropped out, or whose success could not be measured, count as not successful. This keeps the randomised groups intact, so drop-out or tracking that differs by design cannot quietly flip the comparison. Without a success signal, self-reported completion ÷ everyone assigned is used instead.
+- **Secondary: success signal, measured finishers.** Successes ÷ finishers whose tracker connected and reported `received` or `not_observed`. When this and the main measure point to different conclusions, a **Ways of counting disagree** check appears; rely on the main measure.
+- **Self-reported complete**: *Yes, I completed it* ÷ finishers. A different question from observed success.
+- **Median active time**: elapsed time minus time away after a reload, among finishers with a recorded time (missing times are left out, never treated as 0). Includes unsuccessful attempts; **Median time, successful attempts** is shown beside it.
+- **Median clicks**: among finishers whose tracker connected.
 
-The first configured variant is labeled the *descriptive baseline*. The dashboard does not calculate p-values, confidence intervals, minimum detectable effects, false-discovery corrections, sample sizes, or winners. Do not treat visually larger bars as statistically or practically conclusive evidence. For formal experimentation, plan effect sizes, sample-size requirements, stopping criteria, and multiple-comparison adjustments with your research/statistics partners before the study.
+#### Ranges and comparisons
+
+- Each design's rate has a 95% Wilson score interval. Differences from the first design (the baseline) use Newcombe's hybrid score interval. With 3 designs, difference ranges are widened to 97.5% (Bonferroni over the two comparisons with the baseline). Medians use a fixed-seed percentile bootstrap (2,000 resamples, needs at least 5 values; "range not estimable" when values tie).
+- Comparisons are shown only when each design has at least 10 people assigned.
+- Wording is deliberately cautious. A range that excludes zero means a gap that large would be unusual if the designs performed the same. A range that includes zero is **not** evidence that they perform the same. Overlapping per-design ranges are not a test; use the difference range. Secondary measures are not adjusted for multiple looks.
+- **No winner is declared.** Practical importance is the research team's judgement.
+
+#### Data checks
+
+- **Group sizes**: chi-square sample-ratio check; flagged when p < 0.01. Not run when drop-out is unknown.
+- **Drop-out**: per design; flagged when the drop-out difference between designs has a 95% range excluding zero. "Unknown" for imported data without Survey 1.
+- **Tracking**: flagged when under 90% of a design's finishers were measurable, or when the unmeasured share differs between designs.
+- **Devices**: share on phones per design; flagged when the difference's range excludes zero.
+
+#### Planning
+
+- **Provisional banner**: while the smallest group is below the planned size, shows the smallest difference that would reliably show up at the current size (80% power).
+- **Sample-size planner**: two-proportion normal approximation (Fleiss, no continuity correction), people *assigned* per design, with significance divided across comparisons for 3 designs. If baseline + difference passes 100%, it plans the equivalent drop instead. Fix the size before fielding and judge results once it is reached; stopping when results look good raises false positives.
 
 ### Platform constraints and quality gates
 

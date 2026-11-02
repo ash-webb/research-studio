@@ -1,3 +1,26 @@
+# v0.3.7 release notes — clearer, more honest A/B results (November 2, 2026)
+
+Reworked after an independent statistical review of the v0.3.6 results.
+
+## Changed
+- **Main measure now counts everyone assigned.** People who dropped out or weren't measured count as not successful, so differences in drop-out or tracking can't flip the comparison. The rate among measured finishers is still shown, labelled secondary, and a **Ways of counting disagree** check appears when the two point to different conclusions. (On the synthetic fixture: +17 points, range −6 to +38, rather than +29 among measured finishers.)
+- **Plain-language results.** Each comparison gives the difference and its range, and says what the range does and does not mean. A **Provisional** banner shows the smallest difference the current sample could detect.
+- **Tables** label the main and secondary measures, add **Median time, successful attempts**, and say "range not estimable" for tied values. A note explains that overlapping ranges are not a test.
+- **Data checks** use intervals: drop-out, tracking (including unmeasured share by design) and devices are flagged when the difference between designs is beyond chance. Group sizes are not checked when drop-out is unknown.
+- **Planner** works in people assigned per design, plans a drop instead of an impossible target near 100%, and reminds you to fix the size before fielding.
+
+## Fixed
+- Missing times and clicks were treated as 0; they are now left out.
+- Repeated task starts in one session counted as extra people.
+- Qualtrics import: preview/test/spam responses are left out, duplicates removed, Survey 1's randomizer is used as the record of assignment (mismatches flagged), and drop-out is reported as unknown (not 0%) when Survey 1 is missing or rows can't be matched.
+- Rounding: "1m 60s" and "+0 points" for tiny non-zero limits.
+
+## Validation
+- `npm test` 82/82 (new `tests/ab-results.test.js`) · `npm run test:e2e` 315/315 · `npm run test:resume` 71/71 · `npm run test:keyboard` 43/43 · `npm run test:a11y` 0 violations across 93 screen states.
+- Statistics cross-checked against SciPy/independent Python. Still not tested against a real Qualtrics export.
+
+---
+
 # v0.3.6 release notes — A/B testing with Qualtrics (November 1, 2026)
 
 ## Added

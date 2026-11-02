@@ -19,7 +19,7 @@ test('Qualtrics three-row header is skipped and exports are classified', () => {
 test('events from Qualtrics: results per task and Survey 1 drop-outs', () => {
   const { events, summary, problems } = eventsFromQualtrics(study, qualtricsRecords(fx('qualtrics-survey2-SYNTHETIC.csv')), qualtricsRecords(fx('qualtrics-survey1-SYNTHETIC.csv')));
   assert.deepEqual(problems, []);
-  assert.deepEqual(summary, { responses: 59, dropouts: 11 });
+  assert.deepEqual(summary, { responses: 59, dropouts: 11, survey1Provided: true });
   const flat = flattenEvents(events);
   assert.equal(flat.sessions.length, 70);
   assert.equal(flat.starts.filter(s => s.task_id === 'find-service-request').length, 70);

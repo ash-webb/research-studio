@@ -77,7 +77,7 @@ Per participant, in Survey 2:
 
 1. In Qualtrics, export **Survey 2** as CSV (and **Survey 1**, so people who never came back are counted). The default CSV export with the three header rows is fine.
 2. In Research Studio, open **Results & insights**, choose the study, select **Import Qualtrics results** and pick both files.
-3. The A/B section then shows, from your Qualtrics data: each design's success rate with its 95% range, the difference from the baseline design with its range, drop-out, self-reported completion and median time per design, data checks (group sizes, drop-out, tracking, devices) and a sample-size planner. The CSV export buttons work on the imported data too.
+3. The A/B section then shows, from your Qualtrics data: each design's success rate counting everyone assigned (drop-outs count as not successful) with its 95% range, the difference from the baseline design with its range, the rate among measured finishers as a secondary figure, drop-out, self-reported completion and median times per design, data checks (group sizes, drop-out, tracking, devices) and a sample-size planner. Without Survey 1, drop-out is shown as unknown. The CSV export buttons work on the imported data too.
 
 The files are read in your browser only; nothing is uploaded or stored. Select **Show browser data instead** to leave the imported view.
 

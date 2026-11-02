@@ -210,7 +210,7 @@ async function refreshResults(){
   try{
     if(!studyForId(id)){const item=studyIndex.find(x=>x.id===id);if(item)await loadStudy(item);}
     if(imported&&imported.studyId===id){records=imported.events;flat=flattenEvents(records);selectedSession=flat.sessions[0]?.session_id||null;selectedTask='';selectedPage='';renderResults();
-      by('resultsStatus').innerHTML=`Showing imported Qualtrics data: ${imported.summary.responses} Survey 2 response${imported.summary.responses===1?'':'s'}${imported.summary.dropouts?`, plus ${imported.summary.dropouts} assigned in Survey 1 who did not return`:''}. Read in this browser only; nothing was uploaded. <button type="button" class="btn btn-small btn-outline" id="clearImport">Show browser data instead</button>`;
+      by('resultsStatus').innerHTML=`Showing imported Qualtrics data: ${imported.summary.responses} Survey 2 response${imported.summary.responses===1?'':'s'}${imported.summary.dropouts?`, plus ${imported.summary.dropouts} assigned in Survey 1 who did not return`:''}. Read in this browser only; nothing was uploaded.${imported.warnings?.length?` <strong>Note:</strong> ${esc(imported.warnings.join(' '))}`:''} <button type="button" class="btn btn-small btn-outline" id="clearImport">Show browser data instead</button>`;
       by('clearImport').onclick=()=>{imported=null;refreshResults();};return;}
     const loaded=await loadEvents(id);
     // Researcher "Preview locally" runs are labelled at session start and kept out of
@@ -244,8 +244,9 @@ function labelScrollRegions(root=document){
 function metric(label,value,sub){return `<div class="metric-card"><span>${esc(label)}</span><strong>${esc(value)}</strong><small>${esc(sub)}</small></div>`;}
 function renderResults(){
   const total=flat.sessions.length,completed=flat.sessions.filter(x=>x.completed_at).length, attempts=flat.tasks.length;
-  const avg=attempts?flat.tasks.reduce((n,t)=>n+(+t.time_seconds||0),0)/attempts:null;
-  by('metricCards').innerHTML=metric('Sessions',total,'Includes incomplete sessions')+metric('Study completions',completed,total?`${Math.round(completed/total*100)}% of sessions`:'No sessions')+metric('Finished activities',attempts,'Compare success within each method')+metric('Mean activity time',formatDuration(avg),`${attempts} completed activities`);
+  const timed=flat.tasks.map(t=>t.time_seconds).filter(v=>Number.isFinite(v)&&v>0);
+  const avg=timed.length?timed.reduce((n,v)=>n+v,0)/timed.length:null;
+  by('metricCards').innerHTML=metric('Sessions',total,'Includes incomplete sessions')+metric('Study completions',completed,total?`${Math.round(completed/total*100)}% of sessions`:'No sessions')+metric('Finished activities',attempts,'Compare success within each method')+metric('Mean activity time',formatDuration(avg),`${timed.length} timed activities`);
   const taskIds=[...new Set([...flat.starts.map(t=>t.task_id),...flat.tasks.map(t=>t.task_id)])];
   const current=studyForId(by('resultsStudy').value);
   by('tasksTable').innerHTML=taskIds.length?taskIds.map(id=>{
@@ -254,7 +255,7 @@ function renderResults(){
     const finishedIds=new Set(results.map(t=>t.session_id));const unfinished=starts.filter(t=>!finishedIds.has(t.session_id)).length;
     const activity=current?.tasks?.find(t=>t.id===id);
     const method=results[0]?.method||normalizeMethod(activity||{});
-    const mean=x?results.reduce((n,t)=>n+(+t.time_seconds||0),0)/x:null;
+    const tt=results.map(t=>t.time_seconds).filter(v=>Number.isFinite(v)&&v>0);const mean=tt.length?tt.reduce((n,v)=>n+v,0)/tt.length:null;
     const scored=results.filter(t=>method==='tree_test'||(method==='first_click'&&t.result.scored===true)||(method==='prototype'&&t.tracker_connected&&activity?.successSignal)||(method==='ab_test'&&t.tracker_connected&&activity?.successSignal));
     const good=scored.filter(t=>t.observed_success).length;
     let special='—';
@@ -346,7 +347,7 @@ function wireActions(){
       if(!s2.length)throw new Error('No Survey 2 export found. It should contain the rs_session and rs_ab1_… fields.');
       const result=eventsFromQualtrics(current,s2,s1);
       if(result.problems.length)throw new Error(result.problems.join(' '));
-      imported={studyId:id,events:result.events,summary:result.summary};
+      imported={studyId:id,events:result.events,summary:result.summary,warnings:result.warnings};
       await refreshResults();toast('Qualtrics results imported.');
     }catch(err){toast(`Import failed: ${err.message}`,9000);}
   };
