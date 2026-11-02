@@ -39,10 +39,10 @@ function preferenceHTML(a,data,esc){
  return `<div class="method-summary">${pill('Completed comparisons',n)}${pill('Randomized order','Yes')}</div><h4>Selections</h4>${bars(items,n,esc)}<p class="analysis-subtitle">Counts are descriptive, not statistical significance tests. Presentation order is retained in participant-level exports.</p>`;
 }
 const median=value=>{const v=value.filter(Number.isFinite).sort((a,b)=>a-b);return v.length?(v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2):null;};
-function abHTML(a,data,flat,esc){
+function abHTML(a,data,flat,esc,plan=null){
   const exposures=(flat.starts||[]).filter(x=>x.task_id===a.id&&x.method==='ab_test');
   const total=exposures.length;
-  const analysis=analyzeAB(a,data,flat);
+  const analysis=analyzeAB(a,data,flat,plan);
   const answers=(flat.answers||[]).filter(x=>x.task_id===a.id&&x.stage==='post_task');
   const questionRows=(a.questions||[]).map(q=>{
     const cells=a.variants.map(v=>{
@@ -74,7 +74,7 @@ function abHTML(a,data,flat,esc){
   return `<div class="method-summary">${pill('Assigned exposures',total)}${pill('Designs',a.variants.length)}${pill('Assigned by',esc(sourceText))}${pill('Experiment ID',esc(a.experimentId||a.id))}</div>${bySource.fallback?'<p class="notice warning">Some study links carried a design ID that this study does not have, so those sessions were assigned at random instead. Check the variant IDs in your survey randomizer.</p>':''}
     ${renderABCore(analysis,esc)}
     ${(flat.sessions||[]).some(x=>x.imported==='qualtrics')?'<p class="analysis-subtitle">Imported from Qualtrics: follow-up answers stay in your Qualtrics export, and click-by-click histories are not part of the return link, so those sections are not shown.</p>':`${answerSummary}${clickSummary}`}
-    <p class="analysis-subtitle">Design ${'A'} is the baseline. Results describe this sample; they do not pick a winner. Self-reported completion and the success signal measure different things, and a missing signal is never counted as failure. Compare designs only under similar recruitment and devices, using fixed design versions.</p>`;
+    <p class="analysis-subtitle">Design A is the baseline (the control). Results describe this sample; they do not pick a winner. Self-reported completion and the success signal measure different things, and a missing signal is never counted as failure. Compare designs only under similar recruitment and devices, using fixed design versions.</p>`;
 }
 function surveyHTML(a,data,flat,esc){
   const responses=flat.answers.filter(x=>x.task_id===a.id&&x.stage==='activity');
@@ -104,7 +104,7 @@ export function renderAnalyses(study,flat,esc){
     if(method==='preference')content=preferenceHTML(a,data,esc);
     if(method==='survey')content=surveyHTML(a,data,flat,esc);
     if(method==='prototype')content=prototypeHTML(a,data,flat,esc);
-    if(method==='ab_test')content=abHTML(a,data,flat,esc);
+    if(method==='ab_test')content=abHTML(a,data,flat,esc,study.plan&&(study.plan.locked||study.plan.edited)?study.plan:null);
     return `<section class="method-analysis"><p class="eyebrow accent">${esc(METHODS[method]?.label||method)}</p><h3>${esc(a.title||a.id)}</h3>${content}</section>`;
   });
   return output.join('');

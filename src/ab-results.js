@@ -5,6 +5,7 @@
 // groups intact. Secondary: the rate among people who finished with success measured.
 // Ranges are 95% confidence intervals (difference ranges widened when 3+ designs are compared
 // with the baseline). Descriptive only: no winner is declared.
+import { plannedSize, hypothesisSentence, fmtDate, PRIMARY } from './plan.js';
 import { wilson, diffProportions, median, medianCI, diffMedians, sampleRatioCheck, comparisonConfidence, planStudy, detectableDifference, deviceClass } from './abstats.js';
 
 const MIN_COMPARE = 10; // below this per design, ranges are too wide to read a comparison
@@ -14,9 +15,11 @@ const pct = p => `${Math.round(p * 100)}%`;
 const pts = d => { const v = d * 100, a = Math.abs(v), s = v > 0 ? '+' : v < 0 ? '−' : '±'; return `${s}${a > 0 && a < 1 ? a.toFixed(1) : Math.round(a)}`; };
 const secs = s => { if (s == null) return '—'; const r = Math.round(s); return r < 90 ? `${r}s` : `${Math.floor(r / 60)}m ${r % 60}s`; };
 const signedSecs = d => `${d > 0 ? '+' : d < 0 ? '−' : '±'}${secs(Math.abs(d))}`;
+const confText = c => c === 0.95 ? '95%' : `${(c * 100).toFixed(1).replace(/\.0$/, '')}%`;
 const excludesZero = r => r && r.lo != null && (r.lo > 0 || r.hi < 0);
 
-export function analyzeAB(a, data, flat) {
+export function analyzeAB(a, data, flat, studyPlan = null) {
+  const ep = studyPlan?.experiments?.[a.experimentId || a.id] || null;
   const sessions = new Map((flat.sessions || []).map(s => [s.session_id, s]));
   // One exposure per session per activity (repeated task_started events are not extra people).
   const seen = new Set();
@@ -24,7 +27,8 @@ export function analyzeAB(a, data, flat) {
   const importedSessions = [...sessions.values()].filter(s => s.imported === 'qualtrics');
   // Drop-out is unknown for imported data without Survey 1, or when no starts were recorded at all.
   const dropoutUnknown = (importedSessions.length > 0 && !importedSessions.some(s => s.survey1_provided)) || (!exposures.length && data.length > 0);
-  const hasSignal = !!a.successSignal;
+  // The plan's primary measure decides; task success needs a success signal.
+  const hasSignal = !!a.successSignal && ep?.primaryMeasure !== 'self';
   const designs = a.variants.map((v, i) => {
     const started = exposures.filter(x => x.variant_id === v.id);
     const finished = data.filter(x => x.variant_id === v.id);
@@ -63,7 +67,8 @@ export function analyzeAB(a, data, flat) {
   const minAssigned = Math.min(...designs.map(d => d.assigned));
   const baseRate = base.primary?.p ?? 0.5;
   const detectable = detectableDifference(minAssigned, baseRate, { designs: designs.length });
-  const plan = planStudy({ baseline: Math.min(0.95, Math.max(0.05, baseRate)), difference: 0.15, designs: designs.length });
+  const planned = ep ? plannedSize(ep, designs.length) : null;
+  const target = planned || planStudy({ baseline: Math.min(0.95, Math.max(0.05, baseRate)), difference: 0.15, designs: designs.length });
 
   // ---- data checks ----
   const checks = [];
@@ -96,7 +101,28 @@ export function analyzeAB(a, data, flat) {
     const disagree = comparisons.filter(c => c.enough && c.primary && c.measured && excludesZero(c.primary) !== excludesZero(c.measured));
     if (disagree.length) checks.push({ level: 'warn', title: 'Ways of counting disagree', text: `Counting everyone assigned and counting only measured finishers lead to different conclusions for ${disagree.map(c => `${letter(c.design.index)} vs ${letter(0)}`).join(', ')}. Drop-out or tracking differences are likely shaping the result; rely on the everyone-assigned figure.` });
   }
-  return { a, designs, comparisons, checks, conf, hasSignal, dropoutUnknown, minAssigned, detectable, plan };
+  // ---- planned hypotheses, assessed against the matching comparison (descriptive, no winner) ----
+  const hypotheses = (ep?.hypotheses || []).map((h, i) => {
+    const c = comparisons.find(x => x.design.variant.id === h.treatmentId);
+    const sentence = hypothesisSentence({ variants: a.variants }, ep, h);
+    if (!c) return { n: i + 1, sentence, status: 'missing', text: 'This design is not in the results.' };
+    const r = h.measure === 'time' ? c.time : h.measure === 'success' ? (hasSignal ? c.primary : c.measured) : (hasSignal ? c.self : c.primary);
+    const isRate = h.measure !== 'time';
+    const value = r ? (isRate ? `${pts(r.d)} points${r.lo != null ? ` (${confText(conf)} range ${pts(r.lo)} to ${pts(r.hi)})` : ''}` : `${signedSecs(r.d)}${r.lo != null && r.lo !== r.hi ? ` (${confText(conf)} range ${signedSecs(r.lo)} to ${signedSecs(r.hi)})` : ''}`) : '';
+    let status, text;
+    if (!r || r.lo == null || r.lo === r.hi) { status = 'early'; text = 'Too few results to assess.'; }
+    else if (!c.enough) { status = 'early'; text = `Fewer than ${MIN_COMPARE} people in a design: too early to assess.`; }
+    else if (excludesZero(r)) {
+      const dir = r.lo > 0 ? 'higher' : 'lower';
+      status = h.direction === 'different' || h.direction === dir ? 'consistent' : 'opposite';
+      text = status === 'consistent' ? 'Consistent with the hypothesis: the range excludes zero in the expected direction.' : 'Opposite to the hypothesis: the range excludes zero in the other direction.';
+    } else { status = 'inconclusive'; text = 'Inconclusive: the range includes zero.'; }
+    if (planned && minAssigned < planned.perDesign && status !== 'missing') text += ` Target sample not yet reached (${minAssigned} of ${planned.perDesign} in the smallest group).`;
+    const secondary = h.measure === 'time' || (h.measure === 'success') !== hasSignal;
+    return { n: i + 1, sentence, status, text, value, secondary };
+  });
+  const planInfo = ep ? { locked: studyPlan.locked, changes: (studyPlan.changes || []).length, primary: hasSignal ? 'success' : 'self', planned, control: a.variants[0] } : null;
+  return { a, designs, comparisons, checks, conf, hasSignal, dropoutUnknown, minAssigned, detectable, plan: target, planned, hypotheses, planInfo, ep };
 }
 
 // ---------- charts (inline SVG, one hue; rows are labelled so colour carries no meaning) ----------
@@ -114,7 +140,7 @@ function dotWhiskerSVG(rows, { min, max, ticks, fmt, zero = null, label }, esc) 
 }
 
 export function renderABCore(an, esc) {
-  const { designs, comparisons, checks, conf, hasSignal, dropoutUnknown, minAssigned, detectable, plan } = an;
+  const { designs, comparisons, checks, conf, hasSignal, dropoutUnknown, minAssigned, detectable, plan, planned, hypotheses = [], planInfo, ep } = an;
   const measureName = hasSignal ? 'Success signal' : 'Self-reported completion';
   const confText = conf === 0.95 ? '95%' : `${(conf * 100).toFixed(1).replace(/\.0$/, '')}%`;
   const basis = dropoutUnknown ? 'counting finishers only (drop-out unknown)' : `counting everyone assigned${hasSignal ? '; people who left or whose success could not be measured count as not successful' : '; people who left count as not completed'}`;
@@ -136,7 +162,7 @@ export function renderABCore(an, esc) {
     const secondary = hasSignal && !dropoutUnknown && designs.some(d => d.measuredRate) ? `<p class="ab-secondary">Among people who finished with success measured: ${designs.map(d => d.measuredRate ? `${letter(d.index)} ${pct(d.measuredRate.p)} (${d.measuredRate.k}/${d.measuredRate.n})` : `${letter(d.index)} —`).join(' · ')}${comparisons.filter(c => c.measured).map(c => `; ${letter(c.design.index)} vs ${letter(0)} ${pts(c.measured.d)} (${pts(c.measured.lo)} to ${pts(c.measured.hi)})`).join('')}. Secondary: these leave out people who dropped out or weren't measured.</p>` : '';
     const warns = checks.filter(c => c.level === 'warn').length;
     const provisional = plan && minAssigned < plan.perDesign
-      ? `<p class="ab-provisional"><strong>Provisional.</strong> With ${minAssigned} people in the smallest group, only differences of ${detectable ? `about ${Math.round(detectable * 100)} points or more` : 'very large size'} would reliably show up. Decide the sample size before fielding (planner below) and judge results once it is reached: checking repeatedly and stopping when results look good raises false positives.</p>` : '';
+      ? `<p class="ab-provisional"><strong>Provisional.</strong> With ${minAssigned} people in the smallest group${planned ? ` (planned: ${planned.perDesign} per design)` : ''}, only differences of ${detectable ? `about ${Math.round(detectable * 100)} points or more` : 'very large size'} would reliably show up. Decide the sample size before fielding (planner below) and judge results once it is reached: checking repeatedly and stopping when results look good raises false positives.</p>` : '';
     lead = `<div class="ab-lead"><p><strong>${measureName}</strong>, ${basis}: ${rates}</p><ul>${lines}</ul>${secondary}${provisional}${warns ? `<p class="notice warning">Read with care: ${warns} data check${warns === 1 ? '' : 's'} below need${warns === 1 ? 's' : ''} attention.</p>` : ''}${!hasSignal ? '<p class="analysis-subtitle">No success signal is set for this activity, so designs are compared on self-reported completion.</p>' : ''}</div>`;
   }
   // ---- charts ----
@@ -160,9 +186,10 @@ export function renderABCore(an, esc) {
   const word = l => l === 'ok' ? 'OK' : l === 'warn' ? 'Needs attention' : 'Note';
   const checkList = checks.length ? `<ul class="ab-checks">${checks.map(c => `<li class="ab-check-${c.level}"><span class="ab-check-icon" aria-hidden="true">${icon(c.level)}</span><span class="sr-only">${word(c.level)}:</span> <strong>${esc(c.title)}.</strong> ${esc(c.text)}</li>`).join('')}</ul>` : '<p class="muted small">Checks appear once people have taken part.</p>';
   // ---- planner ----
-  const basePct = Math.round(Math.min(0.95, Math.max(0.05, designs[0].primary?.p ?? 0.5)) * 100);
-  const planner = `<div class="ab-planner" data-planner data-designs="${designs.length}" data-measured="${minAssigned}"><div class="ab-planner-inputs"><label class="field">Expected ${hasSignal ? 'success' : 'completion'} rate for ${letter(0)} (%)<input type="number" min="1" max="99" step="1" value="${basePct}" data-plan="baseline"></label><label class="field">Smallest difference worth finding (points)<input type="number" min="1" max="60" step="1" value="15" data-plan="difference"></label><label class="field">Power<select data-plan="power"><option value="0.8" selected>80% (common)</option><option value="0.9">90%</option></select></label></div><p class="ab-planner-out" data-plan-out aria-live="polite"></p></div>`;
-  return `${lead}${charts}<h4>All results by design</h4>${table}${cmp ? `<h4>Differences from ${letter(0)} (baseline)</h4>${cmp}` : ''}<h4>Data checks</h4>${checkList}<h4>How many people do you need?</h4>${planner}`;
+  const basePct = ep ? Number(ep.baseline) : Math.round(Math.min(0.95, Math.max(0.05, designs[0].primary?.p ?? 0.5)) * 100);
+  const planner = `<div class="ab-planner" data-planner data-designs="${designs.length}" data-measured="${minAssigned}"><div class="ab-planner-inputs"><label class="field">Expected ${hasSignal ? 'success' : 'completion'} rate for ${letter(0)} (%)<input type="number" min="1" max="99" step="1" value="${basePct}" data-plan="baseline"></label><label class="field">Smallest difference worth finding (points)<input type="number" min="1" max="60" step="1" value="${ep ? Number(ep.difference) : 15}" data-plan="difference"></label><label class="field">Power<select data-plan="power"><option value="0.8" ${Number(ep?.power) !== 0.9 ? 'selected' : ''}>80% (common)</option><option value="0.9" ${Number(ep?.power) === 0.9 ? 'selected' : ''}>90%</option></select></label></div><p class="ab-planner-out" data-plan-out aria-live="polite"></p></div>`;
+  const planBox = planInfo ? `<div class="ab-plan"><p><strong>Study plan</strong> · ${planInfo.locked ? `locked ${esc(fmtDate(planInfo.locked.at))}${planInfo.changes ? `, ${planInfo.changes} change${planInfo.changes === 1 ? '' : 's'} recorded since` : ', no changes since'}` : 'not locked'}. Control: ${esc(`A · ${planInfo.control?.label || ''}`)}. Primary measure: ${esc(PRIMARY[planInfo.primary])}, everyone assigned.${planInfo.planned ? ` Target: ${planInfo.planned.perDesign} people per design; smallest group now ${minAssigned}.` : ''}</p>${hypotheses.length ? `<ul class="ab-hyps">${hypotheses.map(h => `<li class="ab-hyp-${h.status}"><strong>H${h.n}.</strong> ${esc(h.sentence)}<br><span class="ab-hyp-result">${h.value ? `${esc(h.value)}. ` : ''}${esc(h.text)}${h.secondary ? ' (Measured on a secondary measure.)' : ''}</span></li>`).join('')}</ul>` : '<p class="muted small">No hypotheses in the plan.</p>'}</div>` : '';
+  return `${planBox}${lead}${charts}<h4>All results by design</h4>${table}${cmp ? `<h4>Differences from ${letter(0)} (baseline)</h4>${cmp}` : ''}<h4>Data checks</h4>${checkList}<h4>How many people do you need?</h4>${planner}`;
 }
 
 // Planner text; called on render and on input (admin.js). `measured` = people assigned in the smallest group.

@@ -103,3 +103,40 @@ dialog.design-check::backdrop{background:#0f2c3a80}
 .ab-secondary{font-size:12px;color:#3e5b67;margin:8px 0 0}
 .ab-provisional{font-size:12px;color:#3e5b67;margin:8px 0 0;padding:8px 10px;border-left:3px solid #8fc9c2;background:#fff}
 .ab-check-info .ab-check-icon{background:#e6edf0;color:#3e5b67}
+/* v0.3.8 study plan */
+.plan-panel h3{font-size:15px;margin:26px 0 12px;padding-top:18px;border-top:1px solid #eef2f4}
+.plan-panel h3:first-of-type{border-top:0;padding-top:0}
+.plan-panel h4{font-size:13px;margin:20px 0 10px;color:#284652}
+.plan-status{font-size:12px;line-height:1.5;padding:10px 14px;border-radius:8px;background:#f4f7f9;border:1px solid #e1e8ec;color:#3e5b67;margin-bottom:12px}
+.plan-status.plan-locked{background:#eaf6f5;border-color:#bfe2dc;border-left:3px solid #0a7473;color:#1f4b52}
+.plan-actions{margin-bottom:6px}
+.plan-list{display:flex;flex-direction:column;gap:10px;margin:12px 0 10px}
+.plan-list-row{display:flex;gap:10px;align-items:end}.plan-list-row .field{flex:1}
+.plan-exp{border:1px solid #dce5e8;border-radius:10px;background:#fbfdfd;padding:16px;margin:10px 0}
+.plan-exp>h3{border-top:0;padding-top:0;margin-top:0}
+.plan-control{max-width:420px;margin-bottom:12px}
+.plan-designs{table-layout:fixed;white-space:normal;min-width:520px}.plan-designs th,.plan-designs td{white-space:normal;vertical-align:top}.plan-designs thead th:first-child{width:34%}.plan-designs thead th:nth-child(2){width:16%}.plan-designs textarea{width:100%;border:1px solid #d8e1e7;border-radius:7px;padding:8px 10px;font:inherit;font-size:12px;resize:vertical}
+.plan-designs textarea:focus,.plan-changes input:focus{outline:3px solid #0a5f63;outline-offset:1px}
+.role-pill{display:inline-block;font-size:11px;font-weight:750;padding:4px 8px;border-radius:99px;background:#eef2f4;color:#3e5b67}
+.role-pill.role-control{background:#dff2ef;color:#085e60}
+.plan-hyp{border:1px solid #e1e8ec;border-radius:9px;padding:12px 14px;margin:0 0 10px;background:#fff}
+.plan-hyp legend{font-weight:800;font-size:12px;color:#0a5f63;padding:0 4px}
+.plan-hyp-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.plan-sentence{font-size:13px;color:#24434f;background:#f6fbfa;border-left:3px solid #8fc9c2;padding:8px 10px;margin:10px 0}
+.plan-hyp .btn{margin-top:8px}
+.plan-checks{border:0;padding:0;margin:0;display:flex;flex-direction:column;gap:6px;font-size:12px;color:#334d5d}
+.plan-checks legend{font-weight:720;margin-bottom:6px}.plan-checks legend small{font-weight:400;color:#606e7a}
+.plan-checks input{accent-color:#087975;margin-right:6px}
+.plan-size-out{font-size:12px;color:#24434f;background:#fff;border:1px solid #e1e8ec;border-radius:8px;padding:10px 12px;margin:10px 0}
+.plan-activities{list-style:none;padding:0;margin:0 0 6px;font-size:13px;line-height:1.8;color:#284652}
+.plan-standard{border:1px solid #e1e8ec;border-radius:8px;padding:12px 14px;background:#fbfcfd;margin-bottom:10px}
+.plan-standard-text{font-size:12px;line-height:1.6;color:#284652}.plan-standard-text p{margin:0 0 8px}
+.plan-panel>#planEditor>.field{margin-top:14px}
+.plan-changes td{white-space:normal;vertical-align:top;max-width:260px}.plan-changes input{border:1px solid #d8e1e7;border-radius:6px;padding:6px 8px;font:inherit;font-size:12px;width:100%;min-width:120px}
+.export-help{margin:4px 0 10px}
+.ab-plan{border:1px solid #d6e4ea;border-radius:10px;padding:12px 16px;margin:12px 0;font-size:13px;line-height:1.55;background:#fff;color:#24434f}
+.ab-plan p{margin:0 0 6px}.ab-hyps{margin:6px 0 0;padding-left:18px}.ab-hyps li{margin:6px 0}
+.ab-hyp-result{font-size:12px;color:#3e5b67}
+@media(max-width:660px){.plan-list-row{flex-direction:column;align-items:stretch}}
+.builder-main{min-width:0}
+.table-scroll{position:relative}

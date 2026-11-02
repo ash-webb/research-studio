@@ -1,3 +1,21 @@
+# v0.3.8 release notes — study planner (November 2, 2026)
+
+## Added
+- **Study plan** as the first step of the Study builder: background, research questions, participants, control and treatment roles per A/B experiment (with what changes in each design), hypotheses written as plain sentences, primary and secondary measures, sample size, stopping rule, a standard analysis plan generated from these choices (or your own), and how results will be used.
+- **Lock plan** with a **change log**: after locking, every edit in the builder is recorded with where it happened, before and after values, time and an optional reason.
+- **Download plan (.docx):** a Word document of the plan, procedure (pre-study questions, activities with follow-up questions, post-study questions), analysis plan and change log. Generated in the browser with no external libraries.
+- **Save working copy (with plan)** alongside **Export study JSON**; the published study file leaves the plan out so hypotheses are not public.
+- A/B results show the plan: lock status, control, primary measure, target size and each hypothesis next to its result (consistent, opposite, inconclusive or too early). The plan's primary measure and target sample size drive the main measure and the provisional banner. A default plan the researcher never edited is not shown.
+
+## Fixed
+- Absolutely positioned screen-reader labels inside scrolling tables could widen the page on phones (`.table-scroll` is now a positioning context). The builder column no longer grows past the screen at phone width.
+
+## Validation
+- `npm test` 94/94 (new `tests/plan.test.js`, including a python-docx read-back of the generated .docx) · `npm run test:e2e` 341/341 (new study plan scenario: roles, hypotheses, sample size, lock and change log, Word download, working copy round trip, results, 360px) · `npm run test:resume` 71/71 · `npm run test:keyboard` 43/43 · `npm run test:a11y` 0 violations across 96 screen states.
+- The .docx was also converted to PDF with LibreOffice and checked visually. Not yet opened in Microsoft Word itself.
+
+---
+
 # v0.3.7 release notes — clearer, more honest A/B results (November 2, 2026)
 
 Reworked after an independent statistical review of the v0.3.6 results.

@@ -1,4 +1,4 @@
-# Research Studio v0.3.7 — multi-method unmoderated UX research
+# Research Studio v0.3.8 — multi-method unmoderated UX research
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 
@@ -62,8 +62,25 @@ Open these relative URLs after the server is running. The included graphic desig
 2. Under **Study activities**, choose a method from the dropdown and click **+ Add activity**. Edit its participant instructions.
 3. Configure the method as explained below. Add follow-up, pre-study or post-study questions as appropriate.
 4. Click **Preview locally**. This runs the current editor draft, without requiring a GitHub commit.
-5. Click **Export study JSON**. Save the downloaded file at `studies/YOUR-STUDY-ID.json` in the project. Add a corresponding line to `studies/index.json`.
+5. Click **Save working copy (with plan)** to keep everything, including the study plan, for later editing (re-open it with **Import JSON**). Then click **Export study JSON**: this is the file to publish, and it leaves out the plan. Save the downloaded file at `studies/YOUR-STUDY-ID.json` in the project. Add a corresponding line to `studies/index.json`.
 6. Push the changed site to a new GitHub repository. GitHub Pages can publish these static study pages, but **remote collection still requires an approved backend**.
+
+## Study plan (v0.3.8)
+
+The first step of the Study builder is a **Study plan**:
+
+- **Background and research questions.**
+- **Participants:** who takes part, recruitment, devices, exclusions.
+- **For each A/B experiment:** which design is the **control** (it becomes design A in every activity and in the results) and what is different in each **treatment**; **hypotheses** (design, expected direction, measure) written out as plain sentences; **primary and secondary measures**; **sample size** from the expected control rate and the smallest difference worth finding; **stopping rule**.
+- **Tasks and questions** are set in the later builder steps and included in the plan document.
+- **Analysis plan:** a standard plan written from your choices (everyone-assigned denominator, Wilson and Newcombe intervals, Bonferroni for 3 designs, target size, data checks). Use it as is or edit a copy.
+- **How results will be used.**
+
+**Lock plan** before fielding. You can still edit afterwards, but every change anywhere in the builder is recorded in a **change log** (what, before, after, when, and an optional reason). **Download plan (.docx)** creates a Word document of the whole plan, procedure and change log, in the browser.
+
+In **Results & insights**, the A/B section shows the plan: lock status, control, primary measure, target size, and each hypothesis next to the matching result (consistent, opposite, inconclusive or too early). The plan's primary measure and target size are used for the main measure and the provisional banner.
+
+The plan lives in your working copy only. **Export study JSON** leaves it out, so hypotheses and analysis notes are never in the public study file participants load. Lock and change times come from your computer's clock.
 
 ### A/B/n implementation testing
 

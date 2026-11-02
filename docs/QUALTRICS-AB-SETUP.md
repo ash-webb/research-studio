@@ -35,11 +35,12 @@ Per participant, in Survey 2:
 
 ## 1. Prepare the study in Research Studio
 
-1. In **Study builder**, add an **A/B implementation test** activity. Give each design a short ID such as `design-a`, `design-b`, `design-c`: these IDs are what Qualtrics will send.
+1. In **Study builder**, fill in the **Study plan** (control design, hypotheses, measures, sample size), then **Lock plan** before launch. **Download plan (.docx)** gives you a document for review.
+1. Add an **A/B implementation test** activity. Give each design a short ID such as `design-a`, `design-b`, `design-c`: these IDs are what Qualtrics will send.
 2. Set a **success signal** and select **Check designs**. Every design should show “Tracking connected” and, after you complete the task inside it, “Success signal received”.
 3. Tick **Consent is collected in the survey before this study**, so participants are not asked to consent twice.
 4. Select **Preview locally** to try it. Add `&variant=design-b` to the preview address to see a specific design.
-5. Select **Export study JSON**. Add the file to the `studies/` folder of the site's repository, add an entry to `studies/index.json`, and publish. Note the **study ID**.
+5. Select **Save working copy (with plan)** to keep your plan, then **Export study JSON** (the plan is left out of this file). Add the file to the `studies/` folder of the site's repository, add an entry to `studies/index.json`, and publish. Note the **study ID**.
 6. If your Qualtrics links are not on `qualtrics.com` (for example a custom domain), add that host to `returnUrlHosts` in `settings.js`. The “Return to the survey” button only appears for those hosts.
 
 ## 2. Survey 1 (intake)

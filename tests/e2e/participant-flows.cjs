@@ -451,6 +451,67 @@ scenarios.abBuilder = async browser => {
   await done();
 };
 
+scenarios.studyPlan = async browser => {
+  const G = 'Study plan: roles, hypotheses, sample size, lock + change log, Word download';
+  const { ctx, done } = await newContext(browser, G);
+  const p = await ctx.newPage();
+  await p.goto(BASE + 'index.html');
+  await p.waitForFunction(() => document.querySelectorAll('#exampleStudy option').length > 0);
+  await p.selectOption('#exampleStudy', 'demo-ab-implementation'); await p.click('#loadExample'); await p.waitForTimeout(300);
+  check(G, 'plan step shown first in the builder', /01 \/ PLAN/.test(await p.textContent('.builder-main .panel:first-child')));
+  await p.fill('[data-plan-field="background"]', 'People cannot find request status.');
+  await p.fill('[data-plan-rq="0"]', 'Can people find a service request?');
+  await p.click('[data-plan-action="add-rq"]');
+  check(G, '"+ Add research question" adds a row and focuses it', await p.evaluate(() => document.activeElement.dataset.planRq === '1'));
+  await p.fill('[data-plan-treatment="design-b"]', 'Dashboard shortcut tiles');
+  await p.selectOption('[data-plan-exp][data-field="controlId"]', 'design-b'); await p.waitForTimeout(150);
+  eq(G, 'choosing a control moves it to design A in every activity', await p.$$eval('[data-variant-index="0"] [data-variant-field="id"]', els => els.map(e => e.value)), ['design-b', 'design-b']);
+  check(G, 'hypothesis sentence follows the roles', /Compared with Design A \(Dashboard shortcuts\), the control, Design B \(Sidebar navigation\)/.test(await p.textContent('.plan-sentence')));
+  await p.selectOption('[data-plan-exp][data-field="controlId"]', 'design-a'); await p.waitForTimeout(150);
+  await p.selectOption('[data-plan-hyp="0"][data-field="direction"]', 'lower');
+  check(G, 'sentence updates as the hypothesis changes', /lower task success rate/.test(await p.textContent('.plan-sentence')));
+  await p.fill('[data-plan-exp][data-field="baseline"]', '60');
+  check(G, 'sample size updates as you type', /from 60% to 75%/.test(await p.textContent('[data-plan-size]')), await p.textContent('[data-plan-size]'));
+  check(G, 'standard analysis plan reflects the plan', /Target sample: \d+ people assigned per design/.test(await p.textContent('[data-plan-standard]')));
+  await p.click('[data-plan-action="copy-analysis"]');
+  check(G, '"Edit a copy" puts the standard text in an editable box', /Newcombe/.test(await p.inputValue('[data-plan-field="analysis"]')));
+  await screenshot(p, 'study-plan-draft');
+  await p.click('[data-plan-action="lock"]');
+  check(G, 'locking shows the lock date and removes the Lock button', /Plan locked/.test(await p.textContent('.plan-status')) && !(await p.$('[data-plan-action="lock"]')));
+  await p.fill('[data-plan-field="background"]', 'Changed after locking'); await p.locator('[data-plan-field="background"]').blur();
+  await p.fill('[data-task-index="0"] [data-task-field="instructions"]', 'New instructions'); await p.locator('[data-task-index="0"] [data-task-field="instructions"]').blur();
+  await p.click('[data-task-index="0"] [data-add-variant]');
+  await p.waitForTimeout(100);
+  const log = await p.$$eval('.plan-changes tbody tr', rows => rows.map(r => r.cells[1].textContent));
+  eq(G, 'changes after locking are logged with where they happened', log, ['Study plan › Background', 'Study activities › Activity 1 › Participant-facing instructions', 'Study activities › Activity 1 › Add design']);
+  check(G, 'log keeps before and after values', await p.$eval('.plan-changes tbody tr', r => r.cells[2].textContent === 'People cannot find request status.' && r.cells[3].textContent === 'Changed after locking'));
+  await p.click('[data-task-index="0"] [data-variant-index="2"] [data-remove-variant]');
+  await p.fill('[data-plan-reason="0"]', 'Clarified wording');
+  const [d] = await Promise.all([p.waitForEvent('download'), p.click('[data-plan-action="docx"]')]);
+  const docPath = await d.path(); const bytes = fs.readFileSync(docPath);
+  eq(G, 'plan downloads as a .docx file', [d.suggestedFilename(), bytes.slice(0, 2).toString()], ['demo-ab-implementation-study-plan.docx', 'PK']);
+  try {
+    const text = require('child_process').execFileSync('python3', ['-c', 'import sys,docx;d=docx.Document(sys.argv[1]);print("\\n".join(p.text for p in d.paragraphs));print("TABLES",len(d.tables))', docPath]).toString();
+    check(G, 'Word document has the plan sections, hypothesis and change log', ['1. Background', 'Changed after locking', '4. Designs and hypotheses', 'H1.', 'lower task success rate', '6. Analysis plan', '8. Change log'].every(t => text.includes(t)), text.slice(0, 400));
+  } catch (err) { if (!/No module named/.test(String(err.stderr))) throw err; }
+  const [wc] = await Promise.all([p.waitForEvent('download'), p.click('#saveWorkingCopy')]);
+  const working = JSON.parse(fs.readFileSync(await wc.path(), 'utf8'));
+  const [pub] = await Promise.all([p.waitForEvent('download'), p.click('#exportStudy')]);
+  const published = JSON.parse(fs.readFileSync(await pub.path(), 'utf8'));
+  check(G, 'working copy keeps the plan; published study file leaves it out', !!working.plan?.locked && working.plan.changes.length === 4 && working.plan.changes[0].reason === 'Clarified wording' && !('plan' in published));
+  // Round trip: import the working copy in a fresh page.
+  const p2 = await ctx.newPage(); await p2.goto(BASE + 'index.html');
+  await p2.waitForFunction(() => document.querySelectorAll('#exampleStudy option').length > 0);
+  await p2.setInputFiles('#fileStudy', await wc.path()); await p2.waitForTimeout(300);
+  check(G, 'importing the working copy restores the locked plan and log', /Plan locked/.test(await p2.textContent('.plan-status')) && await p2.locator('.plan-changes tbody tr').count() === 4);
+  await p2.click('.nav-option[data-tab="results"]'); await p2.selectOption('#resultsStudy', 'demo-ab-implementation'); await p2.waitForTimeout(400);
+  check(G, 'A/B results show the plan and its hypothesis', /Study plan · locked/.test(await p2.textContent('#methodInsights .ab-plan')) && /H1\./.test(await p2.textContent('#methodInsights .ab-plan')));
+  // Phone width: the plan step must not scroll the page sideways.
+  await p.setViewportSize({ width: 360, height: 800 }); await p.waitForTimeout(150);
+  check(G, 'no sideways page scroll at 360px', await p.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1));
+  await done();
+};
+
 scenarios.cardSort = async browser => {
   const G = 'Open card sort (demo-card-sort)';
   const { ctx, done } = await newContext(browser, G);

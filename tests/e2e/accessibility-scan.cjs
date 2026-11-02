@@ -138,6 +138,9 @@ async function researcherScreens(p, vp) {
   await p.waitForFunction(() => /Tracking connected/.test(document.querySelector('.design-check-item.active')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
   await scan(p, 'Builder: "Check designs" dialog', vp);
   await p.keyboard.press('Escape');
+  await p.click('[data-plan-action="copy-analysis"]'); await p.click('[data-plan-action="lock"]');
+  await p.fill('[data-plan-field="background"]', 'Changed after locking'); await p.locator('[data-plan-field="background"]').blur(); await p.waitForTimeout(100);
+  await scan(p, 'Builder: study plan locked, with change log', vp);
   await p.click('.nav-option[data-tab="results"]');
   await p.selectOption('#resultsStudy', 'demo-mixed'); await p.click('#refreshResults');
   await p.waitForFunction(() => /collected event records/.test(document.querySelector('#resultsStatus').textContent));

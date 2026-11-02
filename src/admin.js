@@ -3,6 +3,7 @@ import { plannerText } from './ab-results.js';
 import { qualtricsRecords, classifyExport, eventsFromQualtrics } from './qualtrics-import.js';
 import { METHODS, normalizeMethod, methodOutcomeRows, exportMethodRows, experimentComparisonRows } from './methods.js';
 import { newActivity, methodOptions, methodEditorHTML, parseEditorValue, variantRowError, nextVariant } from './builder-ui.js';
+import { ensurePlan, planHTML, changeLogHTML, applyControl, renamePlanVariant, hypothesisSentence, experimentsOf, sizeText, standardAnalysisPlan, standardHTML, planDocx, validatePlan } from './plan.js';
 import { $, $$, escapeHTML as esc, validateStudy, prototypeURL, download, csv, flattenEvents, separatePreviewSessions, formatDate, formatDuration } from './shared.js';
 import { remoteEnabled, logIn, logOut, getAuth, registerStudy, listOwnedStudies, loadEvents } from './storage.js';
 
@@ -16,7 +17,7 @@ const questionTypes=[['text','Short text'],['textarea','Long text'],['scale5','5
 function toast(message,timeout=4500){const el=by('toast');el.textContent=message;el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),timeout);}
 function switchTab(name){$$('.nav-option').forEach(b=>{const on=b.dataset.tab===name;b.classList.toggle('active',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});$$('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.id!==`tab-${name}`));if(name==='results')refreshResults().catch(err=>toast(err.message));if(name==='setup')renderAuth();}
 function newQuestion(){return {id:`question-${Math.random().toString(36).slice(2,7)}`,type:'textarea',text:'',required:false};}
-function normalizeStudy(item){return {schemaVersion:item.schemaVersion||3,id:item.id || 'new-study',version:item.version||'1.0.0',title:item.title || '',description:item.description||'',prototypeUrl:item.prototypeUrl || '',welcome:item.welcome||'',consent:item.consent||'',...(item.consentMode==='external'?{consentMode:'external'}:{}),preQuestions:item.preQuestions || [],tasks:item.tasks || [],postQuestions:item.postQuestions || []};}
+function normalizeStudy(item){return {schemaVersion:item.schemaVersion||3,id:item.id || 'new-study',version:item.version||'1.0.0',title:item.title || '',description:item.description||'',prototypeUrl:item.prototypeUrl || '',welcome:item.welcome||'',consent:item.consent||'',...(item.consentMode==='external'?{consentMode:'external'}:{}),preQuestions:item.preQuestions || [],tasks:item.tasks || [],postQuestions:item.postQuestions || [],...(item.plan&&typeof item.plan==='object'?{plan:item.plan}:{})};}
 function prepareEditor(){
   const values={studyTitle:study.title,studyId:study.id,studyVersion:study.version,studyURL:study.prototypeUrl,studyDescription:study.description,studyWelcome:study.welcome,studyConsent:study.consent};
   for(const [id,v] of Object.entries(values))by(id).value=v;
@@ -32,6 +33,7 @@ function renderQuestions(stage){
   by(id).innerHTML=study[stage].length?study[stage].map((q,i)=>questionEditorHTML(q,stage,i)).join(''):'<div class="empty-hint">No questions. Add one if needed.</div>';
 }
 function renderTasks(){
+  ensurePlan(study);
   by('taskEditor').innerHTML=study.tasks.map((t,i)=>{
     const method=normalizeMethod(t);
     const isSurvey=method==='survey';
@@ -43,9 +45,11 @@ function renderTasks(){
       <div class="question-editor">${(t.questions||[]).length?t.questions.map((q,qi)=>questionEditorHTML(q,'tasks',qi,i)).join(''):'<div class="empty-hint">No questions yet.</div>'}</div>
     </section>`;
   }).join('');
+  renderPlan();
 }
 
 function updateSummary(){
+ refreshPlanSummary();
  by('summaryTitle').textContent=study.title||'Untitled study';
  by('summaryTasks').textContent=study.tasks.length;
  by('summaryQuestions').textContent=study.preQuestions.length+study.postQuestions.length+study.tasks.reduce((n,t)=>n+(t.questions||[]).length,0);
@@ -65,9 +69,11 @@ function handleEdit(e){
   }
   if(el.matches('[data-variant-field]')){
     const ti=+el.closest('[data-task-index]').dataset.taskIndex,vi=+el.closest('[data-variant-index]').dataset.variantIndex;
-    const v=study.tasks[ti].variants[vi],f=el.dataset.variantField;
+    const task=study.tasks[ti],v=task.variants[vi],f=el.dataset.variantField,oldId=v.id;
     if(f==='revision'&&!el.value.trim())delete v.revision;else v[f]=f==='id'?el.value.trim():el.value;
-    refreshVariantErrors(ti);return;
+    // Follow a rename in the plan only between unique IDs (never while two designs share an ID).
+    if(f==='id'&&!task.variants.some(o=>o!==v&&(o.id===oldId||o.id===v.id)))renamePlanVariant(study,task.experimentId||task.id,oldId,v.id);
+    refreshVariantErrors(ti);if(f==='id'||f==='label')renderPlan();return;
   }
   if(el.matches('[data-task-field]')){
     const ti=+el.closest('[data-task-index]').dataset.taskIndex;const field=el.dataset.taskField;
@@ -75,7 +81,7 @@ function handleEdit(e){
       const old=study.tasks[ti];const next=newActivity(el.value,ti+1);next.id=old.id;next.title=old.title;next.instructions=old.instructions;study.tasks[ti]=next;renderTasks();updateSummary();return;
     }
     if(field==='correctNodeIds'){parseEditorValue(study.tasks[ti],el);return;}
-    study.tasks[ti][field]=el.value;updateSummary();return;
+    study.tasks[ti][field]=el.value;updateSummary();if(['experimentId','successSignal','title'].includes(field))renderPlan();return;
   }
   if(el.matches('[data-question-field]')){
     const div=el.closest('[data-q-stage]');const stage=div.dataset.qStage;const index=+div.dataset.qIndex;const taskIndex=div.dataset.qTask===undefined?null:+div.dataset.qTask;
@@ -157,8 +163,109 @@ function openDesignCheck(ti){
   dlg.addEventListener('close',()=>{clearTimeout(timer);window.removeEventListener('message',onMessage);dlg.remove();by('taskEditor').querySelector(`[data-task-index="${ti}"] [data-check-designs]`)?.focus();});
   dlg.showModal();start(0);
 }
+
+// ---------- Study plan (v0.3.8) ----------
+function renderPlan(){
+  const box=by('planEditor');if(!box||!study)return;
+  // Keep focus on the same control across re-renders (e.g. after changing the control design).
+  const a=document.activeElement,key=a&&box.contains(a)?[...box.querySelectorAll('input,select,textarea,button')].indexOf(a):-1;
+  box.innerHTML=planHTML(study);
+  if(key>=0)box.querySelectorAll('input,select,textarea,button')[key]?.focus();
+}
+// Light refresh after builder edits that change counts shown in the plan.
+function refreshPlanSummary(){
+  const box=by('planEditor');if(!box||!study?.plan)return;
+  const sig=`${study.tasks.length}|${study.preQuestions.length}|${study.postQuestions.length}|${study.tasks.map(t=>(t.questions||[]).length).join(',')}`;
+  if(box.dataset.sig!==sig){box.dataset.sig=sig;if(!box.contains(document.activeElement))renderPlan();}
+}
+function refreshPlanDerived(expId){
+  const box=by('planEditor'),p=study.plan;
+  const std=box.querySelector('[data-plan-standard]');if(std)std.innerHTML=standardHTML(study);
+  for(const exp of experimentsOf(study)){
+    if(expId&&exp.id!==expId)continue;
+    const e=p.experiments[exp.id];
+    const out=box.querySelector(`[data-plan-size="${CSS.escape(exp.id)}"]`);if(out)out.textContent=sizeText(e,exp.variants.length);
+    e.hypotheses.forEach((h,i)=>{const el=box.querySelector(`[data-plan-sentence="${CSS.escape(`${exp.id}:${i}`)}"]`);if(el)el.textContent=hypothesisSentence(exp,e,h);});
+  }
+}
+function handlePlanEdit(e){
+  const el=e.target,p=study.plan;if(!p)return;
+  if((el.tagName==='SELECT'||el.type==='checkbox')&&e.type==='input')return; // handled on change
+  p.edited=true;
+  if(el.dataset.planReason!==undefined){const c=p.changes[+el.dataset.planReason];if(c)c.reason=el.value;return;}
+  if(el.dataset.planField){const [a,b]=el.dataset.planField.split('.');if(b)p[a][b]=el.value;else p[a]=el.value;refreshPlanDerived();return;}
+  if(el.dataset.planRq!==undefined){p.researchQuestions[+el.dataset.planRq]=el.value;return;}
+  const expId=el.dataset.planExp;if(!expId)return;
+  const x=p.experiments[expId];if(!x)return;
+  if(el.dataset.planTreatment){x.treatments[el.dataset.planTreatment]=el.value;return;}
+  if(el.dataset.planSecondary){const k=el.dataset.planSecondary;x.secondary=x.secondary.filter(s=>s!==k);if(el.checked)x.secondary.push(k);refreshPlanDerived(expId);return;}
+  if(el.dataset.planHyp!==undefined){const h=x.hypotheses[+el.dataset.planHyp];if(!h)return;h[el.dataset.field]=el.value;refreshPlanDerived(expId);return;}
+  const f=el.dataset.field;
+  if(f==='controlId'){applyControl(study,expId,el.value);renderTasks();study.tasks.forEach((t,i)=>{if(normalizeMethod(t)==='ab_test')refreshVariantErrors(i);});return;}
+  if(f==='primaryMeasure'){x.primaryMeasure=el.value;renderPlan();return;}
+  if(['baseline','difference','power'].includes(f)){x[f]=Number(el.value);refreshPlanDerived(expId);return;}
+  if(f==='stoppingRule'){x.stoppingRule=el.value;refreshPlanDerived(expId);}
+}
+function planAction(t){
+  const p=study.plan,a=t.dataset.planAction;
+  if(a!=='docx')p.edited=true;
+  if(a==='lock'){p.locked={at:new Date().toISOString()};p.changes=[];renderPlan();by('planEditor').querySelector('.plan-status')?.focus?.();toast('Plan locked. Changes from now on are recorded in the change log.');return;}
+  if(a==='docx'){try{download(`${study.id}-study-plan.docx`,planDocx(study),'application/vnd.openxmlformats-officedocument.wordprocessingml.document');toast('Plan downloaded as a Word document.');}catch(err){toast(`Could not create the document: ${err.message}`);}return;}
+  if(a==='add-rq'){p.researchQuestions.push('');renderPlan();by('planEditor').querySelector(`[data-plan-rq="${p.researchQuestions.length-1}"]`)?.focus();return;}
+  if(a==='remove-rq'){if(p.researchQuestions.length>1)p.researchQuestions.splice(+t.dataset.index,1);renderPlan();return;}
+  if(a==='add-hyp'){const exp=experimentsOf(study).find(x=>x.id===t.dataset.exp),x=p.experiments[t.dataset.exp];const tr=exp.variants.find(v=>v.id!==x.controlId);x.hypotheses.push({id:`h${x.hypotheses.length+1}`,treatmentId:tr?.id||'',direction:'higher',measure:x.primaryMeasure,rationale:''});renderPlan();return;}
+  if(a==='remove-hyp'){p.experiments[t.dataset.exp].hypotheses.splice(+t.dataset.index,1);renderPlan();return;}
+  if(a==='copy-analysis'){p.analysis=standardAnalysisPlan(study);renderPlan();by('planEditor').querySelector('[data-plan-field="analysis"]')?.focus();return;}
+  if(a==='clear-analysis'){p.analysis='';renderPlan();}
+}
+// ---- Change log once the plan is locked: every edit in the builder is recorded ----
+const before=new WeakMap();
+const logValue=el=>{const v=el.type==='checkbox'?(el.checked?'Yes':'No'):el.tagName==='SELECT'?(el.selectedOptions[0]?.textContent||el.value):el.value;return String(v).length>300?String(v).slice(0,297)+'…':String(v);};
+function labelText(el){
+  let lab=el.closest('label');
+  if(el.id&&(!lab||lab.contains(el)&&lab.classList.contains('sr-only')))lab=document.querySelector(`label[for="${CSS.escape(el.id)}"]`)||lab;
+  if(!lab)return el.getAttribute('aria-label')||el.name||'Field';
+  const c=lab.cloneNode(true);c.querySelectorAll('input,select,textarea,small').forEach(n=>n.remove());
+  return c.textContent.replace(/\s+/g,' ').trim()||'Field';
+}
+function describe(el){
+  const parts=[el.closest('.panel')?.querySelector('h2')?.textContent.trim()];
+  const task=el.closest('[data-task-index]');if(task)parts.push(`Activity ${+task.dataset.taskIndex+1}`);
+  const q=el.closest('[data-q-index]');if(q)parts.push(`Question ${+q.dataset.qIndex+1}`);
+  const v=el.closest('[data-variant-index]');if(v)parts.push(`Design ${String.fromCharCode(65+ +v.dataset.variantIndex)}`);
+  const exp=el.closest('[data-plan-exp-block]');if(exp)parts.push(`Experiment ${exp.dataset.planExpBlock}`);
+  const fs=el.closest('fieldset');if(fs)parts.push(fs.querySelector('legend')?.childNodes[0]?.textContent.trim());
+  parts.push(labelText(el));
+  return parts.filter(Boolean).join(' › ');
+}
+function logChange(what,b,a){
+  const p=study?.plan;if(!p?.locked)return;
+  p.changes.push({at:new Date().toISOString(),what,before:b,after:a,reason:''});
+  // Refresh just the change log after the edit has been applied.
+  setTimeout(()=>{const box=by('planEditor')?.querySelector('[data-plan-changes]');if(box)box.innerHTML=changeLogHTML(study.plan);labelScrollRegions(by('planEditor'));},0);
+}
+function wireChangeLog(){
+  const root=by('tab-builder');
+  root.addEventListener('focusin',e=>{const el=e.target;if(el.matches('input,select,textarea'))before.set(el,logValue(el));});
+  root.addEventListener('change',e=>{
+    const el=e.target;if(!study?.plan?.locked||!el.matches('input,select,textarea')||el.matches('[data-no-log],#fileStudy,#exampleStudy,#newMethod'))return;
+    const b=before.has(el)?before.get(el):(el.type==='checkbox'?(el.checked?'No':'Yes'):''),a=logValue(el);
+    if(b!==a){logChange(describe(el),b,a);before.set(el,a);}
+  },true);
+}
+const MUTATING=['addQ','addTaskQ','removeQ','addVariant','removeVariant','removeTask'];
+function logButton(t){
+  if(!study?.plan?.locked)return;
+  const plan=['add-rq','remove-rq','add-hyp','remove-hyp','copy-analysis','clear-analysis'].includes(t.dataset.planAction);
+  if(!plan&&!MUTATING.some(k=>t.dataset[k]!==undefined))return;
+  const ctx=describe(t).split(' › ').slice(0,-1);
+  logChange([...ctx,(t.getAttribute('aria-label')||t.textContent).replace(/^\+\s*/,'').trim()].join(' › '),'','');
+}
+
 function handleClick(e){
   const t=e.target.closest('button');if(!t)return;
+  logButton(t);
+  if(t.dataset.planAction){planAction(t);return;}
   if(t.dataset.addQ){study[t.dataset.addQ].push(newQuestion());renderQuestions(t.dataset.addQ);updateSummary();return;}
   if(t.dataset.addTaskQ){const idx=+t.closest('[data-task-index]').dataset.taskIndex;study.tasks[idx].questions ||= [];study.tasks[idx].questions.push(newQuestion());renderTasks();updateSummary();return;}
   if(t.dataset.removeQ){const d=t.closest('[data-q-stage]');const stage=d.dataset.qStage;const ti=d.dataset.qTask===undefined?null:+d.dataset.qTask;questionList(stage,ti).splice(+d.dataset.qIndex,1);if(stage==='tasks')renderTasks();else renderQuestions(stage);updateSummary();return;}
@@ -170,7 +277,7 @@ function handleClick(e){
 function validatedCurrent(){
   const withError=study.tasks.findIndex(t=>t._editorErrors&&Object.keys(t._editorErrors).length);
   if(withError>=0){const t=study.tasks[withError];throw new Error(`Activity ${withError+1}${t.title?` (${t.title})`:''}: ${Object.values(t._editorErrors)[0]}`);}
-  validateStudy(study);
+  validateStudy(study);validatePlan(study.plan,study);
   const clean=JSON.parse(JSON.stringify(study));
   clean.tasks.forEach(t=>{delete t._editorErrors;delete t._variantErrors;});
   return clean;
@@ -325,15 +432,17 @@ function wireActions(){
   by('preQuestionEditor').addEventListener('input',handleEdit);by('preQuestionEditor').addEventListener('change',handleEdit);
   by('postQuestionEditor').addEventListener('input',handleEdit);by('postQuestionEditor').addEventListener('change',handleEdit);
   by('taskEditor').addEventListener('input',handleEdit);by('taskEditor').addEventListener('change',handleEdit);
+  by('planEditor').addEventListener('input',handlePlanEdit);by('planEditor').addEventListener('change',handlePlanEdit);wireChangeLog();
   by('tab-builder').addEventListener('click',handleClick);
-  by('addTask').onclick=()=>{const i=study.tasks.length+1;study.tasks.push(newActivity(by('newMethod').value,i));renderTasks();updateSummary();};
+  by('addTask').onclick=()=>{if(study?.plan?.locked)logChange(`Study activities › Add activity (${by('newMethod').selectedOptions[0].textContent})`,'','');const i=study.tasks.length+1;study.tasks.push(newActivity(by('newMethod').value,i));renderTasks();updateSummary();};
   by('newStudy').onclick=()=>{study=normalizeStudy({id:'my-research-study',title:'My research study',tasks:[newActivity('card_sort',1)],welcome:'Please read the instructions for each activity.',consent:'I agree to participate in this study and to the collection described in the introduction.'});studyCache.set(study.id,study);prepareEditor();setStudySelect();toast('New draft created. Update the ID before publishing to avoid name conflicts.');};
   by('loadExample').onclick=async()=>{try{const item=studyIndex.find(x=>x.id===by('exampleStudy').value);if(!item)return;study=await loadStudy(item);prepareEditor();setStudySelect();toast(`Loaded ${study.title}.`);}catch(err){toast(err.message);}};
   by('importStudy').onclick=()=>by('fileStudy').click();
-  by('fileStudy').onchange=async e=>{try{const file=e.target.files?.[0];if(!file)return;const parsed=normalizeStudy(JSON.parse(await file.text()));validateStudy(parsed);study=parsed;studyCache.set(study.id,study);prepareEditor();setStudySelect();toast('Imported study. Export to save changes.');}catch(err){toast(`Import error: ${err.message}`);}e.target.value='';};
-  by('exportStudy').onclick=()=>{try{download(`${study.id}.json`,JSON.stringify(validatedCurrent(),null,2),'application/json');toast('Study configuration exported. Add the JSON file to GitHub.');}catch(err){toast(err.message);}};
+  by('fileStudy').onchange=async e=>{try{const file=e.target.files?.[0];if(!file)return;const parsed=normalizeStudy(JSON.parse(await file.text()));validateStudy(parsed);validatePlan(parsed.plan,parsed);study=parsed;studyCache.set(study.id,study);prepareEditor();setStudySelect();toast('Imported study. Export to save changes.');}catch(err){toast(`Import error: ${err.message}`);}e.target.value='';};
+  by('exportStudy').onclick=()=>{try{const clean=validatedCurrent();delete clean.plan;download(`${study.id}.json`,JSON.stringify(clean,null,2),'application/json');toast('Study file exported for publishing (plan left out). Add it to GitHub.');}catch(err){toast(err.message);}};
+  by('saveWorkingCopy').onclick=()=>{try{download(`${study.id}.working-copy.json`,JSON.stringify(validatedCurrent(),null,2),'application/json');toast('Working copy saved, including the plan. Use Import JSON to continue editing it later.');}catch(err){toast(err.message);}};
   by('previewStudy').onclick=()=>{try{localStorage.setItem('utp-preview-study',JSON.stringify(validatedCurrent()));window.open('study.html?preview=1','_blank','noopener');}catch(err){toast(err.message);}};
-  by('registerStudy').onclick=async()=>{try{const config=validatedCurrent();await registerStudy(config);toast(`Published ${config.id} for response collection. Ensure its JSON is also deployed to GitHub Pages.`);}catch(err){toast(`Publish failed: ${err.message}`);}};
+  by('registerStudy').onclick=async()=>{try{const config=validatedCurrent();delete config.plan;await registerStudy(config);toast(`Published ${config.id} for response collection. Ensure its JSON is also deployed to GitHub Pages.`);}catch(err){toast(`Publish failed: ${err.message}`);}};
   by('importQualtrics').onclick=()=>by('qualtricsFiles').click();
   by('qualtricsFiles').onchange=async e=>{
     const files=[...(e.target.files||[])];e.target.value='';if(!files.length)return;

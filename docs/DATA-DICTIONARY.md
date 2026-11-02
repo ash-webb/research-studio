@@ -45,6 +45,12 @@
 - Imported Qualtrics sessions (v0.3.6–0.3.7) carry `imported: "qualtrics"` on every event and `survey1_provided` on `session_started`: `true` only when Survey 1 was imported and every Survey 2 row could be matched to it. When `false`, drop-out is reported as unknown. Survey 1 people with no Survey 2 row get session IDs `qualtrics-<ResponseId>`.
 - `session_started.payload.preview` (v0.3.1): `true` for a researcher “Preview locally” run. Such sessions are excluded from the dashboard and all exports unless “Include my ‘Preview locally’ runs” is ticked. Sessions recorded before v0.3.1 carry no flag and are always counted.
 
+## Study plan (v0.3.8; working copy only)
+Saved as `plan` in the working-copy JSON; removed from the published study file and from database registration.
+- `background`, `researchQuestions[]`, `participants {audience, recruitment, devices: any|mostly_phone|mostly_desktop|phone|desktop, exclusions}`, `analysis` (empty = standard plan), `decisions`.
+- `experiments.<experiment_id>`: `controlId` (always the first design in every activity of the experiment), `treatments {<variant_id>: text}`, `hypotheses[] {id, treatmentId, direction: higher|lower|different, measure: success|self|time, rationale}`, `primaryMeasure: success|self`, `secondary[]` (measured, self, time, success_time, clicks, dropout, followup), `baseline` (%), `difference` (points), `power`, `stoppingRule`.
+- `locked {at}` (ISO time from the researcher's computer), `changes[] {at, what, before, after, reason}`, `edited` (true once the researcher has changed the plan; untouched default plans are not shown in results).
+
 ## Interruptions (v0.3.3)
 - `task_ended.payload.interruptions`: number of reloads during that activity (omitted when none; 0 in CSVs).
 - `task_ended.payload.interrupted_seconds`: total time away during those reloads.
