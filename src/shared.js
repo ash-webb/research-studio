@@ -97,10 +97,10 @@ export function flattenEvents(events) {
   for (const e of events.slice().sort((a,b)=>String(a.created_at).localeCompare(String(b.created_at)))) {
     if (!sessions.has(e.session_id)) sessions.set(e.session_id, {session_id:e.session_id,study_id:e.study_id,started_at:null,completed_at:null,resumed_count:0});
     const s = sessions.get(e.session_id), p = e.payload || {};
-    if (e.kind === 'session_started') {s.started_at = e.created_at;s.study_version=p.study_version||null;s.preview=p.preview===true;}
+    if (e.kind === 'session_started') {s.started_at = e.created_at;s.study_version=p.study_version||null;s.preview=p.preview===true;s.external_id=p.external_id||'';}
     if (e.kind === 'session_completed') s.completed_at = e.created_at;
     if (e.kind === 'session_resumed') s.resumed_count++;
-    if (e.kind === 'task_started') starts.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id,at:e.created_at,method:p.method||'prototype',experiment_id:p.experiment_id||null,variant_id:p.variant_id||null,variant_revision:p.variant_revision||null});
+    if (e.kind === 'task_started') starts.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id,at:e.created_at,method:p.method||'prototype',experiment_id:p.experiment_id||null,variant_id:p.variant_id||null,variant_revision:p.variant_revision||null,assignment:p.assignment||null});
     if (e.kind === 'task_ended') tasks.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id,at:e.created_at,method:p.method||'prototype',result:p.result||{},experiment_id:p.experiment_id||p.result?.experiment_id||null,variant_id:p.variant_id||p.result?.variant_id||null,variant_revision:p.variant_revision||p.result?.variant_revision||null,self_report:p.self_report ?? '',observed_success:typeof p.observed_success === 'boolean' ? p.observed_success : null,tracker_connected:!!p.tracker_connected,time_seconds:p.time_seconds ?? 0,click_count:p.click_count ?? 0,interruptions:p.interruptions ?? 0,interrupted_seconds:p.interrupted_seconds ?? 0});
     if (e.kind === 'method_event') methodEvents.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id,at:e.created_at,action:p.action||'',method:p.method||'',detail:p.detail||{}});
     if (e.kind === 'answers') for (const [question_id, response] of Object.entries(p.answers || {})) answers.push({session_id:e.session_id,study_id:e.study_id,task_id:e.task_id ?? '',stage:p.stage ?? '',question_id,response,at:e.created_at});
@@ -109,6 +109,7 @@ export function flattenEvents(events) {
   const assignments=new Map(starts.filter(x=>x.variant_id).map(x=>[`${x.session_id}|${x.task_id}`,x]));
   for(const task of tasks){
     task.study_version=sessions.get(task.session_id)?.study_version||null;
+    task.external_id=sessions.get(task.session_id)?.external_id||'';
     const start=assignments.get(`${task.session_id}|${task.task_id}`);
     if(start){task.variant_id ||= start.variant_id;task.experiment_id ||= start.experiment_id;task.variant_revision ||= start.variant_revision;}
   }

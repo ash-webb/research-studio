@@ -1,3 +1,21 @@
+# v0.3.6 release notes — A/B testing with Qualtrics (November 1, 2026)
+
+## Added
+- **Design assignment from the study link.** `variant=design-b` (or `variant.<experiment-id>=…`) sets the design, so a Qualtrics randomizer with *Evenly Present Elements* can assign designs in equal groups and record who saw what. Without it, the built-in random assignment is used; an unrecognised design ID falls back to it and is flagged in the results. The assignment is kept through refreshes.
+- **Participant ID from the link** (`pid=`, e.g. Qualtrics `${e://Field/ResponseID}`), stored with the session and in the Task and A/B exposures CSVs.
+- **Return to the survey.** `return=` (https, allow-listed hosts only, default `qualtrics.com`; see `returnUrlHosts` in `settings.js`) adds a **Return to the survey** button that carries `rs_pid`, `rs_session`, `rs_status`, the design and each A/B task's success signal, self-report, time and clicks. Qualtrics stores these as embedded data with no custom JavaScript.
+- **Consent collected in the survey:** a study setting that replaces the consent checkbox with a short **Begin** screen (consent recorded as `external`).
+- **Design rows** in the builder replace the `id | label | URL | revision` text box: one row per design, add/remove (2–6), inline plain-language checks; preview/export errors now name the problem.
+- **Check designs:** a pre-launch check that loads each design, confirms tracking connects, and confirms the success signal arrives when you complete the task inside it.
+- A/B results say how designs were assigned (study link vs built-in) and warn about unrecognised link values.
+- `docs/QUALTRICS-AB-SETUP.md`: step-by-step two-survey setup, field list, test checklist and analysis notes.
+
+## Validation
+- `npm test` 62/62 · `npm run test:e2e` all pass (new: link assignment and return link, builder rows and Check designs) · `npm run test:resume` 71/71 · `npm run test:keyboard` 43/43 · `npm run test:a11y` 0 violations across 93 screen states.
+- Not yet tested against a real Qualtrics survey.
+
+---
+
 # v0.3.5 release notes — first-click zoom (November 1, 2026)
 
 From hands-on testing on an Android phone: at phone width the first-click screenshot was too small to read, so the tap was effectively blind.

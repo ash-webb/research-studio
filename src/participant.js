@@ -1,5 +1,5 @@
 import { $, escapeHTML as esc, validateStudy, prototypeURL, questionFields, collectAnswers, uuid, download } from './shared.js';
-import { normalizeMethod, scoreTree, scoreFirstClick, randomizeVariants, secureURL, assignExperimentVariant } from './methods.js';
+import { normalizeMethod, scoreTree, scoreFirstClick, randomizeVariants, secureURL, resolveAssignments, variantForTask, cleanExternalId, safeReturnUrl, buildReturnUrl } from './methods.js';
 import { StudyWriter } from './storage.js';
 
 let study, writer, sessionId, activeTask=null, taskIndex=0;
@@ -10,9 +10,12 @@ let stage='welcome', prototypeOrigin='', timer=null, lastPage='', activeVariant=
 const RESUME_MAX_AGE_MS=24*60*60*1000;
 let resumeKey='', studyHash='', resumeStage='welcome', activityState={}, formDraft=null;
 let interruptions=0, interruptedMs=0, resumedIntoActivity=false;
+// A/B design per experiment for this session (from the link, e.g. a Qualtrics randomizer, or built in).
+let assignments={}, abResults={};
 const alertBox=$('#participantAlert');
 const query=new URLSearchParams(location.search);
 const preview=query.get('preview')==='1';
+const returnUrl=safeReturnUrl(query.get('return'),(window.UTP_SETTINGS||{}).returnUrlHosts||['qualtrics.com']);
 const $main=()=>$('#participantMain');
 
 function alertMessage(msg){alertBox.textContent=msg;alertBox.classList.remove('hidden');setTimeout(()=>alertBox.classList.add('hidden'),6500);}
@@ -50,7 +53,7 @@ function persist(stageName=resumeStage,index=taskIndex){
   if(!sessionId||!resumeKey)return;
   resumeStage=stageName;
   const cp={v:1,studyId:study.id,hash:studyHash,sessionId,stage:stageName,taskIndex:index,taskStartedAt,
-    interruptions,interruptedMs,activity:activityState,draft:formDraft,savedAt:Date.now()};
+    interruptions,interruptedMs,activity:activityState,draft:formDraft,assignments,abResults,savedAt:Date.now()};
   try{sessionStorage.setItem(resumeKey,JSON.stringify(cp));}catch{}
 }
 function saveActivity(state){activityState=state;persist('activity');}
@@ -72,6 +75,8 @@ async function resume(cp){
     progress(0,'Open in another tab');return;
   }
   sessionId=cp.sessionId;taskIndex=cp.taskIndex||0;writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview);
+  assignments=cp.assignments&&typeof cp.assignments==='object'?cp.assignments:resolveAssignments(study,sessionId,query);
+  abResults=cp.abResults&&typeof cp.abResults==='object'?cp.abResults:{};
   if(cp.stage==='complete'){stage='complete';showCompleted(true);return;}
   const gap=Math.max(0,Date.now()-(cp.savedAt||Date.now()));
   const task=study.tasks[taskIndex];
@@ -82,7 +87,7 @@ async function resume(cp){
   switch(cp.stage){
     case 'pre':showPre();break;
     case 'start':startActivity();break;
-    case 'followup':activeTask=task;activeVariant=normalizeMethod(task)==='ab_test'?assignExperimentVariant(sessionId,study.id,task):null;showFollowup();break;
+    case 'followup':activeTask=task;activeVariant=normalizeMethod(task)==='ab_test'?variantForTask(task,assignments):null;showFollowup();break;
     case 'post':showPost();break;
     case 'finish':finishStudy();break;
     case 'activity':case 'reflection':resumeActivity(cp,gap);break;
@@ -91,7 +96,7 @@ async function resume(cp){
 }
 function resumeActivity(cp,gap){
   activeTask=study.tasks[taskIndex];
-  activeVariant=normalizeMethod(activeTask)==='ab_test'?assignExperimentVariant(sessionId,study.id,activeTask):null;
+  activeVariant=normalizeMethod(activeTask)==='ab_test'?variantForTask(activeTask,assignments):null;
   stage='activity';taskStartedAt=cp.taskStartedAt||Date.now();taskInteractions=[];lastPage='';
   interruptions=(cp.interruptions||0)+1;interruptedMs=(cp.interruptedMs||0)+gap;resumedIntoActivity=true;
   activityState=cp.activity||{};
@@ -159,11 +164,13 @@ async function init(){
 }
 function welcome(){
   stage='welcome';
-  render(`<section class="welcome-card"><span class="eyebrow accent">UNMODERATED RESEARCH STUDY</span><h1>${esc(study.title)}</h1><p>${esc(study.welcome||study.description||'')}</p><div class="notice"><strong>What this study may collect</strong><br>Task timing, navigation choices, random design assignment for implementation comparisons, card groupings and names, first-click locations, preferences, and answers you explicitly submit. An instrumented prototype may also record click locations and navigation. No screen recording, passwords, or typed prototype form values are collected by the tracker. Please do not enter sensitive personal information.</div><label class="consent"><input id="consentCheck" type="checkbox"><span>${esc(study.consent||'I agree to participate and to the data collection described above.')}</span></label><button id="startStudy" class="btn btn-primary" disabled>Agree and begin study →</button><p class="small muted" style="margin-top:18px">Participation is voluntary. You can close the page at any point.</p></section>`,null);
-  $('#consentCheck').onchange=e=>$('#startStudy').disabled=!e.target.checked;
+  render(`<section class="welcome-card"><span class="eyebrow accent">UNMODERATED RESEARCH STUDY</span><h1>${esc(study.title)}</h1><p>${esc(study.welcome||study.description||'')}</p><div class="notice"><strong>What this study may collect</strong><br>Task timing, navigation choices, random design assignment for implementation comparisons, card groupings and names, first-click locations, preferences, and answers you explicitly submit. An instrumented prototype may also record click locations and navigation. No screen recording, passwords, or typed prototype form values are collected by the tracker. Please do not enter sensitive personal information.</div>${study.consentMode==='external'?'<p class="notice">You agreed to take part in the survey before this activity.</p><button id="startStudy" class="btn btn-primary">Begin →</button>':`<label class="consent"><input id="consentCheck" type="checkbox"><span>${esc(study.consent||'I agree to participate and to the data collection described above.')}</span></label><button id="startStudy" class="btn btn-primary" disabled>Agree and begin study →</button>`}<p class="small muted" style="margin-top:18px">Participation is voluntary. You can close the page at any point.</p></section>`,null);
+  if($('#consentCheck'))$('#consentCheck').onchange=e=>$('#startStudy').disabled=!e.target.checked;
   $('#startStudy').onclick=()=>{
     sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview);
-    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,consent:true,...(preview?{preview:true}:{})});
+    assignments=resolveAssignments(study,sessionId,query);
+    const externalId=cleanExternalId(query.get('pid'));
+    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,consent:study.consentMode==='external'?'external':true,...(preview?{preview:true}:{}),...(externalId?{external_id:externalId}:{}),...(Object.keys(assignments).length?{assignments}:{}),...(returnUrl?{return_host:returnUrl.hostname}:{})});
     if(study.preQuestions?.length)showPre();else{persist('start',0);startActivity();}
   };
 }
@@ -189,9 +196,9 @@ function startActivity(){
   if(taskIndex>=study.tasks.length){showPost();return;}
   stage='activity';activeTask=study.tasks[taskIndex];activeVariant=null;taskStartedAt=Date.now();clickCount=0;taskInteractions=[];trackerConnected=false;observedSuccess=false;lastPage='';
   activityState={};interruptions=0;interruptedMs=0;resumedIntoActivity=false;formDraft=null;
-  if(normalizeMethod(activeTask)==='ab_test')activeVariant=assignExperimentVariant(sessionId,study.id,activeTask);
+  if(normalizeMethod(activeTask)==='ab_test')activeVariant=variantForTask(activeTask,assignments);
   progress(.12+taskIndex/study.tasks.length*.73,`Activity ${taskIndex+1} of ${study.tasks.length}`);
-  writer.add('task_started',activeTask.id,{method:normalizeMethod(activeTask),order:taskIndex+1,...(activeVariant?{experiment_id:activeTask.experimentId||activeTask.id,variant_id:activeVariant.id,variant_revision:activeVariant.revision||null,assignment:'stable-hash-equal'}:{})});
+  writer.add('task_started',activeTask.id,{method:normalizeMethod(activeTask),order:taskIndex+1,...(activeVariant?{experiment_id:activeTask.experimentId||activeTask.id,variant_id:activeVariant.id,variant_revision:activeVariant.revision||null,assignment:assignments[activeTask.experimentId||activeTask.id]?.source||'stable-hash-equal'}:{})});
   persist('activity');
   clearInterval(timer);
   launchMethod();
@@ -208,6 +215,7 @@ async function completeActivity(result={}, options={}){
     // Reloads during the activity: time_seconds stays wall-clock; interrupted_seconds is the time away.
     ...(interruptions?{interruptions,interrupted_seconds:Math.round(interruptedMs/1000)}:{})
   });
+  if(normalizeMethod(activeTask)==='ab_test')abResults[activeTask.id]={variant_id:activeVariant?.id||null,success_signal_status:result.success_signal_status||null,self_report:options.selfReport??null,time_seconds:elapsed(),click_count:clickCount};
   const followup=normalizeMethod(activeTask)!=='survey' && activeTask.questions?.length;
   activityState={};formDraft=null;
   if(followup)persist('followup');else persist('start',taskIndex+1);
@@ -234,7 +242,7 @@ async function finishStudy(){
 // already: true when the participant reloads after finishing; nothing new is recorded.
 async function showCompleted(already){
   stage='complete';progress(1,'Study complete');const ok=await writer.flush();
-  render(`<section class="done-card"><span class="eyebrow accent">STUDY COMPLETE</span><h1>${already?'You have already completed this study.':'Thank you for participating.'}</h1><p>${already?'Your earlier responses are kept. There is nothing more to do; you can close this tab.':'Your contributions to this research session have been recorded.'}</p><div id="finalSaveNotice" class="notice ${ok?'':'warning'}">${writer.isSaved?(writer.remote?'All responses have synced to the research database.':'This is a local demonstration. Your responses were saved only in this browser and were not sent to a researcher.'):'Some responses could not sync. You can retry or download a copy of this session.'}</div><div class="actions-row">${cardButton('Download a copy of this session','responseCopy','outline')}${writer.isSaved?'':cardButton('Retry sync','retrySave')}${already&&!writer.remote?cardButton('Start a new session','newSession','outline'):''}</div>${already&&!writer.remote?'<p class="small muted">“Start a new session” is only offered in local demo and preview mode, for piloting.</p>':''}</section>`);
+  render(`<section class="done-card"><span class="eyebrow accent">STUDY COMPLETE</span><h1>${already?'You have already completed this study.':'Thank you for participating.'}</h1><p>${already?'Your earlier responses are kept. There is nothing more to do; you can close this tab.':'Your contributions to this research session have been recorded.'}</p><div id="finalSaveNotice" class="notice ${ok?'':'warning'}">${writer.isSaved?(writer.remote?'All responses have synced to the research database.':'This is a local demonstration. Your responses were saved only in this browser and were not sent to a researcher.'):'Some responses could not sync. You can retry or download a copy of this session.'}</div>${returnUrl?`<div class="return-to-survey"><p><strong>One more step:</strong> return to the survey to finish. Your design and task results go back with you; nothing that identifies you is included.</p><a class="btn btn-primary" id="returnToSurvey" href="${esc(buildReturnUrl(returnUrl,{sessionId,status:'complete',assignments,abResults,tasks:study.tasks,externalId:cleanExternalId(query.get('pid'))}))}">Return to the survey →</a></div>`:''}<div class="actions-row">${cardButton('Download a copy of this session','responseCopy','outline')}${writer.isSaved?'':cardButton('Retry sync','retrySave')}${already&&!writer.remote?cardButton('Start a new session','newSession','outline'):''}</div>${already&&!writer.remote?'<p class="small muted">“Start a new session” is only offered in local demo and preview mode, for piloting.</p>':''}</section>`);
   if($('#newSession'))$('#newSession').onclick=()=>{clearCheckpoint();location.reload();};
   $('#responseCopy').onclick=()=>download(`${study.id}-session-${sessionId}.json`,JSON.stringify(sessionHistory(),null,2),'application/json');
   if($('#retrySave'))$('#retrySave').onclick=async()=>{const synced=await writer.flush();if(synced)$('#retrySave').classList.add('hidden');$('#finalSaveNotice')?.replaceChildren(document.createTextNode(synced?'Responses synced.':'Sync still unavailable.'));};

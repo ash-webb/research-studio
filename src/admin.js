@@ -1,6 +1,6 @@
 import { renderAnalyses } from './results-ui.js';
 import { METHODS, normalizeMethod, methodOutcomeRows, exportMethodRows, experimentComparisonRows } from './methods.js';
-import { newActivity, methodOptions, methodEditorHTML, parseEditorValue } from './builder-ui.js';
+import { newActivity, methodOptions, methodEditorHTML, parseEditorValue, variantRowError, nextVariant } from './builder-ui.js';
 import { $, $$, escapeHTML as esc, validateStudy, prototypeURL, download, csv, flattenEvents, separatePreviewSessions, formatDate, formatDuration } from './shared.js';
 import { remoteEnabled, logIn, logOut, getAuth, registerStudy, listOwnedStudies, loadEvents } from './storage.js';
 
@@ -12,10 +12,11 @@ const questionTypes=[['text','Short text'],['textarea','Long text'],['scale5','5
 function toast(message,timeout=4500){const el=by('toast');el.textContent=message;el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),timeout);}
 function switchTab(name){$$('.nav-option').forEach(b=>{const on=b.dataset.tab===name;b.classList.toggle('active',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});$$('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.id!==`tab-${name}`));if(name==='results')refreshResults().catch(err=>toast(err.message));if(name==='setup')renderAuth();}
 function newQuestion(){return {id:`question-${Math.random().toString(36).slice(2,7)}`,type:'textarea',text:'',required:false};}
-function normalizeStudy(item){return {schemaVersion:item.schemaVersion||3,id:item.id || 'new-study',version:item.version||'1.0.0',title:item.title || '',description:item.description||'',prototypeUrl:item.prototypeUrl || '',welcome:item.welcome||'',consent:item.consent||'',preQuestions:item.preQuestions || [],tasks:item.tasks || [],postQuestions:item.postQuestions || []};}
+function normalizeStudy(item){return {schemaVersion:item.schemaVersion||3,id:item.id || 'new-study',version:item.version||'1.0.0',title:item.title || '',description:item.description||'',prototypeUrl:item.prototypeUrl || '',welcome:item.welcome||'',consent:item.consent||'',...(item.consentMode==='external'?{consentMode:'external'}:{}),preQuestions:item.preQuestions || [],tasks:item.tasks || [],postQuestions:item.postQuestions || []};}
 function prepareEditor(){
   const values={studyTitle:study.title,studyId:study.id,studyVersion:study.version,studyURL:study.prototypeUrl,studyDescription:study.description,studyWelcome:study.welcome,studyConsent:study.consent};
   for(const [id,v] of Object.entries(values))by(id).value=v;
+  by('studyExternalConsent').checked=study.consentMode==='external';
   renderQuestions('preQuestions');renderQuestions('postQuestions');renderTasks();updateSummary();
 }
 function questionEditorHTML(q,stage,i,taskIndex=null){
@@ -50,12 +51,19 @@ function updateSummary(){
 function questionList(stage,taskIndex){return stage==='tasks'?study.tasks[taskIndex].questions:study[stage];}
 function handleEdit(e){
   const el=e.target, idToField={studyTitle:'title',studyId:'id',studyVersion:'version',studyURL:'prototypeUrl',studyDescription:'description',studyWelcome:'welcome',studyConsent:'consent'};
+  if(el.id==='studyExternalConsent'){if(el.checked)study.consentMode='external';else delete study.consentMode;return;}
   if(idToField[el.id]){study[idToField[el.id]]=el.value;updateSummary();return;}
   if(el.matches('[data-task-lines],[data-task-tree]')){
     const ti=+el.closest('[data-task-index]').dataset.taskIndex;const t=study.tasks[ti];
     try {parseEditorValue(t,el);t._editorErrors={};el.setCustomValidity('');}
     catch(err){t._editorErrors||={};t._editorErrors[el.dataset.taskLines||el.dataset.taskTree]=err.message;el.setCustomValidity(err.message);}
     return;
+  }
+  if(el.matches('[data-variant-field]')){
+    const ti=+el.closest('[data-task-index]').dataset.taskIndex,vi=+el.closest('[data-variant-index]').dataset.variantIndex;
+    const v=study.tasks[ti].variants[vi],f=el.dataset.variantField;
+    if(f==='revision'&&!el.value.trim())delete v.revision;else v[f]=f==='id'?el.value.trim():el.value;
+    refreshVariantErrors(ti);return;
   }
   if(el.matches('[data-task-field]')){
     const ti=+el.closest('[data-task-index]').dataset.taskIndex;const field=el.dataset.taskField;
@@ -75,18 +83,92 @@ function handleEdit(e){
     updateSummary();
   }
 }
+// Inline validation for A/B design rows; blocks preview/export until fixed.
+function refreshVariantErrors(ti){
+  const task=study.tasks[ti];if(!task?.variants)return;
+  const errors=task.variants.map(v=>variantRowError(v,task.variants,location.href));
+  task._variantErrors=errors;
+  task._editorErrors||={};
+  const first=errors.findIndex(Boolean);
+  if(first>=0)task._editorErrors.abVariants=`Design ${String.fromCharCode(65+first)}: ${errors[first]}`;else delete task._editorErrors.abVariants;
+  by('taskEditor').querySelectorAll(`[data-task-index="${ti}"] [data-variant-index]`).forEach(row=>{
+    const msg=errors[+row.dataset.variantIndex]||'',p=row.querySelector('.variant-error');
+    if(p){p.textContent=msg;p.hidden=!msg;}
+    row.classList.toggle('has-error',!!msg);
+  });
+}
+// ---- Pre-launch check: does each design load the tracker and send the success signal? ----
+function openDesignCheck(ti){
+  const task=study.tasks[ti];
+  const bad=task.variants.map(v=>variantRowError(v,task.variants,location.href)).findIndex(Boolean);
+  if(bad>=0){toast(`Fix design ${String.fromCharCode(65+bad)} before checking: ${variantRowError(task.variants[bad],task.variants,location.href)}`,7000);return;}
+  const state=task.variants.map(()=>({tracker:'not_checked',signal:task.successSignal?'not_checked':'none'}));
+  let current=0,timer=null,frame=null,origin='';
+  const dlg=document.createElement('dialog');dlg.className='design-check';dlg.setAttribute('aria-labelledby','designCheckTitle');
+  document.body.appendChild(dlg);
+  const icon=s=>({ok:'✓',fail:'✗',waiting:'…',not_checked:'○',none:'–'}[s]);
+  const words=(v,st)=>{
+    const tr={ok:'Tracking connected',fail:'Tracking script not detected',waiting:'Checking tracking…',not_checked:'Not checked yet'}[st.tracker];
+    const sg={ok:`Success signal “${task.successSignal}” received`,fail:'Success signal not received',waiting:'Waiting for the success signal: complete the task in the design below',not_checked:'Success signal not checked yet',none:'No success signal set: success will not be measured'}[st.signal];
+    return [tr,sg];
+  };
+  function summary(){const ready=state.filter(s=>s.tracker==='ok'&&(s.signal==='ok'||s.signal==='none')).length;return `${ready} of ${task.variants.length} designs ready`;}
+  function listHTML(){return task.variants.map((d,i)=>`<button type="button" role="tab" aria-selected="${i===current}" class="design-check-item ${i===current?'active':''}" data-design="${i}"><span class="dc-name">${String.fromCharCode(65+i)} · ${esc(d.label)}</span><span class="dc-line dc-${state[i].tracker}">${icon(state[i].tracker)} ${esc(words(d,state[i])[0])}</span><span class="dc-line dc-${state[i].signal}">${icon(state[i].signal)} ${esc(words(d,state[i])[1])}</span></button>`).join('');}
+  // Status changes refresh only the list and summary, never the design frame.
+  function drawStatus(){
+    dlg.querySelector('.design-check-summary').innerHTML=`<strong>${esc(summary())}</strong>`;
+    const list=dlg.querySelector('.design-check-list'),hadFocus=list.contains(document.activeElement)?document.activeElement.dataset.design:null;
+    list.innerHTML=listHTML();
+    list.querySelectorAll('[data-design]').forEach(b=>b.onclick=()=>start(+b.dataset.design));
+    if(hadFocus!=null)list.querySelector(`[data-design="${hadFocus}"]`)?.focus();
+  }
+  function drawFrame(){
+    const v=task.variants[current];
+    dlg.innerHTML=`<div class="design-check-head"><h2 id="designCheckTitle">Check designs</h2><button type="button" class="btn btn-small btn-outline" data-close>Close</button></div>
+      <p class="helper">For each design: the page should load, tracking should connect within a few seconds, and when you complete the task inside the design the success signal should arrive. Nothing here is saved as study data.</p>
+      <p class="design-check-summary" role="status" aria-live="polite"></p>
+      <div class="design-check-list" role="tablist" aria-label="Designs"></div>
+      <div class="design-check-frame" role="tabpanel" aria-label="${esc(v.label)}"><div class="dc-frame-top"><span>${esc(v.prototypeUrl)}</span><button type="button" class="btn btn-small btn-outline" data-reload>Reload design</button></div><iframe title="Design ${String.fromCharCode(65+current)}: ${esc(v.label)}" src="${esc(new URL(v.prototypeUrl,location.href).href)}"></iframe></div>`;
+    frame=dlg.querySelector('iframe');origin=new URL(v.prototypeUrl,location.href).origin;
+    dlg.querySelector('[data-close]').onclick=()=>dlg.close();
+    dlg.querySelector('[data-reload]').onclick=()=>start(current);
+    drawStatus();
+  }
+  function start(i){
+    current=i;const st=state[i];
+    if(st.tracker!=='ok')st.tracker='waiting';
+    if(st.signal!=='none'&&st.signal!=='ok')st.signal='waiting';
+    drawFrame();
+    clearTimeout(timer);timer=setTimeout(()=>{if(state[i].tracker==='waiting'){state[i].tracker='fail';if(state[i].signal==='waiting')state[i].signal='fail';if(current===i)drawStatus();}},8000);
+  }
+  const onMessage=e=>{
+    if(!frame||e.source!==frame.contentWindow||e.origin!==origin)return;
+    const m=e.data;if(!m||m.namespace!=='UTP_BRIDGE'||m.version!==1)return;
+    const st=state[current];let changed=false;
+    if(st.tracker!=='ok'){st.tracker='ok';changed=true;}
+    if(m.type==='success'&&task.successSignal&&m.task_id===task.successSignal&&st.signal!=='ok'){st.signal='ok';changed=true;}
+    if(changed)drawStatus();
+  };
+  window.addEventListener('message',onMessage);
+  dlg.addEventListener('close',()=>{clearTimeout(timer);window.removeEventListener('message',onMessage);dlg.remove();by('taskEditor').querySelector(`[data-task-index="${ti}"] [data-check-designs]`)?.focus();});
+  dlg.showModal();start(0);
+}
 function handleClick(e){
   const t=e.target.closest('button');if(!t)return;
   if(t.dataset.addQ){study[t.dataset.addQ].push(newQuestion());renderQuestions(t.dataset.addQ);updateSummary();return;}
   if(t.dataset.addTaskQ){const idx=+t.closest('[data-task-index]').dataset.taskIndex;study.tasks[idx].questions ||= [];study.tasks[idx].questions.push(newQuestion());renderTasks();updateSummary();return;}
   if(t.dataset.removeQ){const d=t.closest('[data-q-stage]');const stage=d.dataset.qStage;const ti=d.dataset.qTask===undefined?null:+d.dataset.qTask;questionList(stage,ti).splice(+d.dataset.qIndex,1);if(stage==='tasks')renderTasks();else renderQuestions(stage);updateSummary();return;}
+  if(t.dataset.addVariant){const ti=+t.closest('[data-task-index]').dataset.taskIndex,task=study.tasks[ti];task.variants.push(nextVariant(task.variants));renderTasks();refreshVariantErrors(ti);by('taskEditor').querySelector(`[data-task-index="${ti}"] [data-variant-index="${task.variants.length-1}"] [data-variant-field="label"]`)?.focus();return;}
+  if(t.dataset.removeVariant!==undefined){const ti=+t.closest('[data-task-index]').dataset.taskIndex,task=study.tasks[ti];if(task.variants.length<=2){toast('An A/B test needs at least two designs.');return;}task.variants.splice(+t.dataset.removeVariant,1);renderTasks();refreshVariantErrors(ti);return;}
+  if(t.dataset.checkDesigns){openDesignCheck(+t.closest('[data-task-index]').dataset.taskIndex);return;}
   if(t.dataset.removeTask){const ti=+t.closest('[data-task-index]').dataset.taskIndex;if(study.tasks.length===1){toast('A study needs at least one task.');return;}study.tasks.splice(ti,1);renderTasks();updateSummary();return;}
 }
 function validatedCurrent(){
-  if(study.tasks.some(t=>t._editorErrors&&Object.keys(t._editorErrors).length))throw new Error('Fix activity editor errors before previewing.');
+  const withError=study.tasks.findIndex(t=>t._editorErrors&&Object.keys(t._editorErrors).length);
+  if(withError>=0){const t=study.tasks[withError];throw new Error(`Activity ${withError+1}${t.title?` (${t.title})`:''}: ${Object.values(t._editorErrors)[0]}`);}
   validateStudy(study);
   const clean=JSON.parse(JSON.stringify(study));
-  clean.tasks.forEach(t=>delete t._editorErrors);
+  clean.tasks.forEach(t=>{delete t._editorErrors;delete t._variantErrors;});
   return clean;
 }
 
@@ -213,9 +295,9 @@ function exportDataset(kind){
   const id=by('resultsStudy').value;
   if(kind==='all')return download(`${id}-all-events.json`,JSON.stringify(records,null,2),'application/json');
   if(kind==='methods')return download(`${id}-method-outcomes.csv`,csv(exportMethodRows(methodOutcomeRows(records)),['study_id','session_id','study_version','activity_id','method','experiment_id','variant_id','variant_revision','ended_at','time_seconds','interruptions','interrupted_seconds','result','self_report','observed_success']),'text/csv;charset=utf-8');
-  if(kind==='experiments')return download(`${id}-ab-exposures.csv`,csv(experimentComparisonRows(records),['study_id','study_version','session_id','experiment_id','activity_id','variant_id','variant_revision','assigned_at','ended_at','status','time_seconds','click_count','tracker_connected','success_signal_status','self_report']),'text/csv;charset=utf-8');
+  if(kind==='experiments')return download(`${id}-ab-exposures.csv`,csv(experimentComparisonRows(records),['study_id','study_version','session_id','external_id','assignment','experiment_id','activity_id','variant_id','variant_revision','assigned_at','ended_at','status','time_seconds','click_count','tracker_connected','success_signal_status','self_report']),'text/csv;charset=utf-8');
   const fields={
-    tasks:['session_id','study_id','task_id','at','method','experiment_id','variant_id','variant_revision','self_report','observed_success','tracker_connected','time_seconds','interruptions','interrupted_seconds','click_count'],
+    tasks:['session_id','external_id','study_id','task_id','at','method','experiment_id','variant_id','variant_revision','self_report','observed_success','tracker_connected','time_seconds','interruptions','interrupted_seconds','click_count'],
     answers:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','stage','question_id','response','at'],
     interactions:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','type','input','target','page','x_pct','y_pct','viewport_width','viewport_height'],
     methodEvents:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','method','action','detail']
@@ -226,7 +308,7 @@ function exportDataset(kind){
 
 function wireActions(){
   $$('.nav-option').forEach(x=>x.addEventListener('click',()=>switchTab(x.dataset.tab)));
-  by('studyTitle').closest('section').addEventListener('input',handleEdit);
+  by('studyTitle').closest('section').addEventListener('input',handleEdit);by('studyTitle').closest('section').addEventListener('change',handleEdit);
   by('preQuestionEditor').addEventListener('input',handleEdit);by('preQuestionEditor').addEventListener('change',handleEdit);
   by('postQuestionEditor').addEventListener('input',handleEdit);by('postQuestionEditor').addEventListener('change',handleEdit);
   by('taskEditor').addEventListener('input',handleEdit);by('taskEditor').addEventListener('change',handleEdit);

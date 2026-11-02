@@ -34,7 +34,7 @@ test('assignment supports three or more variants',()=>{
 });
 test('A/B editor creates valid draft and parses optional revisions',()=>{
  const newTask=newActivity('ab_test',1);assert.equal(newTask.variants.length,2);
- assert.ok(methodEditorHTML(newTask).includes('abVariants'));
+ assert.ok(methodEditorHTML(newTask).includes('data-variant-rows'));
  assert.deepEqual(parseImplementedVariants('a | Alpha | https://example.com/a | 7b3c\nb | Beta | https://example.com/b'),[
   {id:'a',label:'Alpha',prototypeUrl:'https://example.com/a',revision:'7b3c'},
   {id:'b',label:'Beta',prototypeUrl:'https://example.com/b'}]);

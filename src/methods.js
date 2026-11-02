@@ -154,13 +154,14 @@ export function assignExperimentVariant(sessionId,studyId,task){
 // These records are joinable to answer/click exports by study_id, session_id, task_id.
 export function experimentComparisonRows(events=[]){
   const sessions=new Map(events.filter(e=>e.kind==='session_started').map(e=>[e.session_id,e.payload?.study_version||null]));
+  const externalIds=new Map(events.filter(e=>e.kind==='session_started').map(e=>[e.session_id,e.payload?.external_id||null]));
   const ends=new Map();
   for(const e of events){
     if(e.kind==='task_ended'&&e.payload?.method==='ab_test')ends.set(`${e.session_id}|${e.task_id}`,e);
   }
   return events.filter(e=>e.kind==='task_started'&&e.payload?.method==='ab_test').map(e=>{
     const end=ends.get(`${e.session_id}|${e.task_id}`), p=end?.payload||{}, r=p.result||{};
-    return {study_id:e.study_id,study_version:sessions.get(e.session_id)||null,session_id:e.session_id,
+    return {study_id:e.study_id,study_version:sessions.get(e.session_id)||null,session_id:e.session_id,external_id:externalIds.get(e.session_id)||null,assignment:e.payload.assignment||null,
       experiment_id:e.payload.experiment_id||e.task_id,activity_id:e.task_id,
       variant_id:e.payload.variant_id||null,variant_revision:e.payload.variant_revision||null,
       assigned_at:e.created_at,ended_at:end?.created_at||null,status:end?'submitted':'not_submitted',
@@ -169,4 +170,67 @@ export function experimentComparisonRows(events=[]){
       success_signal_status:end?(r.success_signal_status||null):null,
       self_report:end?(p.self_report??null):null};
   });
+}
+
+// ---- v0.3.6: assignment and hand-off through the study link (e.g. from a Qualtrics randomizer) ----
+// Link parameters:
+//   variant=<variant-id>                 design for every A/B experiment that has this variant ID
+//   variant.<experiment-id>=<variant-id> design for one experiment (wins over `variant`)
+//   pid=<id>                             external participant/response ID, e.g. Qualtrics ${e://Field/ResponseID}
+//   return=<https URL>                   where "Return to the survey" goes (allow-listed hosts only)
+// Returns {experimentId: {variant_id, source}} with source 'link' | 'stable-hash-equal' |
+// 'stable-hash-equal (link value not recognised)'.
+export function resolveAssignments(study,sessionId,params){
+  const get=k=>{const v=params?.get?.(k);return typeof v==='string'?v.trim():'';};
+  const out={};
+  for(const task of study?.tasks||[]){
+    if(normalizeMethod(task)!=='ab_test'||!task.variants?.length)continue;
+    const experimentId=task.experimentId||task.id;
+    if(out[experimentId])continue;
+    const wanted=get(`variant.${experimentId}`)||get('variant');
+    const match=wanted&&task.variants.find(v=>v.id===wanted);
+    if(match)out[experimentId]={variant_id:match.id,source:'link'};
+    else out[experimentId]={variant_id:assignExperimentVariant(sessionId,study.id,task).id,source:wanted?'stable-hash-equal (link value not recognised)':'stable-hash-equal'};
+  }
+  return out;
+}
+export function variantForTask(task,assignments){
+  const a=assignments?.[task.experimentId||task.id];
+  return task.variants?.find(v=>v.id===a?.variant_id)||null;
+}
+export function cleanExternalId(value){
+  const v=String(value||'').trim();
+  return /^[A-Za-z0-9_.:-]{1,80}$/.test(v)?v:null;
+}
+// Only https links on allow-listed hosts (default: qualtrics.com and its subdomains) are used,
+// so a study link cannot be turned into a redirect to an arbitrary site.
+export function safeReturnUrl(value,hosts=['qualtrics.com']){
+  if(!value)return null;
+  let url;try{url=new URL(value);}catch{return null;}
+  if(url.protocol!=='https:')return null;
+  const host=url.hostname.toLowerCase();
+  return hosts.some(h=>{h=String(h).toLowerCase().replace(/^\./,'');return host===h||host.endsWith(`.${h}`);})?url:null;
+}
+// Values Qualtrics can store as embedded data straight from the link (no custom JavaScript):
+// rs_session, rs_pid (the pid the participant arrived with), rs_status, rs_variant (or rs_variant_<experiment> when several), and per A/B task in
+// study order k = 1, 2…: rs_ab<k>_task, _variant, _success (received/not_observed/unavailable),
+// _self (completed/unable), _time (seconds), _clicks. No personal data is included.
+export function buildReturnUrl(base,{sessionId,status,assignments,abResults,tasks=[],externalId=null}){
+  const url=new URL(base.href);
+  url.searchParams.set('rs_session',sessionId);
+  if(externalId)url.searchParams.set('rs_pid',externalId);
+  url.searchParams.set('rs_status',status);
+  const entries=Object.entries(assignments||{});
+  if(entries.length===1)url.searchParams.set('rs_variant',entries[0][1].variant_id);
+  else for(const [exp,a] of entries)url.searchParams.set(`rs_variant_${exp}`,a.variant_id);
+  tasks.filter(t=>normalizeMethod(t)==='ab_test').forEach((t,i)=>{
+    const r=abResults?.[t.id];if(!r)return;const k=`rs_ab${i+1}_`;
+    url.searchParams.set(`${k}task`,t.id);
+    url.searchParams.set(`${k}variant`,r.variant_id||'');
+    url.searchParams.set(`${k}success`,r.success_signal_status||'');
+    url.searchParams.set(`${k}self`,r.self_report||'');
+    url.searchParams.set(`${k}time`,String(r.time_seconds??''));
+    url.searchParams.set(`${k}clicks`,String(r.click_count??''));
+  });
+  return url.href;
 }

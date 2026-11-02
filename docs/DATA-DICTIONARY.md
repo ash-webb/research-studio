@@ -37,6 +37,10 @@
 - `input` (v0.3.2): `pointer` for mouse/touch clicks, `keyboard` for Enter/Space activations. Keyboard activations are positioned at the centre of the activated element (they have no pointer position). Blank for records made with tracker v0.1 or earlier, where keyboard activations appear at 0%, 0%.
 
 ## Session fields
+- `session_started.payload.external_id` (v0.3.6): the `pid` the participant arrived with (e.g. a Qualtrics ResponseID); only letters, digits and `_.:-`, up to 80 characters. Included in the Task CSV and A/B exposures CSV as `external_id`.
+- `session_started.payload.assignments` (v0.3.6): `{experiment_id: {variant_id, source}}` decided at session start. `source`: `link` (from `variant=` / `variant.<experiment>=` in the study link, e.g. a Qualtrics randomizer), `stable-hash-equal` (built-in random), or `stable-hash-equal (link value not recognised)`. The same value is on each A/B `task_started` as `assignment` and in the A/B exposures CSV.
+- `session_started.payload.consent` (v0.3.6): `true`, or `"external"` when the study is set to *Consent is collected in the survey before this study*.
+- `session_started.payload.return_host` (v0.3.6): host of an allow-listed return address, when present. Values sent back in the return link are listed in `docs/QUALTRICS-AB-SETUP.md`.
 - `session_resumed` (v0.3.3): written each time the participant page is reloaded (or a crashed tab restored) and the session continues. Payload: `stage` (`pre`, `start`, `activity`, `reflection`, `followup`, `post`, `finish`), `order` (activity number), `gap_seconds` (time between leaving and returning), viewport size. `task_id` is set when the reload happened during an activity or its follow-up.
 - `session_started.payload.preview` (v0.3.1): `true` for a researcher “Preview locally” run. Such sessions are excluded from the dashboard and all exports unless “Include my ‘Preview locally’ runs” is ticked. Sessions recorded before v0.3.1 carry no flag and are always counted.
 

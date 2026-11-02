@@ -1,4 +1,4 @@
-# Research Studio v0.3.5 — multi-method unmoderated UX research
+# Research Studio v0.3.6 — multi-method unmoderated UX research
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 
@@ -66,6 +66,10 @@ Open these relative URLs after the server is running. The included graphic desig
 6. Push the changed site to a new GitHub repository. GitHub Pages can publish these static study pages, but **remote collection still requires an approved backend**.
 
 ### A/B/n implementation testing
+
+**Using Qualtrics?** See [`docs/QUALTRICS-AB-SETUP.md`](docs/QUALTRICS-AB-SETUP.md): Qualtrics assigns the design evenly and receives each task's results through the return link, with no custom JavaScript and no separate database.
+
+In the builder (v0.3.6), each design is a row (name, ID, prototype link, version) with inline checks, and **Check designs** confirms before launch that every design loads the tracker and sends the success signal.
 
 Use **A/B implementation test** (not Preference testing) to compare how people complete *identical tasks* using different **interactive** implementations.
 

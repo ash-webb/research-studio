@@ -66,9 +66,22 @@ async function participantScreens(p, vp) {
   await p.locator('.reflection-choice label:has(input[value="completed"])').click();
   await rerender(p, () => p.click('#reflectionForm button[type=submit]')); await scan(p, 'Follow-up questions (scales + text)', vp);
 
-  await begin(p, 'demo-ab-implementation'); await consent(p);
+  await p.evaluate(() => { try { sessionStorage.clear(); } catch {} });
+  await p.goto(`${BASE}study.html?study=demo-ab-implementation&variant=design-b&return=${encodeURIComponent('https://example.qualtrics.com/jfe/form/SV_x')}`);
+  await p.waitForSelector('#consentCheck'); await consent(p);
   await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
-  await scan(p, 'A/B task (assigned design)', vp);
+  await scan(p, 'A/B task (design from study link)', vp);
+  for (const q of ['request-ease', 'message-ease']) {
+    await rerender(p, () => p.click('#finishTask'));
+    await p.locator('.reflection-choice label:has(input[value="completed"])').click();
+    await rerender(p, () => p.click('#reflectionForm button[type=submit]'));
+    await p.locator(`label.choice:has(input[name="${q}"][value="5"])`).click();
+    await rerender(p, () => p.click('#questionForm button[type=submit]'));
+  }
+  await p.locator('label.choice:has(input[name="overall-clarity"][value="4"])').click();
+  await rerender(p, () => p.click('#questionForm button[type=submit]'));
+  await p.waitForSelector('#returnToSurvey');
+  await scan(p, 'Completion page with "Return to the survey"', vp);
 
   await begin(p, 'demo-mixed'); await consent(p); await scan(p, 'Card sort (empty)', vp);
   await cs.dragCard(p, 'payments', '__new__');
@@ -119,6 +132,12 @@ async function researcherScreens(p, vp) {
   await p.selectOption('#exampleStudy', 'demo-portal'); await p.click('#loadExample');
   await p.waitForFunction(() => document.querySelector('#studyId').value === 'demo-portal');
   await scan(p, 'Builder (prototype example, pre/post questions)', vp);
+  await p.selectOption('#exampleStudy', 'demo-ab-implementation'); await p.click('#loadExample');
+  await p.waitForFunction(() => document.querySelector('#studyId').value === 'demo-ab-implementation');
+  await p.locator('[data-check-designs]').first().click(); await p.waitForSelector('dialog.design-check[open]');
+  await p.waitForFunction(() => /Tracking connected/.test(document.querySelector('.design-check-item.active')?.textContent || ''), null, { timeout: 8000 }).catch(() => {});
+  await scan(p, 'Builder: "Check designs" dialog', vp);
+  await p.keyboard.press('Escape');
   await p.click('.nav-option[data-tab="results"]');
   await p.selectOption('#resultsStudy', 'demo-mixed'); await p.click('#refreshResults');
   await p.waitForFunction(() => /collected event records/.test(document.querySelector('#resultsStatus').textContent));

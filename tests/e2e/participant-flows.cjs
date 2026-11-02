@@ -290,6 +290,125 @@ scenarios.ab = async browser => {
   await done();
 };
 
+scenarios.abLink = async browser => {
+  const G = 'A/B design assigned by the study link (Qualtrics randomizer hand-off)';
+  const { ctx, done } = await newContext(browser, G);
+  const ret = encodeURIComponent('https://example.qualtrics.com/jfe/form/SV_test123?src=rs');
+  const open = async query => {
+    const p = await ctx.newPage();
+    await p.goto(`${BASE}study.html?study=demo-ab-implementation&${query}`);
+    await p.waitForSelector('#consentCheck'); await p.check('#consentCheck');
+    await rerender(p, () => p.click('#startStudy'));
+    return p;
+  };
+  // Valid link assignment + participant ID + allow-listed return address.
+  const p = await open(`variant=design-b&pid=R_3abcDEF123&return=${ret}`);
+  const src1 = await p.getAttribute('#prototypeFrame', 'src');
+  check(G, 'link variant=design-b shows design B', /ab-design-b/.test(src1), src1);
+  const t1 = await prototypeTask(p, ['b-tile-requests', 'b-request-open'], 'completed');
+  await fillForm(p, { 'request-ease': '6' });
+  const t2 = await prototypeTask(p, ['b-nav-profile'], 'unable');
+  check(G, 'second activity keeps design B', /ab-design-b/.test(t2.src), t2.src);
+  await fillForm(p, { 'message-ease': '3' });
+  await fillForm(p, { 'overall-clarity': '4' });
+  await p.waitForSelector('.done-card');
+  check(G, '"Return to the survey" shown for an allow-listed Qualtrics address', await p.isVisible('#returnToSurvey'));
+  const href = new URL(await p.getAttribute('#returnToSurvey', 'href'));
+  const q = Object.fromEntries(href.searchParams);
+  eq(G, 'return link keeps the survey address and its own parameters', [href.hostname, href.pathname, q.src], ['example.qualtrics.com', '/jfe/form/SV_test123', 'rs']);
+  eq(G, 'return link: status and design', [q.rs_status, q.rs_variant], ['complete', 'design-b']);
+  eq(G, 'return link: task 1 results', [q.rs_ab1_task, q.rs_ab1_variant, q.rs_ab1_success, q.rs_ab1_self, q.rs_ab1_clicks], ['find-service-request', 'design-b', 'received', 'completed', '2']);
+  eq(G, 'return link: task 2 results', [q.rs_ab2_task, q.rs_ab2_success, q.rs_ab2_self, q.rs_ab2_clicks], ['find-message', 'not_observed', 'unable', '1']);
+  check(G, 'return link: times are whole seconds', /^\d+$/.test(q.rs_ab1_time) && /^\d+$/.test(q.rs_ab2_time));
+  eq(G, 'return link carries the participant ID back (to join Survey 1 and Survey 2)', q.rs_pid, 'R_3abcDEF123');
+  const evs = await events(p);
+  const start = bySession(evs, 'session_started')[0].payload;
+  eq(G, 'participant ID recorded at session start', start.external_id, 'R_3abcDEF123');
+  eq(G, 'assignments recorded at session start', start.assignments, { 'portal-navigation-2026': { variant_id: 'design-b', source: 'link' } });
+  eq(G, 'each A/B task notes the link assigned it', bySession(evs, 'task_started').map(e => e.payload.assignment), ['link', 'link']);
+  check(G, 'return link matches session ID in the data', q.rs_session === bySession(evs, 'session_started')[0].session_id);
+  // Reload after finishing keeps the return link.
+  await p.reload(); await p.waitForSelector('.done-card');
+  check(G, 'reload after finishing still offers "Return to the survey"', await p.isVisible('#returnToSurvey'));
+  // Unknown variant → built-in random, flagged.
+  const p2 = await open('variant=design-z');
+  const ev2 = (await events(p2)).filter(e => e.kind === 'task_started').at(-1).payload;
+  eq(G, 'unknown link variant falls back to built-in random and says so', ev2.assignment, 'stable-hash-equal (link value not recognised)');
+  // Return address on another site is ignored; bad participant IDs are dropped.
+  const p3 = await open(`variant=design-a&pid=${encodeURIComponent('<script>')}&return=${encodeURIComponent('https://evil.example.com/collect')}`);
+  check(G, 'experiment-specific parameter form also works', /ab-design-a/.test(await p3.getAttribute('#prototypeFrame', 'src')));
+  for (let i = 0; i < 2; i++) { await prototypeTask(p3, ['a-nav-profile'], 'unable'); await fillForm(p3, i === 0 ? { 'request-ease': '2' } : { 'message-ease': '2' }); }
+  await fillForm(p3, { 'overall-clarity': '2' });
+  await p3.waitForSelector('.done-card');
+  check(G, 'return address outside the allow-list is ignored (no button)', !(await p3.$('#returnToSurvey')));
+  const s3 = (await events(p3)).filter(e => e.kind === 'session_started').at(-1).payload;
+  check(G, 'unsafe participant ID is not stored', !('external_id' in s3), JSON.stringify(s3));
+  const p4 = await open('variant.portal-navigation-2026=design-a&variant=design-b');
+  check(G, 'experiment-specific parameter wins over the general one', /ab-design-a/.test(await p4.getAttribute('#prototypeFrame', 'src')));
+  // Consent already collected in Qualtrics: no second consent checkbox.
+  const ext = JSON.parse(fs.readFileSync(path.join(ROOT, 'studies/demo-ab-implementation.json'), 'utf8'));
+  const pe = await ctx.newPage(); await pe.goto(BASE + 'index.html');
+  await pe.evaluate(s => localStorage.setItem('utp-preview-study', JSON.stringify({ ...s, consentMode: 'external' })), ext);
+  await pe.goto(`${BASE}study.html?preview=1&variant=design-a`); await pe.waitForSelector('#startStudy');
+  check(G, 'external consent: no consent checkbox, Begin button enabled', !(await pe.$('#consentCheck')) && !(await pe.isDisabled('#startStudy')));
+  await rerender(pe, () => pe.click('#startStudy'));
+  eq(G, 'external consent recorded as "external"', (await events(pe)).filter(e => e.kind === 'session_started').at(-1).payload.consent, 'external');
+  // Dashboard and exports.
+  const r = await openResults(ctx, 'demo-ab-implementation');
+  await screenshot(r, 'ab-link-results');
+  const pills = await insightPills(r, 0);
+  check(G, 'dashboard says how designs were assigned', /from study link/.test(pills['Assigned by'] || '') && /link value not recognised/.test(pills['Assigned by'] || ''), JSON.stringify(pills));
+  check(G, 'dashboard warns about unrecognised link values', /randomizer/.test(await r.textContent('#methodInsights')));
+  const x = await exportAll(r, 'demo-ab-implementation', G);
+  const row = x.experiments.find(e => e.external_id === 'R_3abcDEF123');
+  eq(G, 'A/B exposures CSV carries participant ID and assignment source', [row?.assignment, row?.variant_id], ['link', 'design-b']);
+  check(G, 'Task CSV carries participant ID', x.tasks.some(t => t.external_id === 'R_3abcDEF123'));
+  await done();
+};
+
+scenarios.abBuilder = async browser => {
+  const G = 'A/B builder: design rows and the "Check designs" pre-launch check';
+  const { ctx, done } = await newContext(browser, G);
+  const p = await ctx.newPage();
+  await p.goto(BASE + 'index.html');
+  await p.waitForFunction(() => document.querySelectorAll('#exampleStudy option').length > 0);
+  const row = i => `[data-task-index="0"] [data-variant-index="${i}"]`;
+  check(G, 'designs shown as rows (no text-line editor)', await p.locator(row(0)).count() === 1 && !(await p.$('[data-task-lines="abVariants"]')));
+  check(G, 'cannot remove below two designs', await p.isDisabled(`${row(0)} [data-remove-variant]`));
+  await p.fill(`${row(1)} [data-variant-field="id"]`, 'Design B!');
+  check(G, 'invalid design ID explained inline', /lowercase letters/.test(await p.textContent(`${row(1)} .variant-error`)));
+  await p.click('#previewStudy'); await p.waitForTimeout(200);
+  check(G, 'preview blocked with a message naming the problem', /Design B: Design ID/.test(await p.textContent('#toast')), await p.textContent('#toast'));
+  await p.fill(`${row(1)} [data-variant-field="id"]`, 'design-a');
+  check(G, 'duplicate design IDs flagged', /same ID/.test(await p.textContent(`${row(1)} .variant-error`)));
+  await p.fill(`${row(1)} [data-variant-field="id"]`, 'design-b');
+  check(G, 'error clears when fixed', await p.isHidden(`${row(1)} .variant-error`));
+  await p.click('[data-task-index="0"] [data-add-variant]');
+  eq(G, '"+ Add design" adds design C and focuses its name', [await p.locator('[data-task-index="0"] [data-variant-index]').count(), await p.evaluate(() => document.activeElement.dataset.variantField)], [3, 'label']);
+  await p.click('[data-task-index="0"] [data-check-designs]');
+  check(G, 'check refuses to start while design C has no link', /Fix design C/.test(await p.textContent('#toast')));
+  await p.fill(`${row(2)} [data-variant-field="prototypeUrl"]`, 'demo/assets/design-a.svg');
+  await p.click('[data-task-index="0"] [data-check-designs]');
+  await p.waitForSelector('dialog.design-check[open]');
+  await p.waitForFunction(() => /Tracking connected/.test(document.querySelector('.design-check-item.active')?.textContent || ''), null, { timeout: 8000 });
+  const f = p.frameLocator('dialog.design-check iframe');
+  await f.locator('[data-ut-id="a-nav-requests"]').click(); await f.locator('[data-ut-id="a-request-open"]').click();
+  await p.waitForFunction(() => /received/.test(document.querySelector('.design-check-item.active')?.textContent || ''), null, { timeout: 5000 });
+  check(G, 'design A: tracking connected and success signal received', /1 of 3 designs ready/.test(await p.textContent('.design-check-summary')));
+  await p.click('[data-design="2"]');
+  await p.waitForFunction(() => /not detected/.test(document.querySelector('.design-check-item.active')?.textContent || ''), null, { timeout: 12000 });
+  check(G, 'design without the tracking script is flagged after 8 seconds', /Tracking script not detected/.test(await p.textContent('.design-check-item.active')));
+  await screenshot(p, 'ab-check-dialog');
+  await p.keyboard.press('Escape');
+  check(G, 'Escape closes the check and returns focus to its button', !(await p.$('dialog.design-check')) && await p.evaluate(() => document.activeElement.dataset.checkDesigns === 'true'));
+  await p.click(`[data-task-index="0"] [data-variant-index="2"] [data-remove-variant]`);
+  eq(G, 'a third design can be removed again', await p.locator('[data-task-index="0"] [data-variant-index]').count(), 2);
+  const [d] = await Promise.all([p.waitForEvent('download'), p.click('#exportStudy')]);
+  const exported = JSON.parse(fs.readFileSync(await d.path(), 'utf8'));
+  check(G, 'exported study has clean designs (no editor-only fields)', exported.tasks[0].variants.length === 2 && !('_variantErrors' in exported.tasks[0]) && !('_editorErrors' in exported.tasks[0]));
+  await done();
+};
+
 scenarios.cardSort = async browser => {
   const G = 'Open card sort (demo-card-sort)';
   const { ctx, done } = await newContext(browser, G);
