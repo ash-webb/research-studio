@@ -38,5 +38,10 @@
     "id": "demo-portal",
     "title": "Prototype usability demonstration",
     "config": "studies/demo-portal.json"
+  },
+  {
+    "id": "iola-current-vs-new",
+    "title": "IRS online account: current website vs new app",
+    "config": "studies/iola-current-vs-new.json"
   }
 ]

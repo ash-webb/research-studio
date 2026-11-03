@@ -1,0 +1,212 @@
+{
+  "schemaVersion": 3,
+  "id": "iola-current-vs-new",
+  "version": "1.0.0",
+  "title": "IRS online account: current website vs new app",
+  "description": "Unmoderated A/B usability test comparing the current Individual Online Account (IOLA) website with the new IRS app design on four tasks: a one-time payment, finding an offer in compromise, responding to a notice and uploading documents. Both designs are simplified research prototypes with fictional account information.",
+  "welcome": "You will use a practice version of an IRS online account and try four short tasks. Everything you see is fictional sample information: it is not your account and nothing you do is sent to the IRS. We are testing the design, not you. If you get stuck, it is fine to stop and select \"Finish this task\".",
+  "consent": "I agree to take part. I understand that this study records which design version I was shown, my clicks and screens in the practice account, how long each task takes, and my answers. No screen or audio recording is made. I will not enter my own personal, tax or bank information; the practice account uses sample information only.",
+  "preQuestions": [
+    {
+      "id": "iola-use",
+      "type": "single",
+      "text": "Have you used your IRS online account before?",
+      "options": [
+        "Yes, several times",
+        "Yes, once or twice",
+        "No, never",
+        "Not sure"
+      ],
+      "required": true
+    },
+    {
+      "id": "device-type",
+      "type": "single",
+      "text": "Which device are you using right now?",
+      "options": [
+        "Phone",
+        "Tablet",
+        "Laptop or desktop computer"
+      ],
+      "required": true
+    }
+  ],
+  "tasks": [
+    {
+      "id": "one-time-payment",
+      "method": "ab_test",
+      "title": "Make a one-time payment",
+      "instructions": "You owe money on your 2024 taxes and want to pay $200 of it today from the bank account already saved in your account. Make that payment.",
+      "experimentId": "iola-current-vs-new",
+      "successSignal": "iola-payment-submitted",
+      "variants": [
+        {
+          "id": "iola-current",
+          "label": "Current IOLA website",
+          "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/current/#/home",
+          "revision": "proto-v1"
+        },
+        {
+          "id": "iola-new",
+          "label": "New IRS app",
+          "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/new/#/home",
+          "revision": "proto-v1"
+        }
+      ],
+      "questions": [
+        {
+          "id": "one-time-payment-ease",
+          "type": "scale7",
+          "text": "Overall, how easy or difficult was it to make the payment?",
+          "required": true,
+          "lowLabel": "Very difficult",
+          "highLabel": "Very easy"
+        },
+        {
+          "id": "one-time-payment-issue",
+          "type": "textarea",
+          "text": "What, if anything, made this difficult or confusing?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "find-oic",
+      "method": "ab_test",
+      "title": "Find a way to settle for less",
+      "instructions": "You can't afford to pay everything you owe. A friend told you the IRS sometimes lets people settle their tax debt for less than the full amount. Find where your account tells you about this option. You don't need to apply.",
+      "experimentId": "iola-current-vs-new",
+      "successSignal": "iola-oic-found",
+      "variants": [
+        {
+          "id": "iola-current",
+          "label": "Current IOLA website",
+          "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/current/#/home",
+          "revision": "proto-v1"
+        },
+        {
+          "id": "iola-new",
+          "label": "New IRS app",
+          "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/new/#/home",
+          "revision": "proto-v1"
+        }
+      ],
+      "questions": [
+        {
+          "id": "find-oic-ease",
+          "type": "scale7",
+          "text": "Overall, how easy or difficult was it to find this option?",
+          "required": true,
+          "lowLabel": "Very difficult",
+          "highLabel": "Very easy"
+        },
+        {
+          "id": "find-oic-issue",
+          "type": "textarea",
+          "text": "What, if anything, made this difficult or confusing?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "respond-to-notice",
+      "method": "ab_test",
+      "title": "Respond to a notice",
+      "instructions": "The IRS sent you a notice proposing changes to your 2024 tax return. You checked your records and agree with all the changes. Let the IRS know that you agree.",
+      "experimentId": "iola-current-vs-new",
+      "successSignal": "iola-notice-response-sent",
+      "variants": [
+        {
+          "id": "iola-current",
+          "label": "Current IOLA website",
+          "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/current/#/home",
+          "revision": "proto-v1"
+        },
+        {
+          "id": "iola-new",
+          "label": "New IRS app",
+          "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/new/#/home",
+          "revision": "proto-v1"
+        }
+      ],
+      "questions": [
+        {
+          "id": "respond-to-notice-ease",
+          "type": "scale7",
+          "text": "Overall, how easy or difficult was it to respond to the notice?",
+          "required": true,
+          "lowLabel": "Very difficult",
+          "highLabel": "Very easy"
+        },
+        {
+          "id": "respond-to-notice-issue",
+          "type": "textarea",
+          "text": "What, if anything, made this difficult or confusing?",
+          "required": false
+        }
+      ]
+    },
+    {
+      "id": "upload-documents",
+      "method": "ab_test",
+      "title": "Upload documents for a notice",
+      "instructions": "For the same notice about your 2024 return, send the IRS two documents: the corrected Form 1099-INT and your December 2024 bank statement. Use the sample files the practice account offers; you can't upload files from your device.",
+      "experimentId": "iola-current-vs-new",
+      "successSignal": "iola-documents-sent",
+      "variants": [
+        {
+          "id": "iola-current",
+          "label": "Current IOLA website",
+          "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/current/#/home",
+          "revision": "proto-v1"
+        },
+        {
+          "id": "iola-new",
+          "label": "New IRS app",
+          "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/new/#/home",
+          "revision": "proto-v1"
+        }
+      ],
+      "questions": [
+        {
+          "id": "upload-documents-ease",
+          "type": "scale7",
+          "text": "Overall, how easy or difficult was it to send the documents?",
+          "required": true,
+          "lowLabel": "Very difficult",
+          "highLabel": "Very easy"
+        },
+        {
+          "id": "upload-documents-issue",
+          "type": "textarea",
+          "text": "What, if anything, made this difficult or confusing?",
+          "required": false
+        }
+      ]
+    }
+  ],
+  "postQuestions": [
+    {
+      "id": "overall-ease",
+      "type": "scale7",
+      "text": "Overall, how easy or difficult was this online account to use?",
+      "required": true,
+      "lowLabel": "Very difficult",
+      "highLabel": "Very easy"
+    },
+    {
+      "id": "confidence",
+      "type": "scale5",
+      "text": "How confident are you that you completed the tasks correctly?",
+      "required": true,
+      "lowLabel": "Not at all confident",
+      "highLabel": "Very confident"
+    },
+    {
+      "id": "overall-comments",
+      "type": "textarea",
+      "text": "Is there anything else you want to tell us about the online account?",
+      "required": false
+    }
+  ]
+}
