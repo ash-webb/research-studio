@@ -3,5 +3,8 @@ window.UTP_SETTINGS = {
   supabaseUrl: '', // e.g. 'https://xxxx.supabase.co'
   supabasePublishableKey: '', // e.g. 'sb_publishable_...'
   // Hosts that "Return to the survey" links may point to (https only; subdomains included).
-  returnUrlHosts: ['qualtrics.com']
+  returnUrlHosts: ['qualtrics.com'],
+  // Survey sites that may show Research Studio inside a page and receive results there (https only;
+  // subdomains included). See qualtrics-embed.html.
+  embedHosts: ['qualtrics.com']
 };

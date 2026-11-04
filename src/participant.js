@@ -2,6 +2,7 @@ import { $, escapeHTML as esc, validateStudy, prototypeURL, questionFields, coll
 import { normalizeMethod, scoreTree, scoreFirstClick, randomizeVariants, secureURL, resolveAssignments, variantForTask, cleanExternalId, safeReturnUrl, buildReturnUrl } from './methods.js';
 import { StudyWriter } from './storage.js';
 import { deviceClass } from './abstats.js';
+import { EMBED_NS, EMBED_VERSION, hostAllowed, surveyFields } from './qualtrics-embed.js';
 
 let study, writer, sessionId, activeTask=null, taskIndex=0;
 let taskStartedAt=0, clickCount=0, taskInteractions=[], trackerConnected=false, observedSuccess=false;
@@ -20,10 +21,50 @@ const query=new URLSearchParams(location.search);
 const preview=query.get('preview')==='1';
 const returnUrl=safeReturnUrl(query.get('return'),(window.UTP_SETTINGS||{}).returnUrlHosts||['qualtrics.com']);
 const $main=()=>$('#participantMain');
+// Inside a Qualtrics survey (v0.3.11): study.html?embed=qualtrics shown in the survey's iframe.
+// Results go to the survey's embedded data, and only after the survey's script has answered
+// from an approved host (UTP_SETTINGS.embedHosts, default the return-link hosts).
+const embedRequested=query.get('embed')==='qualtrics';
+const embedded=embedRequested&&window.parent!==window&&!preview;
+const embedHosts=(window.UTP_SETTINGS||{}).embedHosts||(window.UTP_SETTINGS||{}).returnUrlHosts||['qualtrics.com'];
+let surveyOrigin='', surveySeq=0, surveyAcked=0, surveyFailed=false;
+const surveyWaiters=new Set();
+function connectSurvey(){
+  return new Promise(resolve=>{
+    window.addEventListener('message',e=>{
+      if(e.source!==window.parent)return;const m=e.data;
+      if(!m||m.ns!==EMBED_NS||m.v!==EMBED_VERSION)return;
+      if(m.type==='hello-ack'&&!surveyOrigin&&hostAllowed(e.origin,embedHosts)){surveyOrigin=e.origin;resolve(true);return;}
+      if(m.type==='saved'&&surveyOrigin&&e.origin===surveyOrigin&&Number.isInteger(m.seq)){surveyAcked=Math.max(surveyAcked,m.seq);surveyWaiters.forEach(w=>w());}
+    });
+    // The hello carries nothing about the participant, so it can go to any parent; data waits for an approved answer.
+    const hello=()=>{if(!surveyOrigin)window.parent.postMessage({ns:EMBED_NS,v:EMBED_VERSION,type:'hello'},'*');};
+    hello();[400,1200,2500,4500,7000].forEach(t=>setTimeout(hello,t));
+    setTimeout(()=>resolve(!!surveyOrigin),9000);
+  });
+}
+function surveyStatus(text){const el=$('#saveStatus');if(el)el.textContent=text;}
+// Sends everything so far; resolves true once the survey confirms it stored this save (or a later one).
+async function saveToSurvey(status){
+  if(!embedded||!surveyOrigin||!writer)return false;
+  const seq=++surveySeq;
+  try{
+    const {fields}=await surveyFields({study,sessionId,status,assignments,abResults,externalId:cleanExternalId(query.get('pid')),device:sessionDevice(),events:writer.sessionEvents()});
+    window.parent.postMessage({ns:EMBED_NS,v:EMBED_VERSION,type:'save',seq,status,fields},surveyOrigin);
+  }catch(err){surveyFailed=true;surveyStatus('Not saved to the survey');console.error(err);return false;}
+  const ok=await new Promise(resolve=>{
+    const check=()=>{if(surveyAcked>=seq){surveyWaiters.delete(check);resolve(true);}};
+    surveyWaiters.add(check);check();
+    setTimeout(()=>{surveyWaiters.delete(check);resolve(surveyAcked>=seq);},8000);
+  });
+  surveyFailed=!ok;surveyStatus(ok?'Saved to the survey':'Not saved to the survey yet');
+  return ok;
+}
 
 function alertMessage(msg){alertBox.textContent=msg;alertBox.classList.remove('hidden');setTimeout(()=>alertBox.classList.add('hidden'),6500);}
 function setSaveStatus(status,message=''){
   const el=$('#saveStatus');
+  if(embedded&&status==='demo'){if(!surveyAcked)el.textContent='Answers are saved to the survey';return;}
   if(status==='demo')el.textContent=preview?'Preview · not counted in results':'Local demo · this browser only';
   else if(status==='saved')el.textContent='Responses synced';
   else if(status==='error'){el.textContent='Sync pending';if(message)alertMessage(`Some responses have not synced. ${message}`);}
@@ -71,6 +112,7 @@ function sessionOpenElsewhere(id){
 function sessionDevice(){try{return sessionHistory().find(e=>e.kind==='session_started')?.payload?.device||deviceClass(innerWidth);}catch{return deviceClass(innerWidth);}}
 function sessionHistory(){
   if(writer?.remote)return writer.history;
+  if(writer?.store==='session')return writer.sessionEvents();
   try{return JSON.parse(localStorage.getItem('utp-demo-events-v1')||'[]').filter(e=>e.session_id===sessionId);}catch{return writer?.history||[];}
 }
 async function resume(cp){
@@ -78,7 +120,7 @@ async function resume(cp){
     render(`<section class="welcome-card"><span class="eyebrow accent">ALREADY OPEN</span><h1>This study is open in another tab</h1><p>Please continue in the other tab. Using two tabs for the same session would mix up your responses.</p></section>`,null);
     progress(0,'Open in another tab');return;
   }
-  sessionId=cp.sessionId;taskIndex=cp.taskIndex||0;writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview);
+  sessionId=cp.sessionId;taskIndex=cp.taskIndex||0;writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview,{store:embedded?'session':'local'});
   assignments=cp.assignments&&typeof cp.assignments==='object'?cp.assignments:resolveAssignments(study,sessionId,query);
   abResults=cp.abResults&&typeof cp.abResults==='object'?cp.abResults:{};
   if(cp.stage==='complete'){stage='complete';showCompleted(true);return;}
@@ -160,6 +202,12 @@ async function init(){
     }
     validateStudy(study);
     document.title=`${study.title} · Research Studio`;
+    if(embedRequested&&!embedded&&!preview){render(`<section class="welcome-card"><h1>Open this activity from the survey</h1><p>This part of the study runs inside the survey. Please go back to the survey link you were given.</p></section>`,null);progress(0,'Survey activity');return;}
+    if(embedded){
+      surveyStatus('Connecting to the survey…');progress(0,'Connecting');
+      if(!await connectSurvey()){render(`<section class="welcome-card"><h1>This survey page can't receive your answers</h1><p>The survey isn't set up to store results from this activity, so nothing you did here would be saved. Please let the research team know, and don't continue with this part.</p></section>`,null);surveyStatus('Not connected to the survey');return;}
+      surveyStatus('Answers are saved to the survey');
+    }
     studyHash=hashText(JSON.stringify(study));resumeKey=`utp-resume-v1:${preview?'preview':'live'}:${study.id}`;
     const cp=readCheckpoint();
     if(cp&&cp.v===1&&cp.studyId===study.id&&cp.hash===studyHash&&cp.sessionId&&Date.now()-(cp.savedAt||0)<RESUME_MAX_AGE_MS){await resume(cp);return;}
@@ -172,7 +220,7 @@ function welcome(){
   render(`<section class="welcome-card"><span class="eyebrow accent">UNMODERATED RESEARCH STUDY</span><h1>${esc(study.title)}</h1><p>${esc(study.welcome||study.description||'')}</p><div class="notice"><strong>What this study may collect</strong><br>Task timing, navigation choices, random design assignment for implementation comparisons, card groupings and names, first-click locations, preferences, and answers you explicitly submit. An instrumented prototype may also record click locations and navigation. No screen recording, passwords, or typed prototype form values are collected by the tracker. Please do not enter sensitive personal information.</div>${study.consentMode==='external'?'<p class="notice">You agreed to take part in the survey before this activity.</p><button id="startStudy" class="btn btn-primary">Begin →</button>':`<label class="consent"><input id="consentCheck" type="checkbox"><span>${esc(study.consent||'I agree to participate and to the data collection described above.')}</span></label><button id="startStudy" class="btn btn-primary" disabled>Agree and begin study →</button>`}<p class="small muted" style="margin-top:18px">Participation is voluntary. You can close the page at any point.</p></section>`,null);
   if($('#consentCheck'))$('#consentCheck').onchange=e=>$('#startStudy').disabled=!e.target.checked;
   $('#startStudy').onclick=()=>{
-    sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview);
+    sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview,{store:embedded?'session':'local'});
     assignments=resolveAssignments(study,sessionId,query);
     const externalId=cleanExternalId(query.get('pid'));
     writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,device:deviceClass(innerWidth),consent:study.consentMode==='external'?'external':true,...(preview?{preview:true}:{}),...(externalId?{external_id:externalId}:{}),...(Object.keys(assignments).length?{assignments}:{}),...(returnUrl?{return_host:returnUrl.hostname}:{})});
@@ -198,6 +246,7 @@ function showPre(){stage='pre';persist('pre');progress(.08,'Before the activitie
  writer.add('answers',null,{stage:'pre',answers});persist('start',0);await writer.flush();startActivity();
 });}
 function startActivity(){
+  if(embedded)saveToSurvey('in_progress');
   if(taskIndex>=study.tasks.length){showPost();return;}
   stage='activity';activeTask=study.tasks[taskIndex];activeVariant=null;taskStartedAt=Date.now();clickCount=0;taskInteractions=[];trackerConnected=false;observedSuccess=false;lastPage='';successSeconds=null;finishedSeconds=null;
   activityState={};interruptions=0;interruptedMs=0;resumedIntoActivity=false;formDraft=null;
@@ -243,10 +292,26 @@ function showPost(){stage='post';clearInterval(timer);progress(.94,'Final questi
  });
 }
 async function finishStudy(){
-  stage='complete';progress(1,'Study complete');writer.add('session_completed',null,{});formDraft=null;activityState={};persist('complete');await showCompleted(false);
+  stage='complete';progress(1,'Study complete');writer.add('session_completed',null,{});formDraft=null;activityState={};persist('complete');
+  if(embedded){await showSurveyCompleted(false);return;}
+  await showCompleted(false);
 }
 // already: true when the participant reloads after finishing; nothing new is recorded.
+// Inside the survey: save the finished session, then hand back to the survey.
+async function showSurveyCompleted(already){
+  stage='complete';progress(1,'Study complete');
+  render(`<section class="done-card"><span class="eyebrow accent">ACTIVITY COMPLETE</span><h1>Saving your answers to the survey…</h1><p>Please wait a moment.</p></section>`);
+  const ok=await saveToSurvey('complete');
+  if(ok){
+    render(`<section class="done-card"><span class="eyebrow accent">ACTIVITY COMPLETE</span><h1>Thank you. Your answers are saved.</h1><p>Continue with the rest of the survey.</p></section>`);
+    window.parent.postMessage({ns:EMBED_NS,v:EMBED_VERSION,type:'done'},surveyOrigin);
+    return;
+  }
+  render(`<section class="done-card"><span class="eyebrow accent">ACTIVITY COMPLETE</span><h1>Your answers haven't reached the survey yet</h1><p>Please try again. If it still doesn't work, let the research team know.</p><div class="actions-row">${cardButton('Try again','retrySurveySave')}</div></section>`);
+  $('#retrySurveySave').onclick=()=>showSurveyCompleted(already);
+}
 async function showCompleted(already){
+  if(embedded){await showSurveyCompleted(already);return;}
   stage='complete';progress(1,'Study complete');const ok=await writer.flush();
   render(`<section class="done-card"><span class="eyebrow accent">STUDY COMPLETE</span><h1>${already?'You have already completed this study.':'Thank you for participating.'}</h1><p>${already?'Your earlier responses are kept. There is nothing more to do; you can close this tab.':'Your contributions to this research session have been recorded.'}</p><div id="finalSaveNotice" class="notice ${ok?'':'warning'}">${writer.isSaved?(writer.remote?'All responses have synced to the research database.':'This is a local demonstration. Your responses were saved only in this browser and were not sent to a researcher.'):'Some responses could not sync. You can retry or download a copy of this session.'}</div>${returnUrl?`<div class="return-to-survey"><p><strong>One more step:</strong> return to the survey to finish. Your design and task results go back with you; nothing that identifies you is included.</p><a class="btn btn-primary" id="returnToSurvey" href="${esc(buildReturnUrl(returnUrl,{sessionId,status:'complete',assignments,abResults,tasks:study.tasks,externalId:cleanExternalId(query.get('pid')),device:sessionDevice()}))}">Return to the survey →</a></div>`:''}<div class="actions-row">${cardButton('Download a copy of this session','responseCopy','outline')}${writer.isSaved?'':cardButton('Retry sync','retrySave')}${already&&!writer.remote?cardButton('Start a new session','newSession','outline'):''}</div>${already&&!writer.remote?'<p class="small muted">“Start a new session” is only offered in local demo and preview mode, for piloting.</p>':''}</section>`);
   if($('#newSession'))$('#newSession').onclick=()=>{clearCheckpoint();location.reload();};

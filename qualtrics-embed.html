@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Qualtrics setup · Research Studio</title>
+<style>
+  :root{color-scheme:light}
+  *{box-sizing:border-box}
+  body{margin:0;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#163041;background:#f5f8fa}
+  main{max-width:860px;margin:0 auto;padding:24px 16px 56px}
+  h1{font-size:26px;margin:0 0 6px} h2{font-size:18px;margin:28px 0 8px}
+  p,li{color:#2f4a56} .muted{color:#5e6e7a;font-size:13px}
+  a{color:#0a5f63}
+  .card{background:#fff;border:1px solid #dce5e9;border-radius:10px;padding:16px;margin:12px 0}
+  label{font-weight:700;display:block;margin:10px 0 4px}
+  select,input[type=text]{font:inherit;padding:8px 10px;border:1px solid #9fb4bd;border-radius:6px;width:100%;max-width:520px;background:#fff}
+  .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
+  .row>div{flex:1 1 220px}
+  .choice{display:flex;gap:8px;align-items:center;font-weight:400;margin:6px 0}
+  textarea{width:100%;font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;border:1px solid #9fb4bd;border-radius:6px;padding:10px;background:#fbfcfd;color:#163041}
+  button{font:inherit;font-weight:700;border-radius:8px;padding:9px 14px;border:1px solid #0a7473;background:#0a7473;color:#fff;cursor:pointer}
+  button.secondary{background:#fff;color:#0a5f63}
+  button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #0a5f63;outline-offset:2px}
+  ol{padding-left:22px} li{margin:6px 0}
+  code{background:#eef3f5;border-radius:4px;padding:1px 5px;font-size:13px}
+  .warn{background:#fff6e7;border:1px solid #e7c58b;border-radius:8px;padding:10px 12px;color:#5b4a1f}
+  .tabs{display:flex;gap:8px;margin:8px 0}
+  .tabs button[aria-pressed=false]{background:#fff;color:#0a5f63}
+  [role=status]{min-height:1.4em}
+</style>
+</head>
+<body>
+<main>
+  <h1>Run a study inside a Qualtrics survey</h1>
+  <p>The survey shows Research Studio on one of its pages and stores the results in its own data: the design each person saw, task outcomes, answers to the study's questions, and the full click-by-click record. Research Studio needs no database for this. <a href="docs/QUALTRICS-AB-SETUP.md">Full guide</a></p>
+
+  <div class="card">
+    <div class="row">
+      <div><label for="study">Study</label><select id="study"></select></div>
+      <div><label for="layout">How it appears</label><select id="layout"><option value="fullscreen">Full screen while it runs (recommended)</option><option value="inline">Inside the question</option></select></div>
+    </div>
+    <label class="choice"><input type="checkbox" id="advance" checked> Go to the next survey page automatically when the activity is finished</label>
+    <p class="muted" id="studyNote" role="status"></p>
+  </div>
+
+  <h2>1. Declare the fields in Survey Flow</h2>
+  <p>Qualtrics only keeps embedded data that is declared. Near the top of <strong>Survey Flow</strong>, add an <strong>Embedded Data</strong> element with each of these names and no values. Which names your account needs depends on the survey layout: your JavaScript test showed whether <code>__js_rs_small</code> or <code>rs_small</code> held the value. When unsure, declare both sets.</p>
+  <div class="tabs" role="group" aria-label="Field names"><button type="button" id="namesPlain" aria-pressed="true">Names without prefix</button><button type="button" id="namesJs" aria-pressed="false">Names with __js_ prefix</button></div>
+  <label for="fields">Field names, one per line (<span id="fieldCount">0</span>)</label>
+  <textarea id="fields" rows="10" readonly></textarea>
+  <p><button type="button" class="secondary" id="copyFields">Copy field names</button> <span id="copyFieldsStatus" role="status"></span></p>
+  <p class="muted">If your randomizer sets the design, it should set <code>rs_variant</code> to one of: <span id="variantIds"></span>. Leave <code>rs_variant</code> blank to let Research Studio pick at random.</p>
+
+  <h2>2. Add the page and its JavaScript</h2>
+  <ol>
+    <li>Put consent, the Paperwork Reduction Act notice and any screening on the pages before. In the study builder, tick <strong>Consent is collected in the survey</strong> so participants aren't asked twice.</li>
+    <li>Add a page with one <strong>Text / Graphic</strong> question, for example “Please complete the activity.”</li>
+    <li>Open that question's <strong>JavaScript</strong> and replace everything with the script below.</li>
+    <li>Add your follow-up questions on the pages after it.</li>
+  </ol>
+  <label for="script">Question JavaScript</label>
+  <textarea id="script" rows="14" readonly></textarea>
+  <p><button type="button" id="copyScript">Copy JavaScript</button> <span id="copyScriptStatus" role="status"></span></p>
+
+  <h2>3. Check it in Preview</h2>
+  <ol>
+    <li>Preview the survey and complete the activity with made-up answers.</li>
+    <li>In <strong>Data &amp; Analysis</strong>, include survey previews, and check that <code>rs_embed_ok</code> is <code>yes</code> and <code>rs_data_parts</code> is filled in.</li>
+    <li>Export the responses as CSV and use <strong>Results ▸ Import Qualtrics results</strong> in Research Studio. The import checks every response's data against its checksum. Previews are left out of the results, and a note says how many were left out.</li>
+  </ol>
+  <p class="warn">Only addresses on the list in <code>settings.js</code> (<code>embedHosts</code>, by default the Qualtrics domains) can receive results. A page that is opened anywhere else gets nothing.</p>
+</main>
+<script type="module">
+import { fieldNames, answerFields } from './src/qualtrics-embed.js';
+import { normalizeMethod } from './src/methods.js';
+const $ = s => document.querySelector(s);
+const state = { study: null, js: false, template: '' };
+const studyPage = new URL('study.html', location.href).href;
+function flash(el, text) { el.textContent = text; setTimeout(() => { el.textContent = ''; }, 2500); }
+async function copy(text, status) { try { await navigator.clipboard.writeText(text); flash(status, 'Copied.'); } catch { flash(status, 'Select the text and copy it.'); } }
+function render() {
+  const s = state.study; if (!s) return;
+  const names = fieldNames(s).map(n => state.js ? `__js_${n}` : n);
+  $('#fields').value = names.join('\n'); $('#fieldCount').textContent = `${names.length} fields`;
+  const ab = (s.tasks || []).filter(t => normalizeMethod(t) === 'ab_test');
+  $('#variantIds').textContent = ab.length ? [...new Set(ab.flatMap(t => t.variants.map(v => v.id)))].join(', ') : 'this study has no A/B activities';
+  const qs = answerFields(s).length;
+  $('#studyNote').textContent = `${s.tasks.length} activit${s.tasks.length === 1 ? 'y' : 'ies'}, ${ab.length} A/B, ${qs} question${qs === 1 ? '' : 's'} saved as rs_q_ fields.${s.consentMode === 'external' ? '' : ' This study still shows its own consent screen.'}`;
+  $('#script').value = state.template
+    .replace(/studyPage: '[^']*'/, `studyPage: '${studyPage}'`)
+    .replace(/studyId: '[^']*'/, `studyId: '${s.id}'`)
+    .replace(/layout: '[^']*'/, `layout: '${$('#layout').value}'`)
+    .replace(/autoAdvance: (true|false)/, `autoAdvance: ${$('#advance').checked}`);
+}
+async function load(id) {
+  const r = await fetch(`studies/${id}.json`, { cache: 'no-store' });
+  state.study = r.ok ? await r.json() : null;
+  if (!state.study) { $('#studyNote').textContent = `Study ${id} could not be loaded.`; return; }
+  const u = new URL(location.href); u.searchParams.set('study', id); history.replaceState(null, '', u);
+  render();
+}
+(async () => {
+  state.template = await (await fetch('docs/qualtrics-embed.js', { cache: 'no-store' })).text();
+  const index = await (await fetch('studies/index.json', { cache: 'no-store' })).json();
+  $('#study').innerHTML = index.map(x => `<option value="${x.id}">${x.title.replace(/[<&]/g, c => c === '<' ? '&lt;' : '&amp;')}</option>`).join('');
+  const want = new URLSearchParams(location.search).get('study');
+  if (want && index.some(x => x.id === want)) $('#study').value = want;
+  $('#study').onchange = () => load($('#study').value);
+  $('#layout').onchange = render; $('#advance').onchange = render;
+  $('#namesPlain').onclick = () => { state.js = false; $('#namesPlain').setAttribute('aria-pressed', 'true'); $('#namesJs').setAttribute('aria-pressed', 'false'); render(); };
+  $('#namesJs').onclick = () => { state.js = true; $('#namesJs').setAttribute('aria-pressed', 'true'); $('#namesPlain').setAttribute('aria-pressed', 'false'); render(); };
+  $('#copyFields').onclick = () => copy($('#fields').value, $('#copyFieldsStatus'));
+  $('#copyScript').onclick = () => copy($('#script').value, $('#copyScriptStatus'));
+  await load($('#study').value);
+})();
+</script>
+</body>
+</html>

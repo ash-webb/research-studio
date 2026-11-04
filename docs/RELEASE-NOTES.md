@@ -1,3 +1,15 @@
+# v0.3.11 release notes — Research Studio inside a Qualtrics survey (draft, not released)
+
+## Added
+- **Route B for Qualtrics:** a survey can show Research Studio on one of its pages (`study.html?embed=qualtrics`). A script in that question (`docs/qualtrics-embed.js`) stores the results in embedded data: the `rs_…` summary, every answer to the study's own questions (`rs_q_…`), and the full session, with every click and screen, in parts that fit Excel cells, with a checksum. Saves after the opening questions, after each activity and at the end; continues after a reload; nothing kept on the participant's device after the tab closes.
+- **Only approved survey addresses get results** (`embedHosts` in `settings.js`, default `qualtrics.com`). The study waits for the survey's script to answer before it starts; without it, the participant is told not to continue. The survey script only writes `rs_` fields and only accepts messages from the Research Studio address it was given.
+- **Setup page** `qualtrics-embed.html?study=<id>`: the field list (plain or `__js_` names) and the script filled in for the study and site.
+- **Import** rebuilds each response's full session from the survey export and checks it against its checksum; falls back to the summary fields with a warning when data is incomplete; counts people who left during the activity as drop-outs when incomplete responses are exported.
+- Browser checks (`npm run test:embed`) with a stand-in Qualtrics page at a qualtrics.com address: the IOLA study end to end in both survey layouts, full screen and inline, phone, reload, refusals, field guard, setup page and import.
+
+## Changed
+- The return link's fields come from one shared definition (`resultFields`), also used by route B.
+
 # v0.3.10 release notes — time to success and IOLA A/B checks (draft, not released)
 
 ## Added

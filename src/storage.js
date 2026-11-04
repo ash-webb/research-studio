@@ -72,9 +72,13 @@ export async function loadEvents(studyId) {
 }
 
 export class StudyWriter {
-  constructor(studyId, sessionId, onStatus=()=>{}, localOnly=false) {
+  // store: 'local' (demo records kept in this browser) or 'session' (v0.3.11, inside a survey:
+  // kept only for this tab, so nothing stays on the participant's device after it closes).
+  constructor(studyId, sessionId, onStatus=()=>{}, localOnly=false, {store='local'}={}) {
     this.studyId=studyId; this.sessionId=sessionId; this.onStatus=onStatus;
     this.remote = remoteEnabled && !localOnly;
+    this.store = store === 'session' ? 'session' : 'local';
+    this.sessionKey = `utp-embed-events-v1:${sessionId}`;
     this.history=[];
     this.queueKey=`utp-outbox-${sessionId}`;
     this.pending = this.remote ? JSON.parse(sessionStorage.getItem(this.queueKey) || '[]') : [];
@@ -84,7 +88,8 @@ export class StudyWriter {
   add(kind, taskId=null, payload={}) {
     const row={id:uuid(),study_id:this.studyId,session_id:this.sessionId,kind,task_id:taskId,payload,created_at:new Date().toISOString()};
     this.history.push(row);
-    if(!this.remote){const x=JSON.parse(localStorage.getItem(DEMO_KEY) || '[]');x.push(row);localStorage.setItem(DEMO_KEY,JSON.stringify(x));this.onStatus('demo');return;}
+    if(this.store==='session'){try{const x=JSON.parse(sessionStorage.getItem(this.sessionKey)||'[]');x.push(row);sessionStorage.setItem(this.sessionKey,JSON.stringify(x));}catch{}}
+    if(!this.remote){if(this.store!=='session'){const x=JSON.parse(localStorage.getItem(DEMO_KEY) || '[]');x.push(row);localStorage.setItem(DEMO_KEY,JSON.stringify(x));}this.onStatus('demo');return;}
     this.pending.push(row);this.persist();
     if (!this.flushTimer) this.flushTimer=setTimeout(()=>{this.flushTimer=null;this.flush().catch(()=>{});},500);
   }
@@ -106,4 +111,7 @@ export class StudyWriter {
     try{return await this.flushing;} finally {this.flushing=null;}
   }
   get isSaved(){return !this.remote || this.pending.length === 0;}
+  // Every event of this session written in this tab, including before a reload (session store only).
+  sessionEvents(){if(this.store!=='session')return this.history;try{return JSON.parse(sessionStorage.getItem(this.sessionKey)||'[]');}catch{return this.history;}}
+  clearSession(){try{sessionStorage.removeItem(this.sessionKey);}catch{}}
 }

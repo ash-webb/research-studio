@@ -1,8 +1,18 @@
 # Running an A/B test with Qualtrics
 
-This guide connects a Research Studio A/B test to Qualtrics so that **Qualtrics assigns the design and stores the results**. It needs no custom JavaScript in Qualtrics and no database for Research Studio.
+There are two ways to connect a Research Studio A/B test to Qualtrics. In both, **Qualtrics assigns the design and stores the results**, and Research Studio needs no database.
+
+| | **Route A: two surveys and links** | **Route B: Research Studio inside the survey** (v0.3.11) |
+| --- | --- | --- |
+| How it works | Survey 1 sends people to Research Studio; Research Studio sends them on to Survey 2 with the results in the link | One survey shows Research Studio on one of its pages; a short script on that page stores the results |
+| Qualtrics stores | Design, task outcomes, self-report, times, clicks (counts) | All of route A, **plus** answers to the study's own questions and the full click-by-click record |
+| Needs | Nothing beyond standard Qualtrics | Custom JavaScript allowed in the account (your test showed it is), and about 60 embedded data fields declared |
+| Drop-out during the activity | Counted (Survey 1 rows with no Survey 2 row) | Counted when the export includes incomplete responses |
+
+Route A is described first; route B is [further down](#route-b-research-studio-inside-the-survey).
 
 ```
+Route A
 Survey 1 (Qualtrics)            Research Studio                      Survey 2 (Qualtrics)
 consent, PRA notice,      →     the A/B task(s) on the design   →    results arrive in the link;
 screener, randomizer            Qualtrics chose                      follow-up questions; thank you
@@ -32,7 +42,7 @@ Per participant, in Survey 2:
 
 `rs_ab2_…`, `rs_ab3_…` follow for further A/B activities, in study order. With several experiments in one study, `rs_variant_<experiment-id>` replaces `rs_variant`. Nothing that identifies the participant is included.
 
-**Not sent to Qualtrics in this setup:** the click-by-click history and screen paths, and the answers to any questions written into the Research Studio study (opening questions, questions after each activity, closing questions). They stay in the participant's browser. Ask those questions in Survey 1 or Survey 2 instead, or use a database. Sending them through Qualtrics needs the custom-JavaScript integration (a later step).
+**Not sent to Qualtrics in route A:** the click-by-click history and screen paths, and the answers to any questions written into the Research Studio study (opening questions, questions after each activity, closing questions). They stay in the participant's browser. Ask those questions in Survey 1 or Survey 2 instead, or use route B.
 
 ## 1. Prepare the study in Research Studio
 
@@ -96,6 +106,61 @@ The files are read in your browser only; nothing is uploaded or stored. Select *
 - **Values in links are visible.** A participant could, in principle, edit the address bar. Keep design IDs neutral (`design-a`, not `new-improved`) and treat odd values with care. A design ID that the study doesn't have is replaced by a random design and flagged in the Research Studio results.
 - **Without Qualtrics** (for example when piloting), Research Studio assigns designs at random itself. Group sizes are then not guaranteed to be even.
 
-## Optional: test whether custom JavaScript works in your Qualtrics account
+## Route B: Research Studio inside the survey
 
-Custom JavaScript would let a survey show Research Studio inside a page and store full results (including click histories) in Qualtrics. To find out whether your account allows it, build a two-page test survey with `qualtrics-test.html` (served by this site) shown in an iframe and the script in `docs/qualtrics-js-test.js` added to that question. The test page reports whether the survey's script answered, and the embedded data fields `rs_js_ran`, `rs_frame_ok`, `rs_small`, `rs_large` and `rs_huge` (declared with and without the `__js_` prefix) show what Qualtrics stored. The test data is synthetic.
+```
+One survey (Qualtrics)
+consent, PRA notice,  →  page with Research Studio (full screen while it runs):  →  follow-up
+screener, randomizer     the A/B tasks; results saved into embedded data            questions; thank you
+sets rs_variant          after every activity and at the end
+```
+
+### What the survey stores
+
+Everything in the route A table (same `rs_…` names), plus:
+
+| Field | Meaning |
+| --- | --- |
+| `rs_embed_ok` | `yes` once the page's script answered Research Studio. Blank means the script didn't run |
+| `rs_q_<question>` | The answer to each question in the Research Studio study, for example `rs_q_one_time_payment_ease`. Several choices are joined with `\|`. Long answers are cut at 5,000 characters |
+| `rs_data_1` … `rs_data_8` | The whole Research Studio session (every event, click and screen), in parts of up to 30,000 characters so each fits an Excel cell. Unused parts are blank |
+| `rs_data_parts`, `rs_data_chars`, `rs_data_sha256` | How many parts, the total length and a checksum, so the import can confirm nothing was lost |
+| `rs_data_truncated` | `yes` if a very long session (more than about 1,500 clicks) had its oldest click records left out to fit; outcomes and answers are always kept |
+
+`rs_status` is `in_progress` until the last save, then `complete`. Research Studio saves after the opening questions, after every activity and at the end.
+
+### Setting it up
+
+1. **Research Studio.** In the study builder tick **Consent is collected in the survey before this study**, then publish the study as usual. Open **`qualtrics-embed.html?study=STUDY-ID`** on the Research Studio site: it gives the exact field list and the script for that study.
+2. **Fields.** In **Survey Flow**, add an **Embedded Data** element near the top with every name from the setup page (no values). Newer survey layouts store values set by JavaScript under `__js_` names, older ones under the plain names; your JavaScript test showed which (whether `__js_rs_small` or `rs_small` had the value). The setup page lists either set; declare both if unsure.
+3. **Randomizer.** As in route A, but set `rs_variant` (not `Variant`) in each branch: `rs_variant` = `design-a`, and so on, with **Evenly Present Elements** ticked. Without a randomizer, Research Studio assigns designs itself.
+4. **The page.** After consent and screening, add a page with one **Text / Graphic** question (“Please complete the activity.”). Paste the script from the setup page into that question's **JavaScript**. The script:
+   - opens Research Studio full screen (or inside the question, if you chose that), passing `rs_variant` and the response ID;
+   - hides the survey's Next button until the activity is finished;
+   - saves only fields whose names start with `rs_`, and only when the message comes from the Research Studio address in the script;
+   - goes to the next page by itself when Research Studio has finished and saved (you can turn this off).
+5. **Follow-up and thank-you pages** after it. You can branch on `rs_variant`.
+6. **Approved survey addresses.** Research Studio only sends results to a page on a host listed in `embedHosts` in `settings.js` (default `qualtrics.com`, which includes `irsresearch.gov1.qualtrics.com`). A page anywhere else that embeds the study gets nothing, and the participant is told not to continue. The same happens if the survey page's script is missing. `qualtrics.com` admits any Qualtrics account; to accept only yours, list its address instead, for example `embedHosts: ['irsresearch.gov1.qualtrics.com']`.
+
+### Test before launch
+
+- [ ] Preview the survey several times with made-up answers: you should land on each design, see **Begin** (no second consent), and return to the survey automatically at the end.
+- [ ] In **Data & Analysis** (with previews shown), `rs_embed_ok` is `yes`, `rs_status` is `complete`, and `rs_data_parts` is filled.
+- [ ] Reload the page in the middle of the activity once: Research Studio continues where it was, and the saved data still has everything.
+- [ ] Try once on a phone and once on an iPhone (Safari).
+- [ ] Export the responses and import them into Research Studio (below): the status line should say every response came **with the full session record**.
+
+### Results
+
+Export the survey as CSV, **including incomplete responses** if you want drop-out counted, and select **Results & insights ▸ Import Qualtrics results**. The import rebuilds each participant's full Research Studio session from `rs_data_…` and checks it against `rs_data_sha256`, so the dashboard, click maps, paths, answers and every CSV export work as if the data had been collected by Research Studio itself. A response whose data is incomplete (for example a part that wasn't declared) is shown from its summary fields, with a warning. People assigned a design who left during the activity are counted as drop-outs. Survey previews and tests are left out.
+
+### Limits to know
+
+- **Qualtrics keeps what was saved on pages people submitted.** Someone who closes the survey during the activity has an incomplete response with their assigned design, but not the activity results; they count as drop-outs.
+- **Inside the survey, nothing is kept on the participant's device** after the tab closes: Research Studio holds the session only for the open tab, so it can continue after a reload.
+- **Field limits.** Each value is kept under Excel's 32,767-character cell limit. Qualtrics' own limit for embedded data is larger; your JavaScript test stored 100,000 characters intact.
+- **About 60 fields** to declare for a four-task study with 13 questions. The setup page lists them in order, so they can be added one after another.
+
+## Checking whether custom JavaScript works in your Qualtrics account
+
+Build a two-page test survey with `qualtrics-test.html` (served by this site) shown in an iframe and the script in `docs/qualtrics-js-test.js` added to that question. The test page reports whether the survey's script answered, and the embedded data fields `rs_js_ran`, `rs_frame_ok`, `rs_small`, `rs_large` and `rs_huge` (declared with and without the `__js_` prefix) show what Qualtrics stored. The test data is synthetic.

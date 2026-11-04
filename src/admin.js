@@ -1,6 +1,6 @@
 import { renderAnalyses } from './results-ui.js';
 import { plannerText } from './ab-results.js';
-import { qualtricsRecords, classifyExport, eventsFromQualtrics } from './qualtrics-import.js';
+import { qualtricsRecords, classifyExport, eventsFromQualtrics, expandEmbedded } from './qualtrics-import.js';
 import { METHODS, normalizeMethod, methodOutcomeRows, exportMethodRows, experimentComparisonRows } from './methods.js';
 import { newActivity, methodOptions, methodEditorHTML, parseEditorValue, variantRowError, nextVariant } from './builder-ui.js';
 import { renamePlanActivity, removeResearchQuestion, activitySize, activityAnalysis, rqLinksHTML } from './method-plans.js';
@@ -335,7 +335,7 @@ async function refreshResults(){
   try{
     if(!studyForId(id)){const item=studyIndex.find(x=>x.id===id);if(item)await loadStudy(item);}
     if(imported&&imported.studyId===id){records=imported.events;flat=flattenEvents(records);selectedSession=flat.sessions[0]?.session_id||null;selectedTask='';selectedPage='';renderResults();
-      by('resultsStatus').innerHTML=`Showing imported Qualtrics data: ${imported.summary.responses} Survey 2 response${imported.summary.responses===1?'':'s'}${imported.summary.dropouts?`, plus ${imported.summary.dropouts} assigned in Survey 1 who did not return`:''}. Read in this browser only; nothing was uploaded.${imported.warnings?.length?` <strong>Note:</strong> ${esc(imported.warnings.join(' '))}`:''} <button type="button" class="btn btn-small btn-outline" id="clearImport">Show browser data instead</button>`;
+      by('resultsStatus').innerHTML=(imported.summary.fullSessions!==undefined?`Showing imported Qualtrics data: ${imported.summary.responses} response${imported.summary.responses===1?'':'s'} (${imported.summary.fullSessions} with the full session record)${imported.summary.dropouts?`, plus ${imported.summary.dropouts} who left during the activity`:''}.`:`Showing imported Qualtrics data: ${imported.summary.responses} Survey 2 response${imported.summary.responses===1?'':'s'}${imported.summary.dropouts?`, plus ${imported.summary.dropouts} assigned in Survey 1 who did not return`:''}.`)+` Read in this browser only; nothing was uploaded.${imported.warnings?.length?` <strong>Note:</strong> ${esc(imported.warnings.join(' '))}`:''} <button type="button" class="btn btn-small btn-outline" id="clearImport">Show browser data instead</button>`;
       by('clearImport').onclick=()=>{imported=null;refreshResults();};return;}
     const loaded=await loadEvents(id);
     // Researcher "Preview locally" runs are labelled at session start and kept out of
@@ -472,6 +472,7 @@ function wireActions(){
       for(const f of files){const recs=qualtricsRecords(await f.text());const kind=classifyExport(recs);if(kind==='survey2')s2=s2.concat(recs);else if(kind==='survey1')s1=s1.concat(recs);else unknown.push(f.name);}
       if(unknown.length)toast(`Not recognised as Survey 1 or Survey 2: ${unknown.join(', ')}`,8000);
       if(!s2.length)throw new Error('No Survey 2 export found. It should contain the rs_session and rs_ab1_… fields.');
+      await expandEmbedded(s2);
       const result=eventsFromQualtrics(current,s2,s1);
       if(result.problems.length)throw new Error(result.problems.join(' '));
       imported={studyId:id,events:result.events,summary:result.summary,warnings:result.warnings};

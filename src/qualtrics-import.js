@@ -2,6 +2,7 @@
 // browser. Survey 2 (the follow-up survey) carries the rs_* fields from the return link; Survey 1
 // (intake), if supplied, adds people who were assigned a design but never reached Survey 2.
 import { normalizeMethod } from './methods.js';
+import { recordField, sessionFromRecord } from './qualtrics-embed.js';
 
 export function parseCSV(text) {
   const rows = []; let row = [], cell = '', q = false;
@@ -30,11 +31,13 @@ export function qualtricsRecords(text) {
   return body.map(r => Object.fromEntries(head.map((h, i) => [h, (r[i] ?? '').trim()])));
 }
 
-const field = (rec, name) => { const k = Object.keys(rec).find(x => x.toLowerCase() === name.toLowerCase()); return k ? rec[k] : ''; };
+// Field names may carry Qualtrics' __js_ prefix (newer layouts store JavaScript-set values that way).
+const field = (rec, name) => recordField(rec, name);
 export function classifyExport(records) {
   if (!records.length) return 'empty';
   const keys = Object.keys(records[0]).map(k => k.toLowerCase());
-  if (keys.includes('rs_session') || keys.some(k => /^rs_ab\d+_task$/.test(k))) return 'survey2';
+  const bare = keys.map(k => k.replace(/^__js_/, ''));
+  if (bare.includes('rs_session') || bare.includes('rs_data_parts') || bare.some(k => /^rs_ab\d+_task$/.test(k))) return 'survey2';
   if (keys.includes('variant') && (keys.includes('responseid'))) return 'survey1';
   return 'unknown';
 }
@@ -48,6 +51,16 @@ export function isLiveResponse(rec) {
   const status = field(rec, 'Status').trim(), channel = field(rec, 'DistributionChannel').trim().toLowerCase();
   if (['preview', 'test'].includes(channel)) return false;
   return status === '' || ['0', 'ip address', '16', 'offline'].includes(status.toLowerCase());
+}
+
+// Survey with Research Studio inside (v0.3.11): rebuild each response's full session from rs_data_*
+// before calling eventsFromQualtrics. Adds rec.__rs (the session) or rec.__rsProblem.
+export async function expandEmbedded(records) {
+  for (const rec of records) {
+    const r = await sessionFromRecord(rec);
+    if (r.events) rec.__rs = r; else if (r.problem) rec.__rsProblem = r.problem;
+  }
+  return records;
 }
 
 // Returns { events, summary, problems (stop the import), warnings (shown with the results) }.
@@ -73,9 +86,17 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
   const seenSessions = new Set(), seenPids = new Set();
   let s2NotLive = 0, s2Dupes = 0, blankPid = 0, unmatched = 0, mismatched = 0, used = 0;
   const rows = [];
+  const embeddedSurvey = survey2In.some(r => field(r, 'rs_data_parts') || field(r, 'rs_embed_ok'));
+  // Drop-outs can be counted only if the export includes unfinished responses.
+  const withUnfinished = survey2In.some(r => field(r, 'Finished') !== '' && !truthy(field(r, 'Finished')));
+  const embeddedDropouts = embeddedSurvey && withUnfinished;
+  const leftEarly = [];
   for (const rec of survey2In) {
     if (!isLiveResponse(rec)) { s2NotLive++; continue; }
-    const session = field(rec, 'rs_session'); if (!session) continue;
+    const session = field(rec, 'rs_session');
+    // Research Studio inside the survey: assigned a design by the survey but no results saved
+    // (left during the activity; Qualtrics keeps an incomplete response's earlier pages only).
+    if (!session) { if (embeddedDropouts && field(rec, 'rs_variant') && field(rec, 'ResponseId')) leftEarly.push(rec); continue; }
     const pid = field(rec, 'rs_pid');
     if (seenSessions.has(session) || (pid && seenPids.has(pid))) { s2Dupes++; continue; }
     seenSessions.add(session); if (pid) seenPids.add(pid); else blankPid++;
@@ -83,12 +104,25 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
   }
   // Drop-outs can only be counted when every Survey 2 row can be matched to Survey 1.
   const canCountDropouts = survey1Provided && blankPid === 0;
+  let fullSessions = 0, unreadable = 0, truncated = 0, otherStudy = 0;
   for (const rec of rows) {
     const session = field(rec, 'rs_session'), pid = field(rec, 'rs_pid');
     const assigned = pid ? s1.get(pid) : undefined;
     if (survey1Provided && pid && !assigned) unmatched++;
     used++;
-    push(session, 'session_started', null, { external_id: pid || null, device: field(rec, 'rs_device') || null, study_version: null, survey1_provided: canCountDropouts });
+    // Full session saved by the survey: use Research Studio's own records (clicks, screens, answers).
+    if (rec.__rs && rec.__rs.session_id === session) {
+      if (rec.__rs.study_id !== study.id) { otherStudy++; used--; continue; }
+      fullSessions++; if (rec.__rs.truncated) truncated++;
+      for (const e of rec.__rs.events) {
+        const payload = { ...e.payload, imported: 'qualtrics-embed' };
+        if (e.kind === 'session_started') { payload.external_id = payload.external_id || pid || null; payload.survey1_provided = canCountDropouts || embeddedDropouts; }
+        events.push({ ...e, payload });
+      }
+      continue;
+    }
+    if (rec.__rsProblem) unreadable++;
+    push(session, 'session_started', null, { external_id: pid || null, device: field(rec, 'rs_device') || null, study_version: null, survey1_provided: canCountDropouts || embeddedDropouts });
     for (let k = 1; k <= 20; k++) {
       const taskId = field(rec, `rs_ab${k}_task`);
       if (!taskId) continue;
@@ -113,6 +147,14 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
     }
     if (field(rec, 'rs_status') === 'complete') push(session, 'session_completed', null, {});
   }
+  // ---- people the survey assigned who left during the Research Studio part
+  for (const rec of leftEarly) {
+    const rid = field(rec, 'ResponseId'), variant = field(rec, 'rs_variant');
+    if (seenPids.has(rid)) continue;
+    const session = `qualtrics-${rid}`;
+    push(session, 'session_started', null, { external_id: rid, study_version: null, survey1_provided: true });
+    for (const task of abTasks) if (task.variants.some(v => v.id === variant)) push(session, 'task_started', task.id, { method: 'ab_test', experiment_id: task.experimentId || task.id, variant_id: variant, assignment: 'link' });
+  }
   // ---- Survey 1 people with no Survey 2 response: assigned, started, not finished
   let dropouts = 0;
   if (canCountDropouts) for (const [rid, variant] of s1) {
@@ -124,12 +166,17 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
     for (const task of abTasks) if (task.variants.some(v => v.id === variant)) push(session, 'task_started', task.id, { method: 'ab_test', experiment_id: task.experimentId || task.id, variant_id: variant, assignment: 'link' });
   }
   if (unknownTasks.size) problems.push(`This export has A/B activities that are not in the selected study: ${[...unknownTasks].join(', ')}. Choose the matching study and import again.`);
+  if (otherStudy) problems.push(`${otherStudy} response${otherStudy === 1 ? ' holds' : 's hold'} data for a different study. Choose the matching study and import again.`);
+  if (unreadable) warnings.push(`${unreadable} response${unreadable === 1 ? '' : 's'}: the full session data could not be read (a field may be undeclared or cut off), so only the summary fields were used. Click records and answers are missing for ${unreadable === 1 ? 'it' : 'them'}.`);
+  if (truncated) warnings.push(`${truncated} response${truncated === 1 ? ' was' : 's were'} too long for the survey fields; the oldest click records were left out, outcomes and answers are complete.`);
+  if (leftEarly.length) warnings.push(`${leftEarly.length} participant${leftEarly.length === 1 ? ' was' : 's were'} assigned a design but left before the activity was saved; counted as drop-outs.`);
   if (!used) problems.push('No usable Survey 2 rows with rs_session were found. Check that Survey 2 declares the rs_… embedded data fields (see the Qualtrics setup guide).');
   if (s1NotLive + s2NotLive) warnings.push(`Left out ${s1NotLive + s2NotLive} preview, test or imported response${s1NotLive + s2NotLive === 1 ? '' : 's'}.`);
   if (s1Dupes + s2Dupes) warnings.push(`Removed ${s1Dupes + s2Dupes} duplicate row${s1Dupes + s2Dupes === 1 ? '' : 's'}.`);
-  if (!survey1Provided) warnings.push('Survey 1 was not imported, so drop-out and group balance are unknown.');
+  if (!survey1Provided && !embeddedSurvey) warnings.push('Survey 1 was not imported, so drop-out and group balance are unknown.');
+  if (embeddedSurvey && !withUnfinished) warnings.push('This export has finished responses only, so people who left during the activity are not counted. Export with incomplete responses included to count drop-out.');
   else if (blankPid) warnings.push(`${blankPid} Survey 2 row${blankPid === 1 ? ' has' : 's have'} no rs_pid, so they can't be matched to Survey 1: drop-out is not counted.`);
   if (unmatched) warnings.push(`${unmatched} Survey 2 row${unmatched === 1 ? '' : 's'} had an rs_pid not found among finished Survey 1 responses.`);
   if (mismatched) warnings.push(`${mismatched} task result${mismatched === 1 ? '' : 's'} showed a different design from the one Survey 1 assigned; Survey 1's assignment was used.`);
-  return { events, summary: { responses: used, dropouts, survey1Provided: canCountDropouts }, problems, warnings };
+  return { events, summary: { responses: used, dropouts: dropouts + leftEarly.length, survey1Provided: canCountDropouts || embeddedDropouts, ...(embeddedSurvey ? { fullSessions } : {}) }, problems, warnings };
 }

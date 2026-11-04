@@ -91,7 +91,7 @@ The plan lives in your working copy only. **Export study JSON** leaves it out, s
 
 ### A/B/n implementation testing
 
-**Using Qualtrics?** See [`docs/QUALTRICS-AB-SETUP.md`](docs/QUALTRICS-AB-SETUP.md): Qualtrics assigns the design evenly and receives each task's results through the return link, with no custom JavaScript and no separate database.
+**Using Qualtrics?** See [`docs/QUALTRICS-AB-SETUP.md`](docs/QUALTRICS-AB-SETUP.md). Route A: Qualtrics assigns the design and receives each task's results through the return link, with no custom JavaScript. Route B (v0.3.11): the survey shows Research Studio on one of its pages and stores everything, including answers and the full click record; `qualtrics-embed.html?study=<id>` gives the script and field list.
 
 In the builder (v0.3.6), each design is a row (name, ID, prototype link, version) with inline checks, and **Check designs** confirms before launch that every design loads the tracker and sends the success signal.
 
