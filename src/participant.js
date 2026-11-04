@@ -5,6 +5,8 @@ import { deviceClass } from './abstats.js';
 
 let study, writer, sessionId, activeTask=null, taskIndex=0;
 let taskStartedAt=0, clickCount=0, taskInteractions=[], trackerConnected=false, observedSuccess=false;
+// Seconds from activity start (same clock as time_seconds) to the first matching success signal and to "Finish this task".
+let successSeconds=null, finishedSeconds=null;
 let stage='welcome', prototypeOrigin='', timer=null, lastPage='', activeVariant=null;
 // Resume-after-refresh state (v0.3.3). Progress is checkpointed in this tab's sessionStorage,
 // which survives reloads and restored tabs but is cleared when the tab is closed.
@@ -57,7 +59,7 @@ function persist(stageName=resumeStage,index=taskIndex){
     interruptions,interruptedMs,activity:activityState,draft:formDraft,assignments,abResults,savedAt:Date.now()};
   try{sessionStorage.setItem(resumeKey,JSON.stringify(cp));}catch{}
 }
-function saveActivity(state){activityState=state;persist('activity');}
+function saveActivity(state){activityState={...state,successSeconds,finishedSeconds};persist('activity');}
 // Another open tab of the same session answers this; a duplicated tab must not write into it.
 const sessionChannel=('BroadcastChannel' in window)?new BroadcastChannel('utp-session-v1'):null;
 sessionChannel?.addEventListener('message',e=>{if(e.data?.type==='ping'&&e.data.sessionId&&e.data.sessionId===sessionId&&stage!=='welcome')sessionChannel.postMessage({type:'here',sessionId,token:e.data.token});});
@@ -103,6 +105,7 @@ function resumeActivity(cp,gap){
   interruptions=(cp.interruptions||0)+1;interruptedMs=(cp.interruptedMs||0)+gap;resumedIntoActivity=true;
   activityState=cp.activity||{};
   clickCount=activityState.clickCount||0;trackerConnected=!!activityState.trackerConnected;observedSuccess=!!activityState.observedSuccess;
+  successSeconds=activityState.successSeconds??null;finishedSeconds=activityState.finishedSeconds??null;
   progress(.12+taskIndex/study.tasks.length*.73,`Activity ${taskIndex+1} of ${study.tasks.length}`);
   clearInterval(timer);persist('activity');
   if(cp.stage==='reflection'&&['prototype','ab_test'].includes(normalizeMethod(activeTask))){finishPrototype();return;}
@@ -196,7 +199,7 @@ function showPre(){stage='pre';persist('pre');progress(.08,'Before the activitie
 });}
 function startActivity(){
   if(taskIndex>=study.tasks.length){showPost();return;}
-  stage='activity';activeTask=study.tasks[taskIndex];activeVariant=null;taskStartedAt=Date.now();clickCount=0;taskInteractions=[];trackerConnected=false;observedSuccess=false;lastPage='';
+  stage='activity';activeTask=study.tasks[taskIndex];activeVariant=null;taskStartedAt=Date.now();clickCount=0;taskInteractions=[];trackerConnected=false;observedSuccess=false;lastPage='';successSeconds=null;finishedSeconds=null;
   activityState={};interruptions=0;interruptedMs=0;resumedIntoActivity=false;formDraft=null;
   if(normalizeMethod(activeTask)==='ab_test')activeVariant=variantForTask(activeTask,assignments);
   progress(.12+taskIndex/study.tasks.length*.73,`Activity ${taskIndex+1} of ${study.tasks.length}`);
@@ -213,11 +216,12 @@ async function completeActivity(result={}, options={}){
     ...(activeVariant?{experiment_id:activeTask.experimentId||activeTask.id,variant_id:activeVariant.id,variant_revision:activeVariant.revision||null}:{}),
     ...(options.selfReport!==undefined?{self_report:options.selfReport}:{}),
     ...(options.observedSuccess!==undefined?{observed_success:options.observedSuccess}:{}),
-    ...(['prototype','ab_test'].includes(normalizeMethod(activeTask))?{tracker_connected:trackerConnected,click_count:clickCount}:{}),
+    ...(['prototype','ab_test'].includes(normalizeMethod(activeTask))?{tracker_connected:trackerConnected,click_count:clickCount,
+      ...(successSeconds!=null?{success_at_seconds:successSeconds}:{}),...(finishedSeconds!=null?{finished_at_seconds:finishedSeconds}:{})}:{}),
     // Reloads during the activity: time_seconds stays wall-clock; interrupted_seconds is the time away.
     ...(interruptions?{interruptions,interrupted_seconds:Math.round(interruptedMs/1000)}:{})
   });
-  if(normalizeMethod(activeTask)==='ab_test')abResults[activeTask.id]={variant_id:activeVariant?.id||null,success_signal_status:result.success_signal_status||null,self_report:options.selfReport??null,time_seconds:elapsed(),click_count:clickCount};
+  if(normalizeMethod(activeTask)==='ab_test')abResults[activeTask.id]={variant_id:activeVariant?.id||null,success_signal_status:result.success_signal_status||null,self_report:options.selfReport??null,time_seconds:elapsed(),click_count:clickCount,success_at_seconds:successSeconds};
   const followup=normalizeMethod(activeTask)!=='survey' && activeTask.questions?.length;
   activityState={};formDraft=null;
   if(followup)persist('followup');else persist('start',taskIndex+1);
@@ -261,7 +265,7 @@ function startPrototype(){
 function flushInteractions(){if(!taskInteractions.length||!writer||!activeTask)return;const hits=taskInteractions.splice(0);for(let i=0;i<hits.length;i+=20)writer.add('interaction_batch',activeTask.id,{items:hits.slice(i,i+20)});}
 function finishPrototype(){
   if(stage!=='activity')return;
-  clearInterval(timer);stage='prototype_reflection';flushInteractions();activityState={clickCount,trackerConnected,observedSuccess};persist('reflection');
+  clearInterval(timer);stage='prototype_reflection';flushInteractions();if(finishedSeconds==null)finishedSeconds=elapsed();activityState={clickCount,trackerConnected,observedSuccess,successSeconds,finishedSeconds};persist('reflection');
   render(`<section class="survey-card"><span class="eyebrow accent">AFTER THE TASK</span><h1>How did that task go?</h1><p>Please indicate whether you believe you completed the task. Your answer is measured separately from a prototype success signal.</p><form id="reflectionForm"><div class="question"><span class="question-title">Were you able to complete the task? <span class="required">*</span></span><div class="reflection-choice"><label><input type="radio" name="selfReport" value="completed" required> Yes, I completed it</label><label><input type="radio" name="selfReport" value="unable" required> No, I could not complete it</label></div></div><button type="submit" class="btn btn-primary">Continue →</button></form></section>`);
   $('#reflectionForm').onsubmit=async e=>{
     e.preventDefault();const selfReport=e.currentTarget.querySelector('[name="selfReport"]:checked')?.value;
@@ -284,7 +288,7 @@ window.addEventListener('message',e=>{
   if(!m||m.namespace!=='UTP_BRIDGE'||m.version!==1||!['ready','click','scroll','screen','success','custom'].includes(m.type))return;
   if(!trackerConnected){trackerConnected=true;saveActivity({clickCount,trackerConnected,observedSuccess});}
   $('#bridgeIndicator').textContent='Click tracking active';$('#bridgeIndicator').classList.add('connected');
-  if(m.type==='success' && m.task_id===activeTask.successSignal){observedSuccess=true;saveActivity({clickCount,trackerConnected,observedSuccess});return;}
+  if(m.type==='success' && m.task_id===activeTask.successSignal){if(!observedSuccess)successSeconds=elapsed();observedSuccess=true;saveActivity({clickCount,trackerConnected,observedSuccess});return;}
   if(m.type==='ready'){lastPage=String(m.page||'').slice(0,90);return;}
   if(['click','scroll','screen','custom'].includes(m.type)){
     const hit={type:m.type,at:new Date().toISOString(),page:String(m.page||lastPage||'').slice(0,90),target:String(m.target||m.name||'').slice(0,90),x_pct:Math.min(100,Math.max(0,Number(m.x_pct)||0)),y_pct:Math.min(100,Math.max(0,Number(m.y_pct)||0)),viewport_width:Math.max(0,Number(m.viewport_width)||0),viewport_height:Math.max(0,Number(m.viewport_height)||0),...(['keyboard','pointer'].includes(m.input)?{input:m.input}:{})};

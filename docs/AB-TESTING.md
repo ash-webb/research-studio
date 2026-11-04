@@ -19,7 +19,7 @@ After consent, a new random session UUID is generated. A deterministic FNV-1a 32
 
 ### Recorded events and join keys
 
-`task_started` includes `method: ab_test`, `experiment_id`, `variant_id`, `variant_revision`, and assignment rule. `task_ended` repeats these fields and records `time_seconds`, `click_count`, `tracker_connected`, and a nested result containing `success_signal_status` (`received`, `not_observed`, or `unavailable`). It also captures `self_report` (`completed` or `unable`).
+`task_started` includes `method: ab_test`, `experiment_id`, `variant_id`, `variant_revision`, and assignment rule. `task_ended` repeats these fields and records `time_seconds`, `success_at_seconds` (time to the first success signal, v0.3.10), `finished_at_seconds`, `click_count`, `tracker_connected`, and a nested result containing `success_signal_status` (`received`, `not_observed`, or `unavailable`). It also captures `self_report` (`completed` or `unable`).
 
 CSV exports:
 

@@ -433,9 +433,9 @@ function exportDataset(kind){
   const id=by('resultsStudy').value;
   if(kind==='all')return download(`${id}-all-events.json`,JSON.stringify(records,null,2),'application/json');
   if(kind==='methods')return download(`${id}-method-outcomes.csv`,csv(exportMethodRows(methodOutcomeRows(records)),['study_id','session_id','study_version','activity_id','method','experiment_id','variant_id','variant_revision','ended_at','time_seconds','interruptions','interrupted_seconds','result','self_report','observed_success']),'text/csv;charset=utf-8');
-  if(kind==='experiments')return download(`${id}-ab-exposures.csv`,csv(experimentComparisonRows(records),['study_id','study_version','session_id','external_id','assignment','experiment_id','activity_id','variant_id','variant_revision','assigned_at','ended_at','status','time_seconds','click_count','tracker_connected','success_signal_status','self_report']),'text/csv;charset=utf-8');
+  if(kind==='experiments')return download(`${id}-ab-exposures.csv`,csv(experimentComparisonRows(records),['study_id','study_version','session_id','external_id','assignment','experiment_id','activity_id','variant_id','variant_revision','assigned_at','ended_at','status','time_seconds','success_at_seconds','click_count','tracker_connected','success_signal_status','self_report']),'text/csv;charset=utf-8');
   const fields={
-    tasks:['session_id','external_id','study_id','task_id','at','method','experiment_id','variant_id','variant_revision','self_report','observed_success','tracker_connected','time_seconds','interruptions','interrupted_seconds','click_count'],
+    tasks:['session_id','external_id','study_id','task_id','at','method','experiment_id','variant_id','variant_revision','self_report','observed_success','tracker_connected','time_seconds','success_at_seconds','finished_at_seconds','interruptions','interrupted_seconds','click_count'],
     answers:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','stage','question_id','response','at'],
     interactions:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','type','input','target','page','x_pct','y_pct','viewport_width','viewport_height'],
     methodEvents:['session_id','study_id','task_id','experiment_id','variant_id','variant_revision','at','method','action','detail']

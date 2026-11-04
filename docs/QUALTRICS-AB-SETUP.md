@@ -26,12 +26,13 @@ Per participant, in Survey 2:
 | `rs_ab1_variant` | Design shown in that activity | `design-b` |
 | `rs_ab1_success` | Success signal: `received`, `not_observed` (tracking worked, signal never sent) or `unavailable` (no tracking or no signal set) | `received` |
 | `rs_ab1_self` | Participant's own answer: `completed` or `unable` | `completed` |
-| `rs_ab1_time` | Seconds from start to “Finish this task” | `41` |
+| `rs_ab1_time` | Seconds from the start of the activity until the participant answered “Were you able to complete the task?” (includes time away during reloads) | `41` |
+| `rs_ab1_tts` | Seconds from the start of the activity to the first success signal; blank when there was none (v0.3.10) | `23` |
 | `rs_ab1_clicks` | Clicks inside the design | `5` |
 
 `rs_ab2_…`, `rs_ab3_…` follow for further A/B activities, in study order. With several experiments in one study, `rs_variant_<experiment-id>` replaces `rs_variant`. Nothing that identifies the participant is included.
 
-**Not sent to Qualtrics in this setup:** the click-by-click history and screen paths. They stay in the participant's browser. Sending them needs the custom-JavaScript integration (a later step).
+**Not sent to Qualtrics in this setup:** the click-by-click history and screen paths, and the answers to any questions written into the Research Studio study (opening questions, questions after each activity, closing questions). They stay in the participant's browser. Ask those questions in Survey 1 or Survey 2 instead, or use a database. Sending them through Qualtrics needs the custom-JavaScript integration (a later step).
 
 ## 1. Prepare the study in Research Studio
 
@@ -62,7 +63,7 @@ Per participant, in Survey 2:
 
 ## 3. Survey 2 (follow-up)
 
-1. In **Survey Flow**, make the first element an **Embedded Data** element listing these field names exactly as written (capitalisation matters) with no values: `rs_pid`, `rs_session`, `rs_status`, `rs_variant`, `rs_device`, and for each A/B activity `rs_ab1_task`, `rs_ab1_variant`, `rs_ab1_success`, `rs_ab1_self`, `rs_ab1_time`, `rs_ab1_clicks` (then `rs_ab2_…`).
+1. In **Survey Flow**, make the first element an **Embedded Data** element listing these field names exactly as written (capitalisation matters) with no values: `rs_pid`, `rs_session`, `rs_status`, `rs_variant`, `rs_device`, and for each A/B activity `rs_ab1_task`, `rs_ab1_variant`, `rs_ab1_success`, `rs_ab1_self`, `rs_ab1_time`, `rs_ab1_tts`, `rs_ab1_clicks` (then `rs_ab2_…`).
 2. Add your follow-up questions. You can branch on `rs_variant` if questions differ by design.
 3. End with a thank-you message.
 

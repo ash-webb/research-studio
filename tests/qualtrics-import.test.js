@@ -31,3 +31,9 @@ test('tasks not in the selected study are reported, not silently dropped', () =>
   const r = eventsFromQualtrics(study, s2);
   assert.match(r.problems.join(' '), /other-task/);
 });
+test('time to first success comes across from Survey 2 when present', () => {
+  const s2 = [{ rs_session: 's9', rs_pid: 'R_9', rs_status: 'complete', rs_ab1_task: study.tasks.find(t => t.method === 'ab_test').id, rs_ab1_variant: 'design-a', rs_ab1_success: 'received', rs_ab1_time: '40', rs_ab1_tts: '18' },
+              { rs_session: 's10', rs_pid: 'R_10', rs_status: 'complete', rs_ab1_task: study.tasks.find(t => t.method === 'ab_test').id, rs_ab1_variant: 'design-a', rs_ab1_success: 'received', rs_ab1_time: '40' }];
+  const ends = eventsFromQualtrics(study, s2).events.filter(e => e.kind === 'task_ended');
+  assert.deepEqual(ends.map(e => e.payload.success_at_seconds), [18, undefined]);
+});

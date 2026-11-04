@@ -59,3 +59,14 @@ test('design rows: plain-language validation', () => {
   assert.equal(variantRowError({...ok, prototypeUrl: 'http://localhost:8000/a'}, [ok]), '');
   assert.deepEqual(nextVariant([{id: 'design-a'}, {id: 'design-b'}]).id, 'design-c');
 });
+test('return link carries time to first success when there was one, blank otherwise', () => {
+  const url = new URL(buildReturnUrl(new URL('https://x.qualtrics.com/jfe/form/SV_1'), {
+    sessionId: 'abc', status: 'complete',
+    assignments: {'portal-navigation-2026': {variant_id: 'design-b', source: 'link'}},
+    abResults: {'find-service-request': {variant_id: 'design-b', success_signal_status: 'received', self_report: 'completed', time_seconds: 41, click_count: 5, success_at_seconds: 23},
+      'find-message': {variant_id: 'design-b', success_signal_status: 'not_observed', self_report: 'unable', time_seconds: 60, click_count: 9, success_at_seconds: null}},
+    tasks: study.tasks
+  }));
+  assert.equal(url.searchParams.get('rs_ab1_tts'), '23');
+  assert.equal(url.searchParams.get('rs_ab2_tts'), '');
+});

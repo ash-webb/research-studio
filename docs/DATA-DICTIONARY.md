@@ -58,6 +58,12 @@ Saved as `plan` in the working-copy JSON; removed from the published study file 
 - `time_seconds` remains wall-clock from activity start to end, including time away. Active time ≈ `time_seconds − interrupted_seconds`.
 - Task CSV and Method CSV include `interruptions` and `interrupted_seconds`.
 
+## Time to success (v0.3.10)
+- `task_ended.payload.success_at_seconds` (prototype and A/B activities): seconds from activity start to the **first** success signal matching the activity. Omitted when no signal arrived. Same clock as `time_seconds` (wall-clock, including time away during reloads), and kept across reloads.
+- `task_ended.payload.finished_at_seconds`: seconds from activity start to “Finish this task”. `time_seconds` runs on until the participant answers whether they completed the task.
+- Task CSV includes both; the A/B exposures CSV includes `success_at_seconds`; the survey return link carries it as `rs_abN_tts`.
+- For time-on-task comparisons between designs, prefer `success_at_seconds` among successful participants: `time_seconds` includes time after succeeding and the reflection question.
+
 ## Observed success (`observed_success`)
 - `true` / `false` only when the method produced evidence (tree destination, scored first click, connected tracker with a configured signal).
 - Absent in stored events, and a **blank cell** in the Task CSV, when there is no evidence either way (unscored methods, card sorts, preferences, surveys, untracked prototypes). Before v0.3.1 the Task CSV showed `false` in these cases; treat older `false` values for those methods as unknown.

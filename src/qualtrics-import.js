@@ -105,6 +105,7 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
       push(session, 'task_ended', taskId, {
         method: 'ab_test', experiment_id: exp, variant_id: variant,
         time_seconds: num(field(rec, `rs_ab${k}_time`)), click_count: num(field(rec, `rs_ab${k}_clicks`)),
+        ...(num(field(rec, `rs_ab${k}_tts`)) != null ? { success_at_seconds: num(field(rec, `rs_ab${k}_tts`)) } : {}),
         tracker_connected: status !== 'unavailable', self_report: field(rec, `rs_ab${k}_self`) || null,
         ...(status === 'received' ? { observed_success: true } : {}),
         result: { success_signal_status: status, experiment_id: exp, variant_id: variant }

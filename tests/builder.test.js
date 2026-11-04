@@ -9,7 +9,7 @@ globalThis.location={href:'http://localhost:8000/'};
 test('all shipped studies have validated activity configs',()=>{
   const files=readdirSync(dir).filter(x=>x.endsWith('.json')&&x!=='index.json');
   for(const file of files){const obj=JSON.parse(readFileSync(new URL(file,dir),'utf8'));assert.doesNotThrow(()=>validateStudy(obj),`${file} failed validation`);}
-  assert.equal(files.length,8);
+  assert.equal(files.length,9); // 8 demos + iola-current-vs-new
 });
 test('new study methods create valid default configurations once named',()=>{
  for(const method of ['card_sort','tree_test','first_click','preference','survey','ab_test']){

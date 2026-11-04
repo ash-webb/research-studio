@@ -442,6 +442,7 @@ scenarios.abBuilder = async browser => {
   check(G, 'design without the tracking script is flagged after 8 seconds', /Tracking script not detected/.test(await p.textContent('.design-check-item.active')));
   await screenshot(p, 'ab-check-dialog');
   await p.keyboard.press('Escape');
+  await p.waitForFunction(() => !document.querySelector('dialog.design-check'), null, { timeout: 3000 }).catch(() => {});
   check(G, 'Escape closes the check and returns focus to its button', !(await p.$('dialog.design-check')) && await p.evaluate(() => document.activeElement.dataset.checkDesigns === 'true'));
   await p.click(`[data-task-index="0"] [data-variant-index="2"] [data-remove-variant]`);
   eq(G, 'a third design can be removed again', await p.locator('[data-task-index="0"] [data-variant-index]').count(), 2);

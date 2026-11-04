@@ -165,7 +165,7 @@ export function experimentComparisonRows(events=[]){
       experiment_id:e.payload.experiment_id||e.task_id,activity_id:e.task_id,
       variant_id:e.payload.variant_id||null,variant_revision:e.payload.variant_revision||null,
       assigned_at:e.created_at,ended_at:end?.created_at||null,status:end?'submitted':'not_submitted',
-      time_seconds:end?(p.time_seconds??null):null,click_count:end?(p.click_count??null):null,
+      time_seconds:end?(p.time_seconds??null):null,success_at_seconds:end?(p.success_at_seconds??null):null,click_count:end?(p.click_count??null):null,
       tracker_connected:end?(p.tracker_connected??false):null,
       success_signal_status:end?(r.success_signal_status||null):null,
       self_report:end?(p.self_report??null):null};
@@ -232,6 +232,7 @@ export function buildReturnUrl(base,{sessionId,status,assignments,abResults,task
     url.searchParams.set(`${k}self`,r.self_report||'');
     url.searchParams.set(`${k}time`,String(r.time_seconds??''));
     url.searchParams.set(`${k}clicks`,String(r.click_count??''));
+    url.searchParams.set(`${k}tts`,String(r.success_at_seconds??''));
   });
   return url.href;
 }

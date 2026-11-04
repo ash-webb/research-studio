@@ -1,3 +1,17 @@
+# v0.3.10 release notes — time to success and IOLA A/B checks (draft, not released)
+
+## Added
+- **Time to success** for prototype and A/B activities: `success_at_seconds` (first matching success signal) and `finished_at_seconds` (“Finish this task”) on `task_ended`, kept across reloads. In the Task and A/B exposure CSVs, and in the survey return link as `rs_abN_tts`; Qualtrics import reads it back. `time_seconds` is unchanged.
+- **IOLA A/B browser checks** (`npm run test:iola`): both designs inside Research Studio — every task right and wrong, backtracking and repeats, reloads, abandonment, a missing tracker, random assignment and the Qualtrics return link, in-frame presentation, and contrast, accessibility and fit in states other checks never open (menus, sheets, dialogs). Point it at a copy of the published prototypes (`IOLA_PROTOTYPES`) or the live site (`IOLA_LIVE=1`).
+
+## Fixed
+- The shipped-study check counted 8 studies; the IOLA study made 9.
+- A builder check pressed Escape and checked the dialog before it had closed (intermittent failure).
+
+## Docs
+- Qualtrics guide: `rs_abN_tts`; `rs_abN_time` described accurately; questions written into a Research Studio study are not sent to Qualtrics.
+- Data dictionary: time to success.
+
 # v0.3.9 release notes — planners for every method (November 2, 2026)
 
 ## Added
