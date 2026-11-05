@@ -1,7 +1,7 @@
 {
   "name": "unmoderated-research-studio",
   "private": true,
-  "version": "0.3.13",
+  "version": "0.3.14",
   "type": "module",
   "scripts": {
     "test": "node --test tests/*.test.js",

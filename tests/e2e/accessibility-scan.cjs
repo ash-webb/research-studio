@@ -67,7 +67,7 @@ async function participantScreens(p, vp) {
   await rerender(p, () => p.click('#reflectionForm button[type=submit]')); await scan(p, 'Follow-up questions (scales + text)', vp);
 
   await p.evaluate(() => { try { sessionStorage.clear(); } catch {} });
-  await p.goto(`${BASE}study.html?study=demo-ab-implementation&variant=design-b&return=${encodeURIComponent('https://example.qualtrics.com/jfe/form/SV_x')}`);
+  await p.goto(`${BASE}study.html?study=demo-ab-implementation&variant=design-b&return=${encodeURIComponent('https://irsresearch.gov1.qualtrics.com/jfe/form/SV_x')}`);
   await p.waitForSelector('#consentCheck'); await consent(p);
   await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
   await scan(p, 'A/B task (design from study link)', vp);

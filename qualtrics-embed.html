@@ -87,7 +87,7 @@
     <li>In <strong>Data &amp; Analysis</strong>, include survey previews, and check that <code>rs_embed_ok</code> is <code>yes</code> and <code>rs_data_parts</code> is filled in.</li>
     <li>Export the responses as CSV and use <strong>Results ▸ Import Qualtrics results</strong> in Research Studio. The import checks every response's data against its checksum. Previews are left out of the results, and a note says how many were left out.</li>
   </ol>
-  <p class="warn">Only addresses on the list in <code>settings.js</code> (<code>embedHosts</code>, by default the Qualtrics domains) can receive results. A page that is opened anywhere else gets nothing.</p>
+  <p class="warn">Only addresses on the list in <code>settings.js</code> (<code>embedHosts</code>; on this site only <code>irsresearch.gov1.qualtrics.com</code>) can receive results. A page that is opened anywhere else gets nothing.</p>
 </main>
 <script type="module">
 import { fieldNames, answerFields } from './src/qualtrics-embed.js';

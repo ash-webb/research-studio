@@ -1,3 +1,13 @@
+# v0.3.14 release notes — IRS Qualtrics account only; IOLA consent in the survey (draft)
+
+## Changed
+- **Only the IRS Qualtrics account receives results.** `embedHosts` and `returnUrlHosts` in `settings.js` now list `irsresearch.gov1.qualtrics.com` instead of every `qualtrics.com` address. A survey in another Qualtrics account is refused like any unlisted site.
+- **IOLA study 1.2.0: consent is collected in the survey** (`consentMode: "external"`, research sign-off 4 November 2026). The study no longer shows its own consent checkbox; it shows what it collects and a Begin button. The survey's consent page must describe the data collection (design shown, clicks and screens in the practice account, task times, answers).
+- IOLA study plan: ease ratings described as 1–5.
+
+## Fixed (in the prototypes, not this repo)
+- Design A's navigation menus showed white links on a white background. Fixed in design-prototypes (commit cd3fe48) and checked on the live page.
+
 # v0.3.13 release notes — starter survey imports in Qualtrics (draft)
 
 ## Fixed

@@ -23,6 +23,7 @@ const ONLY = (process.env.EMBED_ONLY || '').split(',').filter(Boolean);
 const STUDY_ID = 'iola-current-vs-new';
 const SURVEY = 'https://irsresearch.gov1.qualtrics.com/jfe/form/SV_mockEmbed';
 const EVIL = 'https://not-approved.example.com/survey';
+const OTHER_QX = 'https://otheraccount.qualtrics.com/jfe/form/SV_other';
 if (!LOCAL || !fs.existsSync(path.join(LOCAL, 'iola-ab-test'))) { console.log('Qualtrics embed checks skipped: set IOLA_PROTOTYPES=<folder holding iola-ab-test/>.'); process.exit(0); }
 fs.mkdirSync(OUT, { recursive: true });
 const study = JSON.parse(fs.readFileSync(path.join(ROOT, 'studies', `${STUDY_ID}.json`), 'utf8'));
@@ -281,6 +282,13 @@ const scenarios = {
     rs = await waitRs(page);
     await rs.waitForSelector('h1:has-text("can\'t receive")', { timeout: 15000 });
     eq(g, 'unlisted site that answers hello still gets nothing but hello', [...new Set(await page.evaluate(() => window.got))], ['hello']);
+    await page.close();
+    // Another Qualtrics account: refused now that embedHosts lists only the IRS account (v0.3.14).
+    await c.ctx.route(OTHER_QX + '**', r => r.fulfill({ status: 200, contentType: 'text/html', body: `<!doctype html><title>x</title><script>window.got=[];addEventListener('message',e=>{if(e.data&&e.data.ns==='RS_QX'){got.push(e.data.type);if(e.data.type==='hello')e.source.postMessage({ns:'RS_QX',v:1,type:'hello-ack'},e.origin);}})</script><iframe title="Research activity" src="${BASE}study.html?study=${STUDY_ID}&embed=qualtrics" style="width:100%;height:600px"></iframe>` }));
+    page = await c.ctx.newPage(); await page.goto(OTHER_QX);
+    rs = await waitRs(page);
+    await rs.waitForSelector('h1:has-text("can\'t receive")', { timeout: 15000 });
+    eq(g, 'a different Qualtrics account gets nothing but hello', [...new Set(await page.evaluate(() => window.got))], ['hello']);
     await page.close();
     page = await c.ctx.newPage(); await page.goto(`${BASE}study.html?study=${STUDY_ID}&embed=qualtrics`);
     await page.waitForSelector('h1:has-text("Open this activity from the survey")');

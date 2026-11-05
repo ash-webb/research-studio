@@ -293,7 +293,7 @@ scenarios.ab = async browser => {
 scenarios.abLink = async browser => {
   const G = 'A/B design assigned by the study link (Qualtrics randomizer hand-off)';
   const { ctx, done } = await newContext(browser, G);
-  const ret = encodeURIComponent('https://example.qualtrics.com/jfe/form/SV_test123?src=rs');
+  const ret = encodeURIComponent('https://irsresearch.gov1.qualtrics.com/jfe/form/SV_test123?src=rs');
   const open = async query => {
     const p = await ctx.newPage();
     await p.goto(`${BASE}study.html?study=demo-ab-implementation&${query}`);
@@ -315,7 +315,7 @@ scenarios.abLink = async browser => {
   check(G, '"Return to the survey" shown for an allow-listed Qualtrics address', await p.isVisible('#returnToSurvey'));
   const href = new URL(await p.getAttribute('#returnToSurvey', 'href'));
   const q = Object.fromEntries(href.searchParams);
-  eq(G, 'return link keeps the survey address and its own parameters', [href.hostname, href.pathname, q.src], ['example.qualtrics.com', '/jfe/form/SV_test123', 'rs']);
+  eq(G, 'return link keeps the survey address and its own parameters', [href.hostname, href.pathname, q.src], ['irsresearch.gov1.qualtrics.com', '/jfe/form/SV_test123', 'rs']);
   eq(G, 'return link: status and design', [q.rs_status, q.rs_variant], ['complete', 'design-b']);
   eq(G, 'return link: task 1 results', [q.rs_ab1_task, q.rs_ab1_variant, q.rs_ab1_success, q.rs_ab1_self, q.rs_ab1_clicks], ['find-service-request', 'design-b', 'received', 'completed', '2']);
   eq(G, 'return link: task 2 results', [q.rs_ab2_task, q.rs_ab2_success, q.rs_ab2_self, q.rs_ab2_clicks], ['find-message', 'not_observed', 'unable', '1']);
@@ -334,13 +334,13 @@ scenarios.abLink = async browser => {
   const p2 = await open('variant=design-z');
   const ev2 = (await events(p2)).filter(e => e.kind === 'task_started').at(-1).payload;
   eq(G, 'unknown link variant falls back to built-in random and says so', ev2.assignment, 'stable-hash-equal (link value not recognised)');
-  // Return address on another site is ignored; bad participant IDs are dropped.
-  const p3 = await open(`variant=design-a&pid=${encodeURIComponent('<script>')}&return=${encodeURIComponent('https://evil.example.com/collect')}`);
+  // Return address in another Qualtrics account is ignored (settings list only the IRS account); bad participant IDs are dropped.
+  const p3 = await open(`variant=design-a&pid=${encodeURIComponent('<script>')}&return=${encodeURIComponent('https://example.qualtrics.com/jfe/form/SV_other')}`);
   check(G, 'experiment-specific parameter form also works', /ab-design-a/.test(await p3.getAttribute('#prototypeFrame', 'src')));
   for (let i = 0; i < 2; i++) { await prototypeTask(p3, ['a-nav-profile'], 'unable'); await fillForm(p3, i === 0 ? { 'request-ease': '2' } : { 'message-ease': '2' }); }
   await fillForm(p3, { 'overall-clarity': '2' });
   await p3.waitForSelector('.done-card');
-  check(G, 'return address outside the allow-list is ignored (no button)', !(await p3.$('#returnToSurvey')));
+  check(G, 'return address in another Qualtrics account is ignored (no button)', !(await p3.$('#returnToSurvey')));
   const s3 = (await events(p3)).filter(e => e.kind === 'session_started').at(-1).payload;
   check(G, 'unsafe participant ID is not stored', !('external_id' in s3), JSON.stringify(s3));
   const p4 = await open('variant.portal-navigation-2026=design-a&variant=design-b');

@@ -52,7 +52,7 @@ Per participant, in Survey 2:
 3. Tick **Consent is collected in the survey before this study**, so participants are not asked to consent twice.
 4. Select **Preview locally** to try it. Add `&variant=design-b` to the preview address to see a specific design.
 5. Select **Save working copy (with plan)** to keep your plan, then **Export study JSON** (the plan is left out of this file). Add the file to the `studies/` folder of the site's repository, add an entry to `studies/index.json`, and publish. Note the **study ID**.
-6. If your Qualtrics links are not on `qualtrics.com` (for example a custom domain), add that host to `returnUrlHosts` in `settings.js`. The “Return to the survey” button only appears for those hosts.
+6. The “Return to the survey” button only appears for hosts in `returnUrlHosts` in `settings.js`. This site lists only the IRS account, `irsresearch.gov1.qualtrics.com`. For another account or a custom domain, add its host (or `qualtrics.com` for any Qualtrics account).
 
 ## 2. Survey 1 (intake)
 
@@ -142,7 +142,7 @@ Everything in the route A table (same `rs_…` names), plus:
    - saves only fields whose names start with `rs_`, and only when the message comes from the Research Studio address in the script;
    - goes to the next page by itself when Research Studio has finished and saved (you can turn this off).
 5. **Follow-up and thank-you pages** after it. You can branch on `rs_variant`.
-6. **Approved survey addresses.** Research Studio only sends results to a page on a host listed in `embedHosts` in `settings.js` (default `qualtrics.com`, which includes `irsresearch.gov1.qualtrics.com`). A page anywhere else that embeds the study gets nothing, and the participant is told not to continue. The same happens if the survey page's script is missing. `qualtrics.com` admits any Qualtrics account; to accept only yours, list its address instead, for example `embedHosts: ['irsresearch.gov1.qualtrics.com']`.
+6. **Approved survey addresses.** Research Studio only sends results to a page on a host listed in `embedHosts` in `settings.js`. This site lists only the IRS account, `irsresearch.gov1.qualtrics.com`, so surveys in any other Qualtrics account get nothing. A page anywhere else that embeds the study gets nothing, and the participant is told not to continue. The same happens if the survey page's script is missing. To allow another account, add its address; `qualtrics.com` would admit every Qualtrics account.
 
 ### Laptops and desktops only
 

@@ -97,8 +97,9 @@ async function fillForm(p, answers) {
 async function startSession(ctx, query) {
   const p = await ctx.newPage();
   await p.goto(`${BASE}study.html?study=${STUDY_ID}${query ? '&' + query : ''}`);
-  await p.waitForSelector('#consentCheck');
-  await p.check('#consentCheck');
+  // Consent is collected on the survey page (consentMode external): no checkbox here.
+  await p.waitForSelector('#startStudy');
+  if (await p.$('#consentCheck')) await p.check('#consentCheck');
   await rerender(p, () => p.click('#startStudy'));
   await fillForm(p, { 'iola-use': 'Yes, once or twice' });
   return p;
@@ -261,7 +262,7 @@ const scenarios = {
     }
     const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } }); await serveRule(ctx);
     const p = await ctx.newPage(); await p.goto(`${BASE}study.html?study=${STUDY_ID}`);
-    await p.waitForSelector('#consentCheck');
+    await p.waitForSelector('#startStudy');
     check(g, 'a narrow window on a computer is still allowed', true);
     await ctx.close();
   },
