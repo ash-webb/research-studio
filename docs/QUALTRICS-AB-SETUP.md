@@ -30,7 +30,7 @@ Per participant, in Survey 2:
 | `rs_pid` | Survey 1 response ID the participant arrived with | `R_3abcDEF123` |
 | `rs_session` | Research Studio session ID | `9f1c…` |
 | `rs_status` | `complete` when they finished the Research Studio part | `complete` |
-| `rs_device` | `phone`, `tablet` or `desktop`, from screen width at the start | `phone` |
+| `rs_device` | `phone`, `tablet` or `desktop`: the kind of device, from what the browser reports (a narrow window on a computer is still `desktop`; before v0.3.17 this came from window width) | `desktop` |
 | `rs_variant` | Design shown (one experiment) | `design-b` |
 | `rs_ab1_task` | ID of the first A/B activity | `find-service-request` |
 | `rs_ab1_variant` | Design shown in that activity | `design-b` |

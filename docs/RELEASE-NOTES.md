@@ -1,3 +1,8 @@
+# v0.3.17 release notes — device type from the browser, not window width (draft)
+
+## Changed
+- **`rs_device` and the session's `device` now record the kind of device** (desktop, tablet, phone) from what the browser reports, the same check that screens computers-only studies. Before, they came from window width, so a laptop with a browser window under 1,100 px wide was recorded as a tablet (seen in a preview run in the IRS account: `rs_device = tablet` on a desktop). The width-based class is kept as `window_size`, beside the exact `viewport_width` and `viewport_height`. Results' device breakdown follows.
+
 # v0.3.16 release notes — a new survey response never resumes an earlier one (draft)
 
 ## Fixed

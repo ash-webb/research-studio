@@ -60,7 +60,8 @@ Saved as `plan` in the working-copy JSON; removed from the published study file 
 
 ## Laptops and desktops only (v0.3.12)
 - Study field `allowedDevices`: `"desktop"` (laptops and desktops only) or absent (any device). On a phone or tablet the participant page records nothing and asks for a computer.
-- `session_started.payload.device_kind`: `desktop`, `tablet` or `phone`, from what the browser reports (`src/devices.js`), not window width. `device` stays the width-based class.
+- `session_started.payload.device_kind`: `desktop`, `tablet` or `phone`, from what the browser reports (`src/devices.js`), not window width.
+- `session_started.payload.device` (and `rs_device`): the same device type, from v0.3.17. Sessions before v0.3.17 used window width here (under 700 px phone, under 1100 px tablet), which counted computers with narrower windows as tablets. The width-based class is now `window_size`; `viewport_width` and `viewport_height` hold the exact size.
 - Survey route: `rs_status = device_not_supported` with `rs_device`; `rs_device_class` from the survey's own device check (`docs/qualtrics-device-check.js`). The import leaves both kinds out and counts them.
 
 ## Observed success and self-report in A/B results (v0.3.12)

@@ -264,6 +264,9 @@ const scenarios = {
     const p = await ctx.newPage(); await p.goto(`${BASE}study.html?study=${STUDY_ID}`);
     await p.waitForSelector('#startStudy');
     check(g, 'a narrow window on a computer is still allowed', true);
+    await rerender(p, () => p.click('#startStudy'));
+    const st = (await allEvents(p)).filter(e => e.study_id === STUDY_ID && e.kind === 'session_started').pop()?.payload || {};
+    eq(g, 'a narrow window on a computer is recorded as a desktop, with its width class kept separately (v0.3.17)', [st.device, st.device_kind, st.window_size], ['desktop', 'desktop', 'tablet']);
     await ctx.close();
   },
   // Clearly wrong outcomes: none may count, and the wrong outcome is logged as a custom event.

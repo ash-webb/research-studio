@@ -124,7 +124,8 @@ function sessionOpenElsewhere(id){
   return new Promise(resolve=>{const token=uuid();const on=e=>{if(e.data?.type==='here'&&e.data.token===token){sessionChannel.removeEventListener('message',on);resolve(true);}};
     sessionChannel.addEventListener('message',on);sessionChannel.postMessage({type:'ping',sessionId:id,token});setTimeout(()=>{sessionChannel.removeEventListener('message',on);resolve(false);},250);});
 }
-function sessionDevice(){try{return sessionHistory().find(e=>e.kind==='session_started')?.payload?.device||deviceClass(innerWidth);}catch{return deviceClass(innerWidth);}}
+// Device type from what the browser reports, not window width (v0.3.17): a narrow window on a computer is a desktop.
+function sessionDevice(){try{return sessionHistory().find(e=>e.kind==='session_started')?.payload?.device||deviceKind();}catch{return deviceKind();}}
 function sessionHistory(){
   if(writer?.remote)return writer.history;
   if(writer?.store==='session')return writer.sessionEvents();
@@ -242,7 +243,7 @@ function welcome(){
     sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview,{store:embedded?'session':'local'});
     assignments=resolveAssignments(study,sessionId,query);
     const externalId=cleanExternalId(query.get('pid'));
-    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,device:deviceClass(innerWidth),device_kind:deviceKind(),consent:study.consentMode==='external'?'external':true,...(preview?{preview:true}:{}),...(externalId?{external_id:externalId}:{}),...(Object.keys(assignments).length?{assignments}:{}),...(returnUrl?{return_host:returnUrl.hostname}:{})});
+    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,device:deviceKind(),window_size:deviceClass(innerWidth),device_kind:deviceKind(),consent:study.consentMode==='external'?'external':true,...(preview?{preview:true}:{}),...(externalId?{external_id:externalId}:{}),...(Object.keys(assignments).length?{assignments}:{}),...(returnUrl?{return_host:returnUrl.hostname}:{})});
     if(study.preQuestions?.length)showPre();else{persist('start',0);startActivity();}
   };
 }
