@@ -1,3 +1,11 @@
+# v0.3.13 release notes — starter survey imports in Qualtrics (draft)
+
+## Fixed
+- **Starter survey (.qsf) was refused by Qualtrics** ("Data validation failure"): the owner, creator and response-set IDs didn't match Qualtrics' ID patterns and the brand was empty. Found by importing it into the IRS Qualtrics account; it now imports, and a test checks the patterns.
+
+## Checked in real Qualtrics (preview, fictional data)
+- Desktop run of the IOLA starter survey: device check set `rs_device_class = desktop`, phone/tablet branch skipped, randomizer assigned the current website, all four tasks done correctly, `rs_abN_success = received` for each, ease answers 1–5, full session restored from the export with a matching checksum.
+
 # v0.3.12 release notes — computers-only studies, starter survey, self-report vs observed success (draft)
 
 ## Added

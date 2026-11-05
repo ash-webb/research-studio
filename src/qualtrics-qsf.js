@@ -19,8 +19,10 @@ export function fillScript(template, { studyPage, studyId, layout = 'fullscreen'
 }
 
 // template: docs/qualtrics-embed.js; deviceCheck: docs/qualtrics-device-check.js (used for desktop-only studies).
-export function starterSurvey(study, { studyPage, layout, autoAdvance, template, deviceCheck, now = new Date() }) {
-  const SV = 'SV_rsStarter0001', stamp = now.toISOString().slice(0, 19).replace('T', ' ');
+export function starterSurvey(study, { studyPage, layout, autoAdvance, template, deviceCheck, brandId, now = new Date() }) {
+  // IDs must match Qualtrics' import patterns (UR_/RS_ + 11–15 letters or digits; brand not empty).
+  // Qualtrics replaces them with your account's own on import.
+  const SV = 'SV_rsStarter0001', UR = 'UR_rsStarter0001', RS = 'RS_rsStarter0001', stamp = now.toISOString().slice(0, 19).replace('T', ' ');
   const desktopOnly = study.allowedDevices === 'desktop';
   const ab = (study.tasks || []).filter(t => normalizeMethod(t) === 'ab_test');
   const variants = ab.length ? ab[0].variants.map(v => v.id) : [];
@@ -60,13 +62,13 @@ export function starterSurvey(study, { studyPage, layout, autoAdvance, template,
     { SurveyID: SV, Element: 'FL', PrimaryAttribute: 'Survey Flow', SecondaryAttribute: null, TertiaryAttribute: null, Payload: { Type: 'Root', FlowID: 'FL_1', Flow: flow, Properties: { Count: 25 } } },
     { SurveyID: SV, Element: 'SO', PrimaryAttribute: 'Survey Options', SecondaryAttribute: null, TertiaryAttribute: null, Payload: { BackButton: 'false', SaveAndContinue: 'true', SurveyProtection: 'PublicSurvey', BallotBoxStuffingPrevention: 'false', NoIndex: 'Yes', SecureResponseFiles: 'true', SurveyExpiration: null, SurveyTermination: 'DefaultMessage', Header: '', Footer: '', ProgressBarDisplay: 'None', PartialData: '+1 week', ValidationMessage: null, PreviousButton: ' ← ', NextButton: ' → ', SurveyTitle: 'Qualtrics Survey | Qualtrics Experience Management', NewScoring: 1 } },
     { SurveyID: SV, Element: 'QC', PrimaryAttribute: 'Survey Question Count', SecondaryAttribute: String(blocks.length), TertiaryAttribute: null, Payload: null },
-    { SurveyID: SV, Element: 'RS', PrimaryAttribute: 'RS_rsStarter', SecondaryAttribute: 'Default Response Set', TertiaryAttribute: null, Payload: null },
+    { SurveyID: SV, Element: 'RS', PrimaryAttribute: RS, SecondaryAttribute: 'Default Response Set', TertiaryAttribute: null, Payload: null },
     q('QID1', 'Q1', welcome, desktopOnly && deviceCheck ? { QuestionJS: deviceCheck } : {}),
     q('QID2', 'Q2', 'Please complete the activity.', { QuestionJS: fillScript(template, { studyPage, studyId: study.id, layout, autoAdvance }) }),
     q('QID3', 'Q3', 'Add your follow-up questions here.')
   ];
   const deviceText = 'This study needs a laptop or desktop computer. Thank you for your interest. Please open the survey link again on a computer if you can.';
   if (desktopOnly) elements.push(q('QID4', 'Q4', deviceText), q('QID5', 'Q5', deviceText));
-  return { SurveyEntry: { SurveyID: SV, SurveyName: `${study.title || study.id} (Research Studio)`, SurveyDescription: null, SurveyOwnerID: 'UR_rsStarter', SurveyBrandID: '', DivisionID: null, SurveyLanguage: 'EN', SurveyActiveResponseSet: 'RS_rsStarter', SurveyStatus: 'Inactive', SurveyStartDate: '0000-00-00 00:00:00', SurveyExpirationDate: '0000-00-00 00:00:00', SurveyCreationDate: stamp, CreatorID: 'UR_rsStarter', LastModified: stamp, LastAccessed: '0000-00-00 00:00:00', LastActivated: '0000-00-00 00:00:00', Deleted: null },
+  return { SurveyEntry: { SurveyID: SV, SurveyName: `${study.title || study.id} (Research Studio)`, SurveyDescription: null, SurveyOwnerID: UR, SurveyBrandID: brandId || 'default', DivisionID: null, SurveyLanguage: 'EN', SurveyActiveResponseSet: RS, SurveyStatus: 'Inactive', SurveyStartDate: '0000-00-00 00:00:00', SurveyExpirationDate: '0000-00-00 00:00:00', SurveyCreationDate: stamp, CreatorID: UR, LastModified: stamp, LastAccessed: '0000-00-00 00:00:00', LastActivated: '0000-00-00 00:00:00', Deleted: null },
     SurveyElements: elements };
 }

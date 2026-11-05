@@ -166,6 +166,13 @@ test('starter survey: fields, device screening before the randomizer, randomizer
   const qs = qsf.SurveyElements.filter(e => e.Element === 'SQ');
   assert.match(qs.find(q => q.PrimaryAttribute === 'QID2').Payload.QuestionJS, /studyId: 'iola-current-vs-new'/);
   assert.match(qs.find(q => q.PrimaryAttribute === 'QID1').Payload.QuestionJS, /rs_device_class/);
+  // Qualtrics rejects the import unless these match its ID patterns (seen live: ESDEF10 Data validation failure).
+  const e = qsf.SurveyEntry;
+  for (const v of [e.SurveyOwnerID, e.CreatorID]) assert.match(v, /^URH?_[a-zA-Z0-9]{11,15}$/);
+  assert.match(e.SurveyActiveResponseSet, /^RS_[a-zA-Z0-9]{11,15}$/);
+  assert.match(el('RS').PrimaryAttribute, /^RS_[a-zA-Z0-9]{11,15}$/);
+  assert.ok(e.SurveyBrandID.length >= 1);
+  assert.match(e.SurveyID, /^SV_[a-zA-Z0-9]{11,15}$/);
   const any = starterSurvey({ ...study, allowedDevices: undefined }, { studyPage: 'https://x.example/study.html', template, deviceCheck });
   assert.deepEqual(any.SurveyElements.find(e => e.Element === 'FL').Payload.Flow.map(f => f.Type), ['EmbeddedData', 'Block', 'BlockRandomizer', 'Block', 'Block']);
 });
