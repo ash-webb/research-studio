@@ -1,3 +1,8 @@
+# v0.3.19 release notes — a wider design area during prototype tasks (draft)
+
+## Changed
+- **The design gets most of the window during a prototype task.** The instructions panel is now a fixed 300 px (280 px on smaller screens) and the task page uses the full window width up to 1,680 px. The design area is about 1,000 px on a 1366×768 laptop (was about 770 px), 1,074 px at 1440×900 and 914 px at 1280×800, and both designs always get the same width. This lets desktop layouts that switch at about 1,000 px show as they would in a browser. Below 950 px the instructions still sit above the design. New browser check: `frameWidth` in `npm run test:iola`.
+
 # v0.3.18 release notes — IOLA study title doesn't name the designs (draft)
 
 ## Changed

@@ -415,6 +415,24 @@ const scenarios = {
     eq(g, 'both designs assigned across sessions', [...seen].sort(), [...VARIANTS].sort());
   },
   // Inside the study: no theme switch, light theme, no research banner text check (the deployed design omits it by choice).
+  // Desktop width for the design (v0.3.19): about 1,000 px on a 1366 px laptop, the same for both designs,
+  // so desktop layouts that switch at ~1,000 px appear.
+  async frameWidth(browser) {
+    const g = 'design area width on laptop screens';
+    for (const [w, h, min] of [[1366, 768, 990], [1440, 900, 1060], [1280, 800, 900]]) {
+      const widths = [];
+      for (const v of VARIANTS) {
+        const c = await newContext(browser, `${g} ${w} ${v}`, { viewport: { width: w, height: h } });
+        const p = await startSession(c.ctx, `variant=${v}`);
+        await p.waitForSelector('#prototypeFrame');
+        widths.push(await p.evaluate(() => Math.round(document.querySelector('#prototypeFrame').getBoundingClientRect().width)));
+        check(g, `${w}x${h} ${v}: no sideways scrolling`, !(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'page scrolls sideways');
+        await c.done();
+      }
+      check(g, `${w}x${h}: design area at least ${min} px`, widths.every(x => x >= min), widths.join(', '));
+      eq(g, `${w}x${h}: both designs get the same width`, widths[0], widths[1]);
+    }
+  },
   async frame(browser) {
     for (const v of VARIANTS) {
       const g = `in-frame presentation ${v}`;
