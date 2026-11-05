@@ -50,11 +50,11 @@ async function serveStudio(ctx) {
 // ---------- the stand-in Qualtrics page ----------
 // mode 'js': newer layouts (setJSEmbeddedData → __js_<name>); 'classic': setEmbeddedData → <name>.
 // Like Qualtrics, only declared fields are kept.
-function surveyHtml({ mode = 'js', layout = 'fullscreen', variant = '', script = true, declare = null }) {
+function surveyHtml({ mode = 'js', layout = 'fullscreen', variant = '', script = true, declare = null, responseId = 'R_mockResponse1' }) {
   let snippet = fs.readFileSync(path.join(ROOT, 'docs', 'qualtrics-embed.js'), 'utf8')
     .replace(/studyPage: '[^']*'/, `studyPage: '${BASE}study.html'`).replace(/studyId: '[^']*'/, `studyId: '${STUDY_ID}'`)
     .replace(/layout: '[^']*'/, `layout: '${layout}'`)
-    .replace('${e://Field/rs_variant}', variant).replace('${e://Field/ResponseID}', 'R_mockResponse1'); // Qualtrics pipes these in
+    .replace('${e://Field/rs_variant}', variant).replace('${e://Field/ResponseID}', responseId); // Qualtrics pipes these in
   const names = declare || M.fieldNames(study);
   const declared = mode === 'js' ? names.map(n => `__js_${n}`) : names;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Mock survey</title>
@@ -251,6 +251,28 @@ const scenarios = {
     await page.close(); await c.done();
   },
   // The survey page reloads in the middle: Research Studio continues and the final data has everything.
+  // A new survey response in the same tab (a restarted preview, or a second response without the
+  // resume cookie) must start a fresh session, not resume the earlier response's one (v0.3.16).
+  async newResponse(browser) {
+    const g = 'new survey response in the same tab starts fresh';
+    const c = await newContext(browser, g, { survey: { mode: 'js', variant: 'iola-new' } });
+    const page = await c.ctx.newPage(); await page.goto(SURVEY);
+    let rs = await waitRs(page);
+    await begin(rs); await doTask(page, rs, 0);
+    await c.ctx.unroute(SURVEY + '**');
+    await c.ctx.route(SURVEY + '**', r => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: surveyHtml({ mode: 'js', variant: 'iola-current', responseId: 'R_mockResponse2' }) }));
+    await page.goto(SURVEY); rs = await waitRs(page);
+    await rs.waitForSelector('#startStudy', { timeout: 15000 });
+    check(g, 'the second response sees the welcome page, not the first response\'s task', !(await rs.$('#prototypeFrame')), 'resumed into a task');
+    check(g, 'no "welcome back" message', !/Welcome back/.test(await rs.evaluate(() => document.body.innerText)), 'welcome back shown');
+    // Back to the first response (Qualtrics resumes it by cookie): its session continues.
+    await c.ctx.unroute(SURVEY + '**');
+    await c.ctx.route(SURVEY + '**', r => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: surveyHtml({ mode: 'js', variant: 'iola-new' }) }));
+    await page.goto(SURVEY); rs = await waitRs(page);
+    await rs.waitForSelector('#prototypeFrame', { timeout: 15000 });
+    check(g, 'the first response still resumes its own session', true);
+    await page.close(); await c.done();
+  },
   async reload(browser) {
     const g = 'survey page reloaded mid-study';
     const c = await newContext(browser, g, { survey: { mode: 'js', variant: 'iola-new' } });

@@ -1,3 +1,8 @@
+# v0.3.16 release notes — a new survey response never resumes an earlier one (draft)
+
+## Fixed
+- **A new Qualtrics response in the same browser tab resumed the previous response's study session** (found during a preview run in the IRS account: a restarted preview reopened the earlier session at activity 1, with its time and design). The participant ID (the Qualtrics ResponseID, or `pid` on a study link) is now part of the resume key, so a different response always starts a fresh session, while reloading the same response still resumes it. New browser check: `newResponse` in `npm run test:embed`.
+
 # v0.3.15 release notes — task instructions on the left (draft)
 
 ## Changed

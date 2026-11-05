@@ -225,7 +225,9 @@ async function init(){
     }
     const kind=deviceKind();
     if(!allowedOn(study,kind)){await deviceNotSupported(kind);return;}
-    studyHash=hashText(JSON.stringify(study));resumeKey=`utp-resume-v1:${preview?'preview':'live'}:${study.id}`;
+    // The participant ID (e.g. the Qualtrics ResponseID) is part of the key, so a new survey response in the
+    // same tab starts a fresh session instead of resuming someone else's (v0.3.16).
+    studyHash=hashText(JSON.stringify(study));const resumePid=cleanExternalId(query.get('pid'));resumeKey=`utp-resume-v1:${preview?'preview':'live'}:${study.id}${resumePid?`:${resumePid}`:''}`;
     const cp=readCheckpoint();
     if(cp&&cp.v===1&&cp.studyId===study.id&&cp.hash===studyHash&&cp.sessionId&&Date.now()-(cp.savedAt||0)<RESUME_MAX_AGE_MS){await resume(cp);return;}
     if(cp)clearCheckpoint(); // changed study, expired, or unreadable: start a fresh session
