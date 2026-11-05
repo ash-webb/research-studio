@@ -1,3 +1,9 @@
+# v0.3.21 release notes — IOLA study 1.4.0 for the updated designs (draft)
+
+## Changed
+- **IOLA study 1.4.0.** Design revisions are now `proto-v3` for Design A (the current website, rebuilt to match the live Online Account captures of September 30, 2026) and `proto-v2` for Design B (the new app's tablet and desktop layouts: side rail, two or three columns). The revision is saved with every task, so results can be split by build. The welcome page now asks participants to make their browser window as large as they can, since both designs change layout with width. The study plan's description of Design B is updated.
+- **IOLA browser checks follow Design A's menu.** Notices and letters is now a link in Design A, so the task scripts no longer open a Notices menu, and the "what participants see" scan adds Design A's home search, government banner, payment activity, tax records and CP14 notice, and Design B's records and transcripts.
+
 # v0.3.20 release notes — the new app's desktop layout fits on a 1366 px laptop (draft)
 
 ## Changed

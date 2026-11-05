@@ -141,13 +141,13 @@ const DESIGN = {
     },
     oic: async f => { await click(f, 'nav-payments'); await click(f, 'menu-payment-options'); await click(f, 'options-oic'); await f.getByRole('heading', { name: /offer in compromise/i }).first().waitFor(); },
     respond: async (f, choice = 'agree') => {
-      await click(f, 'nav-notices'); await click(f, 'menu-notices'); await click(f, 'notices-view-cp2000'); await click(f, 'cp2000-respond');
+      await click(f, 'nav-notices'); await click(f, 'notices-view-cp2000'); await click(f, 'cp2000-respond');
       await f.locator(`[data-ut-id="respond-${choice}"]`).check();
       if (choice !== 'agree') await f.locator('#explain').fill('Synthetic test explanation.');
       await click(f, 'respond-continue'); await click(f, 'respond-submit'); await f.locator('[data-ut-id="respond-done"]').waitFor();
     },
     upload: async (f, { files = ['f1099', 'fstmt'], notice = 'CP2000', year = '2024' } = {}) => {
-      await click(f, 'nav-notices'); await click(f, 'menu-notices'); await click(f, 'notices-view-cp2000'); await click(f, 'cp2000-dut-link');
+      await click(f, 'nav-notices'); await click(f, 'notices-view-cp2000'); await click(f, 'cp2000-dut-link');
       await f.locator('#dutNotice').selectOption(notice); await f.locator('#dutYear').selectOption(year);
       await click(f, 'dut-continue'); await click(f, 'dut-choose-files');
       for (const id of files) await f.locator(`[data-ut-id="picker-${id}"]`).check();
@@ -226,7 +226,7 @@ const scenarios = {
       for (const t of TASKS) {
         const e = ended(evs, t); const r = e?.payload?.result || {};
         eq(g, `${t}: success recorded`, [r.success_signal_received, r.success_signal_status], [true, 'received']);
-        eq(g, `${t}: design recorded`, [e?.payload?.variant_id, e?.payload?.experiment_id, e?.payload?.variant_revision], [v, 'iola-current-vs-new', 'proto-v1']);
+        eq(g, `${t}: design recorded`, [e?.payload?.variant_id, e?.payload?.experiment_id, e?.payload?.variant_revision], [v, 'iola-current-vs-new', { 'iola-current': 'proto-v3', 'iola-new': 'proto-v2' }[v]]);
         eq(g, `${t}: tracker_connected recorded`, e?.payload?.tracker_connected, true);
         const P = e?.payload || {};
         check(g, `${t}: time to success <= time to Finish <= total time`, Number.isFinite(P.success_at_seconds) && P.success_at_seconds <= P.finished_at_seconds && P.finished_at_seconds <= P.time_seconds, [P.success_at_seconds, P.finished_at_seconds, P.time_seconds]);
@@ -461,20 +461,22 @@ const scenarios = {
 // Each state is a list of steps from a fresh load: 'id' clicks [data-ut-id=id]; '#sel=value' selects or fills; '+id' ticks a checkbox.
 const STATES = {
   'iola-current': {
-    'home': [], 'menu Payments open': ['nav-payments'], 'menu Records open': ['nav-records'], 'menu Notices open': ['nav-notices'], 'menu Authorizations open': ['nav-authorizations'],
+    'home': [], 'menu Payments open': ['nav-payments'], 'menu Records open': ['nav-records'], 'menu Forms open': ['nav-forms'], 'menu Authorizations open': ['nav-authorizations'],
     'payment step 1': ['home-make-payment', '#ptype=payTowardsBalance'], 'payment error': ['home-make-payment', 'pay-continue-1'],
     'payment review': ['home-make-payment', '#ptype=payTowardsBalance', '#year=2024', '#amount=200.00', 'pay-continue-1', 'pay-continue-2'],
     'payment done': ['home-make-payment', '#ptype=payTowardsBalance', '#year=2024', '#amount=200.00', 'pay-continue-1', 'pay-continue-2', '+pay-authorize', 'pay-submit'],
     'payment options': ['nav-payments', 'menu-payment-options'], 'offer in compromise': ['nav-payments', 'menu-payment-options', 'options-oic'],
-    'notices': ['nav-notices', 'menu-notices'], 'notice CP2000': ['nav-notices', 'menu-notices', 'notices-view-cp2000'],
-    'respond review': ['nav-notices', 'menu-notices', 'notices-view-cp2000', 'cp2000-respond', '+respond-agree', 'respond-continue'],
-    'upload picker open': ['nav-notices', 'menu-notices', 'notices-view-cp2000', 'cp2000-dut-link', '#dutNotice=CP2000', '#dutYear=2024', 'dut-continue', 'dut-choose-files'],
-    'upload done': ['nav-notices', 'menu-notices', 'notices-view-cp2000', 'cp2000-dut-link', '#dutNotice=CP2000', '#dutYear=2024', 'dut-continue', 'dut-choose-files', '+picker-f1099', '+picker-fstmt', 'picker-add', 'dut-submit']
+    'notices': ['nav-notices'], 'notice CP2000': ['nav-notices', 'notices-view-cp2000'], 'notice CP14': ['nav-notices', 'notices-view-cp14'],
+    'home search': ['#homeSearch=pay'], 'government banner open': ['gov-how'], 'payment activity': ['nav-payments', 'menu-payment-activity'], 'tax records': ['nav-records', 'menu-tax-records'],
+    'respond review': ['nav-notices', 'notices-view-cp2000', 'cp2000-respond', '+respond-agree', 'respond-continue'],
+    'upload picker open': ['nav-notices', 'notices-view-cp2000', 'cp2000-dut-link', '#dutNotice=CP2000', '#dutYear=2024', 'dut-continue', 'dut-choose-files'],
+    'upload done': ['nav-notices', 'notices-view-cp2000', 'cp2000-dut-link', '#dutNotice=CP2000', '#dutYear=2024', 'dut-continue', 'dut-choose-files', '+picker-f1099', '+picker-fstmt', 'picker-add', 'dut-submit']
   },
   'iola-new': {
     'home': [], 'pay sheet': ['home-pay-now'], 'pay sheet editing amount': ['home-pay-now', 'paysheet-amount'], 'pay confirm': ['home-pay-now', 'paysheet-pay-button'],
     'payment done': ['home-pay-now', 'paysheet-pay-button', 'confirm-yes'], 'payments tab': ['tab-pay'], 'payment options': ['tab-pay', 'pay-over-time'],
     'offer in compromise': ['tab-pay', 'pay-over-time', 'options-oic'], 'notices': ['tab-notices'], 'notice CP2000': ['tab-notices', 'notices-cp2000'],
+    'records': ['tab-records'], 'transcripts': ['tab-records', 'records-transcripts'],
     'respond confirm': ['tab-notices', 'notices-cp2000', 'cp2000-respond', '+respond-agree', 'respond-send'],
     'upload picker open': ['home-alert-cp2000', 'cp2000-upload', 'upload-select-file'],
     'upload done': ['home-alert-cp2000', 'cp2000-upload', '#office=Ogden, UT', 'upload-select-file', '+picker-f1099', '+picker-fstmt', 'picker-add', 'upload-submit', 'confirm-yes']
