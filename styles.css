@@ -152,3 +152,6 @@ dialog.design-check::backdrop{background:#0f2c3a80}
    design gets about 1,000 px on a 1366 px laptop (enough for desktop layouts that switch at ~1,000 px). */
 .participant-main:has(.task-shell){max-width:1680px;padding:16px 24px}
 @media(max-width:950px){.participant-main:has(.task-shell){padding:12px}}
+/* v0.3.20: on laptop screens the design gets at least 1,024 px from a 1366 px window (the desktop layout of the new app starts at 1,024), and the task page fits the window height so it does not scroll */
+@media(min-width:951px){.participant-main:has(.task-shell){padding:12px 16px}.task-shell{gap:12px;min-height:calc(100vh - 96px)}.task-shell .prototype-pane{min-height:max(480px,calc(100vh - 96px))}.task-shell .prototype-pane iframe{min-height:420px}}
+@media(min-width:951px) and (max-width:1500px){.task-shell{grid-template-columns:264px minmax(0,1fr)}}

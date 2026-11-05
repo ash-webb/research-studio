@@ -302,6 +302,7 @@ const scenarios = {
       await (v === 'iola-current' ? click(f, 'nav-home') : click(f, 'tab-home'));
       await DESIGN[v].pay(f, { p });
       await (v === 'iola-current' ? click(f, 'pay-done') : click(f, 'paysheet-done'));
+      if (v === 'iola-new') await click(f, 'tab-home'); // at desktop widths Done leaves you on Payments
       await DESIGN[v].pay(f, { p });                // the same success a second time
       await finishTask(p, 'one-time-payment');
       ({ f } = await openTask(p)); await DESIGN[v].oic(f); await finishTask(p, 'find-oic');
@@ -415,11 +416,11 @@ const scenarios = {
     eq(g, 'both designs assigned across sessions', [...seen].sort(), [...VARIANTS].sort());
   },
   // Inside the study: no theme switch, light theme, no research banner text check (the deployed design omits it by choice).
-  // Desktop width for the design (v0.3.19): about 1,000 px on a 1366 px laptop, the same for both designs,
-  // so desktop layouts that switch at ~1,000 px appear.
+  // Desktop width for the design (v0.3.20): at least 1,024 px from a 1366 px laptop window, the same for both designs,
+  // so the new app's desktop layout (1,024 px and up) appears. 1366x657 is a 1366x768 screen less the browser's own bars.
   async frameWidth(browser) {
     const g = 'design area width on laptop screens';
-    for (const [w, h, min] of [[1366, 768, 990], [1440, 900, 1060], [1280, 800, 900]]) {
+    for (const [w, h, min, layout] of [[1366, 657, 1024, 'desktop'], [1366, 768, 1024, 'desktop'], [1440, 900, 1100, 'desktop'], [1280, 800, 960, 'tablet'], [1920, 1080, 1300, 'desktop']]) {
       const widths = [];
       for (const v of VARIANTS) {
         const c = await newContext(browser, `${g} ${w} ${v}`, { viewport: { width: w, height: h } });
@@ -427,8 +428,16 @@ const scenarios = {
         await p.waitForSelector('#prototypeFrame');
         widths.push(await p.evaluate(() => Math.round(document.querySelector('#prototypeFrame').getBoundingClientRect().width)));
         check(g, `${w}x${h} ${v}: no sideways scrolling`, !(await p.evaluate(() => document.documentElement.scrollWidth > innerWidth)), 'page scrolls sideways');
+        check(g, `${w}x${h} ${v}: the task page fits the window height`, !(await p.evaluate(() => document.documentElement.scrollHeight > innerHeight + 1)), 'page scrolls down');
+        if (v === 'iola-new') {
+          const fr = p.frames().find(x => /iola-ab-test\/new\//.test(x.url()));
+          await fr.waitForFunction(() => document.documentElement.getAttribute('data-layout'));
+          eq(g, `${w}x${h} new app: ${layout} layout`, await fr.evaluate(() => document.documentElement.getAttribute('data-layout')), layout);
+        }
+        if (w === 1366) { await p.waitForTimeout(300); await p.screenshot({ path: path.join(OUT, `${v}-frame-${w}x${h}.png`) }); }
         await c.done();
       }
+      if (process.env.IOLA_SHOW_WIDTHS) console.log(`${w}x${h}: ${widths.join(', ')}`);
       check(g, `${w}x${h}: design area at least ${min} px`, widths.every(x => x >= min), widths.join(', '));
       eq(g, `${w}x${h}: both designs get the same width`, widths[0], widths[1]);
     }

@@ -1,3 +1,11 @@
+# v0.3.20 release notes — the new app's desktop layout fits on a 1366 px laptop (draft)
+
+## Changed
+- **The design area is at least 1,024 px on a 1366 px laptop**, so the new IRS app shows its desktop layout (side navigation, two or three panes) instead of its tablet layout. Between 951 and 1,500 px the instructions panel is 264 px, and the gaps around the task are smaller. Measured design area: 1,056 px at 1366 px, 1,130 px at 1440 px, 970 px at 1280 px (tablet layout) and 1,334 px at 1920 px. Both designs still get the same width.
+- **The task page fits the window height on computers**, so it no longer scrolls on short laptop windows (for example 1366×657, a 1366×768 screen less the browser's bars). The design area is shorter on those windows instead (at least 420 px).
+- The `frameWidth` check in `npm run test:iola` now also checks that the page doesn't scroll down and that the new app reaches its desktop layout at 1366 px.
+- The `backtrack` check in `npm run test:iola` returns to Home in the new app before the second payment: at desktop widths, the payment opens beside the payment list on the Payments page.
+
 # v0.3.19 release notes — a wider design area during prototype tasks (draft)
 
 ## Changed
