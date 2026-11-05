@@ -105,6 +105,7 @@ export function fieldNames(study) {
   const ab = (study.tasks || []).filter(t => normalizeMethod(t) === 'ab_test');
   const exps = [...new Set(ab.map(t => t.experimentId || t.id))];
   const names = ['rs_embed_ok', 'rs_session', 'rs_status', 'rs_pid', 'rs_device'];
+  if (study.allowedDevices === 'desktop') names.push('rs_device_class'); // set by docs/qualtrics-device-check.js
   if (exps.length <= 1) names.push('rs_variant'); else for (const x of exps) names.push(`rs_variant_${x}`);
   ab.forEach((t, i) => { for (const k of ['task', 'variant', 'success', 'self', 'time', 'tts', 'clicks']) names.push(`rs_ab${i + 1}_${k}`); });
   for (const a of answerFields(study)) names.push(a.field);

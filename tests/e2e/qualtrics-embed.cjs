@@ -119,7 +119,7 @@ async function begin(rs) {
   await rs.waitForSelector('#startStudy', { timeout: 15000 });
   if (await rs.$('#consentCheck')) await rs.check('#consentCheck');
   await rerender(rs, () => rs.click('#startStudy'));
-  await fillForm(rs, { 'iola-use': 'No, never', 'device-type': 'Laptop or desktop computer' });
+  await fillForm(rs, { 'iola-use': 'No, never' });
 }
 const click = (f, id) => f.locator(`[data-ut-id="${id}"]`).first().click();
 const RIGHT = {
@@ -148,10 +148,10 @@ async function doTask(page, rs, i, { phone } = {}) {
   await rerender(rs, () => rs.click('#finishTask'));
   await rs.locator('.reflection-choice label:has(input[value="completed"])').click();
   await rerender(rs, () => rs.click('#reflectionForm button[type=submit]'));
-  await fillForm(rs, { [`${TASKS[i]}-ease`]: '6', [`${TASKS[i]}-issue`]: `Synthetic note for ${TASKS[i]}, with "quotes"` });
+  await fillForm(rs, { [`${TASKS[i]}-ease`]: '5', [`${TASKS[i]}-issue`]: `Synthetic note for ${TASKS[i]}, with "quotes"` });
   return { v, connected };
 }
-async function finish(rs) { await fillForm(rs, { 'overall-ease': '6', confidence: '4' }); }
+async function finish(rs) { await fillForm(rs, { 'overall-ease': '5', confidence: '4' }); }
 const stored = page => page.evaluate(() => ({ ed: window.__ed, next: window.__next, got: window.__got, overlay: !!document.querySelector('iframe[title="Research activity"]'), nextHidden: document.getElementById('NextButton').hidden }));
 const bare = ed => Object.fromEntries(Object.entries(ed).map(([k, v]) => [k.replace(/^__js_/, ''), v]));
 
@@ -159,8 +159,8 @@ const bare = ed => Object.fromEntries(Object.entries(ed).map(([k, v]) => [k.repl
 const scenarios = {
   // Full study inside the survey, newer layout, full screen, design from the survey's randomizer.
   async full(browser) {
-    for (const [v, viewport] of [['iola-new', null], ['iola-current', null], ['iola-current', { width: 390, height: 844 }]]) {
-      const g = `full study in the survey · ${v}${viewport ? ' · phone' : ''}`;
+    for (const [v, viewport] of [['iola-new', null], ['iola-current', null], ['iola-current', { width: 1024, height: 700 }]]) {
+      const g = `full study in the survey · ${v}${viewport ? ' · small laptop window' : ''}`;
       const c = await newContext(browser, g, { viewport, survey: { mode: 'js', layout: 'fullscreen', variant: v } });
       const page = await c.ctx.newPage(); await page.goto(SURVEY);
       const rs = await waitRs(page);
@@ -174,7 +174,7 @@ const scenarios = {
       check(g, 'header says answers go to the survey', /^(Answers are saved to the survey|Saved to the survey)$/.test((await rs.textContent('#saveStatus')).trim()), await rs.textContent('#saveStatus'));
       const designs = [];
       for (let i = 0; i < TASKS.length; i++) {
-        const r = await doTask(page, rs, i, { phone: !!viewport }); designs.push(r.v);
+        const r = await doTask(page, rs, i); designs.push(r.v);
         check(g, `${TASKS[i]}: tracker connected inside the survey`, r.connected);
         if (i === 0) { await page.waitForTimeout(400); const s = bare((await stored(page)).ed); eq(g, 'saved after task 1 (partial results)', [s.rs_status, s.rs_ab1_success, s.rs_ab2_task || ''], ['in_progress', 'received', '']); }
       }
@@ -191,7 +191,7 @@ const scenarios = {
       check(g, 'only declared rs_ fields were written', Object.keys(s.ed).every(k => /^__js_rs_/.test(k)), Object.keys(s.ed));
       eq(g, 'summary fields', [ed.rs_embed_ok, ed.rs_status, ed.rs_variant, ed.rs_pid, ...TASKS.map((_, k) => ed[`rs_ab${k + 1}_success`])], ['yes', 'complete', v, 'R_mockResponse1', ...TASKS.map(() => 'received')]);
       check(g, 'time to success recorded for every task', TASKS.every((_, k) => /^\d+$/.test(ed[`rs_ab${k + 1}_tts`])), TASKS.map((_, k) => ed[`rs_ab${k + 1}_tts`]));
-      eq(g, 'answers stored as their own fields', [ed.rs_q_iola_use, ed.rs_q_one_time_payment_ease, ed.rs_q_upload_documents_issue, ed.rs_q_confidence], ['No, never', '6', 'Synthetic note for upload-documents, with "quotes"', '4']);
+      eq(g, 'answers stored as their own fields', [ed.rs_q_iola_use, ed.rs_q_one_time_payment_ease, ed.rs_q_upload_documents_issue, ed.rs_q_confidence], ['No, never', '5', 'Synthetic note for upload-documents, with "quotes"', '4']);
       check(g, 'every value fits in an Excel cell', Object.values(s.ed).every(x => x.length <= 32767), Math.max(...Object.values(s.ed).map(x => x.length)));
       const back = await M.sessionFromRecord(s.ed);
       check(g, 'full session reads back and matches its checksum', back.events && !back.problem, back.problem);
@@ -201,9 +201,34 @@ const scenarios = {
         check(g, 'click and screen records are in the session data', back.events.filter(e => e.kind === 'interaction_batch').flatMap(e => e.payload.items).filter(x => x.type === 'click' && x.target).length >= 12, 'few clicks');
         eq(g, 'the session in the data is the one in rs_session', back.session_id, ed.rs_session);
       }
-      fs.writeFileSync(path.join(OUT, `export-${v}${viewport ? '-phone' : ''}.json`), JSON.stringify({ ResponseId: 'R_mockResponse1', Status: '0', Finished: '1', DistributionChannel: 'anonymous', ...s.ed }));
+      fs.writeFileSync(path.join(OUT, `export-${v}${viewport ? '-small' : ''}.json`), JSON.stringify({ ResponseId: 'R_mockResponse1', Status: '0', Finished: '1', DistributionChannel: 'anonymous', ...s.ed }));
       await page.close(); await c.done();
     }
+  },
+  // Computers-only study opened on a phone inside the survey: nothing recorded, the survey is told and moves on.
+  async phoneInSurvey(browser) {
+    const g = 'phone inside the survey (computers-only study)';
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' });
+    await serveStudio(ctx);
+    await ctx.route(SURVEY + '**', r => r.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: surveyHtml({ mode: 'js', variant: 'iola-new' }) }));
+    const page = await ctx.newPage(); await page.goto(SURVEY);
+    const rs = await waitRs(page);
+    await rs.waitForSelector('h1:has-text("Please use a laptop or desktop computer")', { timeout: 15000 });
+    await page.waitForFunction(() => window.__next > 0, null, { timeout: 15000 });
+    const s = await stored(page), ed = bare(s.ed);
+    eq(g, 'survey told: device not supported, kind recorded', [ed.rs_status, ed.rs_device], ['device_not_supported', 'phone']);
+    eq(g, 'no session or results sent', [ed.rs_session, ed.rs_data_parts, ed.rs_ab1_success], [undefined, undefined, undefined]);
+    check(g, 'survey moved on (its branch can end the survey there)', s.next === 1, s.next);
+    await ctx.close();
+    // ...and the import leaves them out rather than counting a drop-out.
+    const MI = await import(pathToFileURL(path.join(ROOT, 'src', 'qualtrics-import.js')).href);
+    const recs = [{ ResponseId: 'R_phone', Status: '0', Finished: '0', DistributionChannel: 'anonymous', rs_variant: 'iola-new', ...s.ed }];
+    const full = JSON.parse(fs.readFileSync(path.join(OUT, fs.readdirSync(OUT).find(f => /^export-iola-new\.json$/.test(f)) || 'missing'), 'utf8'));
+    recs.push(full, { ResponseId: 'R_tablet', Status: '0', Finished: '0', DistributionChannel: 'anonymous', rs_device_class: 'tablet' });
+    await MI.expandEmbedded(recs);
+    const r = MI.eventsFromQualtrics(study, recs);
+    eq(g, 'import: phone and tablet left out, not drop-outs', [r.summary.responses, r.summary.dropouts], [1, 0]);
+    check(g, 'import says how many were left out', r.warnings.some(w => /2 participants on a phone or tablet/.test(w)), r.warnings);
   },
   // Older layout, inline in the question, no design from the survey (Research Studio picks).
   async classicInline(browser) {

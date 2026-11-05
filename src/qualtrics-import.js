@@ -91,8 +91,11 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
   const withUnfinished = survey2In.some(r => field(r, 'Finished') !== '' && !truthy(field(r, 'Finished')));
   const embeddedDropouts = embeddedSurvey && withUnfinished;
   const leftEarly = [];
+  let screenedOut = 0;
   for (const rec of survey2In) {
     if (!isLiveResponse(rec)) { s2NotLive++; continue; }
+    // Laptop/desktop-only studies: phones and tablets are screened out, not drop-outs (v0.3.12).
+    if (field(rec, 'rs_status') === 'device_not_supported' || ['phone', 'tablet'].includes(field(rec, 'rs_device_class'))) { screenedOut++; continue; }
     const session = field(rec, 'rs_session');
     // Research Studio inside the survey: assigned a design by the survey but no results saved
     // (left during the activity; Qualtrics keeps an incomplete response's earlier pages only).
@@ -169,6 +172,7 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
   if (otherStudy) problems.push(`${otherStudy} response${otherStudy === 1 ? ' holds' : 's hold'} data for a different study. Choose the matching study and import again.`);
   if (unreadable) warnings.push(`${unreadable} response${unreadable === 1 ? '' : 's'}: the full session data could not be read (a field may be undeclared or cut off), so only the summary fields were used. Click records and answers are missing for ${unreadable === 1 ? 'it' : 'them'}.`);
   if (truncated) warnings.push(`${truncated} response${truncated === 1 ? ' was' : 's were'} too long for the survey fields; the oldest click records were left out, outcomes and answers are complete.`);
+  if (screenedOut) warnings.push(`Left out ${screenedOut} participant${screenedOut === 1 ? '' : 's'} on a phone or tablet (this study runs on computers only).`);
   if (leftEarly.length) warnings.push(`${leftEarly.length} participant${leftEarly.length === 1 ? ' was' : 's were'} assigned a design but left before the activity was saved; counted as drop-outs.`);
   if (!used) problems.push('No usable Survey 2 rows with rs_session were found. Check that Survey 2 declares the rs_… embedded data fields (see the Qualtrics setup guide).');
   if (s1NotLive + s2NotLive) warnings.push(`Left out ${s1NotLive + s2NotLive} preview, test or imported response${s1NotLive + s2NotLive === 1 ? '' : 's'}.`);

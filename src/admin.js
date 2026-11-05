@@ -18,11 +18,12 @@ const questionTypes=[['text','Short text'],['textarea','Long text'],['scale5','5
 function toast(message,timeout=4500){const el=by('toast');el.textContent=message;el.classList.remove('hidden');setTimeout(()=>el.classList.add('hidden'),timeout);}
 function switchTab(name){$$('.nav-option').forEach(b=>{const on=b.dataset.tab===name;b.classList.toggle('active',on);if(on)b.setAttribute('aria-current','page');else b.removeAttribute('aria-current');});$$('.tab-panel').forEach(p=>p.classList.toggle('hidden',p.id!==`tab-${name}`));if(name==='results')refreshResults().catch(err=>toast(err.message));if(name==='setup')renderAuth();}
 function newQuestion(){return {id:`question-${Math.random().toString(36).slice(2,7)}`,type:'textarea',text:'',required:false};}
-function normalizeStudy(item){return {schemaVersion:item.schemaVersion||3,id:item.id || 'new-study',version:item.version||'1.0.0',title:item.title || '',description:item.description||'',prototypeUrl:item.prototypeUrl || '',welcome:item.welcome||'',consent:item.consent||'',...(item.consentMode==='external'?{consentMode:'external'}:{}),preQuestions:item.preQuestions || [],tasks:item.tasks || [],postQuestions:item.postQuestions || [],...(item.plan&&typeof item.plan==='object'?{plan:item.plan}:{})};}
+function normalizeStudy(item){return {schemaVersion:item.schemaVersion||3,id:item.id || 'new-study',version:item.version||'1.0.0',title:item.title || '',description:item.description||'',prototypeUrl:item.prototypeUrl || '',welcome:item.welcome||'',consent:item.consent||'',...(item.consentMode==='external'?{consentMode:'external'}:{}),...(item.allowedDevices==='desktop'?{allowedDevices:'desktop'}:{}),preQuestions:item.preQuestions || [],tasks:item.tasks || [],postQuestions:item.postQuestions || [],...(item.plan&&typeof item.plan==='object'?{plan:item.plan}:{})};}
 function prepareEditor(){
   const values={studyTitle:study.title,studyId:study.id,studyVersion:study.version,studyURL:study.prototypeUrl,studyDescription:study.description,studyWelcome:study.welcome,studyConsent:study.consent};
   for(const [id,v] of Object.entries(values))by(id).value=v;
   by('studyExternalConsent').checked=study.consentMode==='external';
+  by('studyDevices').value=study.allowedDevices==='desktop'?'desktop':'any';
   renderQuestions('preQuestions');renderQuestions('postQuestions');renderTasks();updateSummary();
 }
 function questionEditorHTML(q,stage,i,taskIndex=null){
@@ -61,6 +62,7 @@ function questionList(stage,taskIndex){return stage==='tasks'?study.tasks[taskIn
 function handleEdit(e){
   const el=e.target, idToField={studyTitle:'title',studyId:'id',studyVersion:'version',studyURL:'prototypeUrl',studyDescription:'description',studyWelcome:'welcome',studyConsent:'consent'};
   if(el.id==='studyExternalConsent'){if(el.checked)study.consentMode='external';else delete study.consentMode;return;}
+  if(el.id==='studyDevices'){if(el.value==='desktop')study.allowedDevices='desktop';else delete study.allowedDevices;return;}
   if(idToField[el.id]){study[idToField[el.id]]=el.value;updateSummary();return;}
   if(el.matches('[data-task-lines],[data-task-tree]')){
     const ti=+el.closest('[data-task-index]').dataset.taskIndex;const t=study.tasks[ti];

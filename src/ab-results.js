@@ -38,7 +38,12 @@ export function analyzeAB(a, data, flat, studyPlan = null) {
     const active = x => { const t = Number(x.time_seconds); return Number.isFinite(t) && t > 0 ? t - (Number(x.interrupted_seconds) || 0) : null; };
     const times = finished.map(active).filter(t => t != null && t > 0);
     const succeeded = hasSignal ? finished.filter(x => x.result?.success_signal_status === 'received') : finished.filter(x => x.self_report === 'completed');
-    const successTimes = succeeded.map(active).filter(t => t != null && t > 0);
+    // Time to success: from the success signal itself where recorded (v0.3.10), otherwise the activity's active time.
+    const successTimes = succeeded.map(x => hasSignal && Number.isFinite(x.success_at_seconds) && x.success_at_seconds > 0 ? x.success_at_seconds : active(x)).filter(t => t != null && t > 0);
+    // Self-report against what happened, among finishers whose success was measured.
+    const answered = measured.filter(x => ['completed', 'unable'].includes(x.self_report));
+    const overclaim = answered.filter(x => x.self_report === 'completed' && x.result.success_signal_status === 'not_observed').length;
+    const underclaim = answered.filter(x => x.self_report === 'unable' && x.result.success_signal_status === 'received').length;
     const clicks = finished.filter(x => x.tracker_connected).map(x => x.click_count).filter(Number.isFinite);
     const devices = (started.length ? started : finished).reduce((m, x) => { const s = sessions.get(x.session_id); const d = s?.device || deviceClass(s?.viewport_width); m[d] = (m[d] || 0) + 1; return m; }, {});
     const nAssigned = dropoutUnknown ? finished.length : Math.max(started.length, finished.length);
@@ -51,7 +56,8 @@ export function analyzeAB(a, data, flat, studyPlan = null) {
       measuredRate: hasSignal ? wilson(successes, measured.length) : null,    // finishers with success measured
       self: wilson(selfDone, finished.length),                                // finishers' own view
       time: medianCI(times), times, successTime: medianCI(successTimes), successTimes,
-      clicks: median(clicks), devices
+      clicks: median(clicks), devices,
+      overclaim: hasSignal ? wilson(overclaim, answered.length) : null, underclaim: hasSignal ? underclaim : null, answered: answered.length
     };
   });
   const conf = comparisonConfidence(designs.length);
@@ -96,6 +102,11 @@ export function analyzeAB(a, data, flat, studyPlan = null) {
   if (designs.every(d => known(d) > 0)) {
     const differs = designs.slice(1).map(d => diffProportions(base.devices.phone || 0, known(base), d.devices.phone || 0, known(d))).some(excludesZero);
     checks.push({ level: differs ? 'warn' : 'ok', title: 'Devices', text: `On phones: ${designs.map(d => `${letter(d.index)} ${pct((d.devices.phone || 0) / known(d))}`).join(', ')}.${differs ? ' The device mix differs between designs more than chance would explain; compare phone and computer results separately.' : ''}` });
+  }
+  if (hasSignal) {
+    const withAnswers = designs.filter(d => d.overclaim && d.answered >= 5);
+    const worst = withAnswers.reduce((m, d) => (!m || d.overclaim.p > m.overclaim.p ? d : m), null);
+    if (worst && worst.overclaim.p >= 0.15) checks.push({ level: 'info', title: 'Self-report and observed success differ', text: `${withAnswers.map(d => `${letter(d.index)}: ${d.overclaim.k} of ${d.overclaim.n} (${pct(d.overclaim.p)})`).join('; ')} said they completed the task when the prototype did not record success. This is why the success signal, not the self-report, is the main measure${withAnswers.length > 1 && Math.abs(withAnswers[0].overclaim.p - withAnswers.at(-1).overclaim.p) >= 0.15 ? '; the gap differs between designs, which is itself worth reporting' : ''}.` });
   }
   if (hasSignal && !dropoutUnknown) {
     const disagree = comparisons.filter(c => c.enough && c.primary && c.measured && excludesZero(c.primary) !== excludesZero(c.measured));
@@ -176,8 +187,8 @@ export function renderABCore(an, esc) {
   // ---- tables ----
   const cell = w => w ? `${pct(w.p)} <small>${w.k}/${w.n} · ${pct(w.lo)}–${pct(w.hi)}</small>` : '—';
   const timeCell = t => t?.m == null ? '—' : `${secs(t.m)}${t.lo == null ? ' <small>too few for a range</small>' : t.lo === t.hi ? ' <small>range not estimable (tied values)</small>' : ` <small>${secs(t.lo)}–${secs(t.hi)}</small>`}`;
-  const rows = designs.map(d => `<tr><th scope="row">${esc(d.label)}${d.variant.revision ? `<div class="muted tiny">Version: ${esc(d.variant.revision)}</div>` : ''}</th><td>${d.assigned}</td><td>${d.finished}</td><td>${d.dropped == null ? 'unknown' : `${d.dropped}${d.assigned ? ` <small>${pct(d.dropped / d.assigned)}</small>` : ''}`}</td><td>${cell(d.primary)}</td>${hasSignal ? `<td>${cell(d.measuredRate)}</td>` : ''}<td>${cell(d.self)}</td><td>${timeCell(d.time)}</td><td>${timeCell(d.successTime)}</td><td>${d.clicks == null ? '—' : d.clicks.toFixed(1).replace(/\.0$/, '')}</td></tr>`).join('');
-  const table = `<div class="table-scroll"><table class="data-table ab-table"><thead><tr><th>Design</th><th>${dropoutUnknown ? 'Finished (assigned unknown)' : 'Assigned'}</th><th>Finished</th><th>Dropped out</th><th>${measureName}, ${dropoutUnknown ? 'finishers' : 'everyone assigned'} <small>main measure</small></th>${hasSignal ? '<th>Success signal, measured finishers <small>secondary</small></th>' : ''}<th>Self-reported complete, finishers <small>secondary</small></th><th>Median active time <small>secondary</small></th><th>Median time, successful attempts</th><th>Median clicks</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+  const rows = designs.map(d => `<tr><th scope="row">${esc(d.label)}${d.variant.revision ? `<div class="muted tiny">Version: ${esc(d.variant.revision)}</div>` : ''}</th><td>${d.assigned}</td><td>${d.finished}</td><td>${d.dropped == null ? 'unknown' : `${d.dropped}${d.assigned ? ` <small>${pct(d.dropped / d.assigned)}</small>` : ''}`}</td><td>${cell(d.primary)}</td>${hasSignal ? `<td>${cell(d.measuredRate)}</td>` : ''}<td>${cell(d.self)}</td>${hasSignal ? `<td>${cell(d.overclaim)}${d.underclaim ? ` <small>${d.underclaim} said they couldn't but did</small>` : ''}</td>` : ''}<td>${timeCell(d.time)}</td><td>${timeCell(d.successTime)}</td><td>${d.clicks == null ? '—' : d.clicks.toFixed(1).replace(/\.0$/, '')}</td></tr>`).join('');
+  const table = `<div class="table-scroll"><table class="data-table ab-table"><thead><tr><th>Design</th><th>${dropoutUnknown ? 'Finished (assigned unknown)' : 'Assigned'}</th><th>Finished</th><th>Dropped out</th><th>${measureName}, ${dropoutUnknown ? 'finishers' : 'everyone assigned'} <small>main measure</small></th>${hasSignal ? '<th>Success signal, measured finishers <small>secondary</small></th>' : ''}<th>Self-reported complete, finishers <small>secondary</small></th>${hasSignal ? '<th>Said they completed it but didn\'t <small>measured finishers</small></th>' : ''}<th>Median active time <small>secondary</small></th><th>Median time to success${hasSignal ? ' <small>from the success signal</small>' : ''}</th><th>Median clicks</th></tr></thead><tbody>${rows}</tbody></table></div>`;
   const cmpRow = (name, f) => `<tr><th scope="row">${name}</th>${comparisons.map(c => `<td>${f(c)}</td>`).join('')}</tr>`;
   const rangeTxt = r => r ? `${pts(r.d)} pts <small>${pts(r.lo)} to ${pts(r.hi)}</small>` : '—';
   const cmp = comparisons.length ? `<div class="table-scroll"><table class="data-table ab-table"><thead><tr><th>Difference from ${letter(0)}</th>${comparisons.map(c => `<th>${letter(c.design.index)} vs ${letter(0)}</th>`).join('')}</tr></thead><tbody>${cmpRow(`${measureName}, ${dropoutUnknown ? 'finishers' : 'everyone assigned'} <small>main measure</small>`, c => rangeTxt(c.primary))}${hasSignal ? cmpRow('Success signal, measured finishers <small>secondary</small>', c => rangeTxt(c.measured)) : ''}${cmpRow('Self-reported complete <small>secondary</small>', c => rangeTxt(c.self))}${cmpRow('Median active time <small>secondary</small>', c => c.time ? `${signedSecs(c.time.d)}${c.time.lo == null ? ' <small>too few for a range</small>' : c.time.lo === c.time.hi ? ' <small>range not estimable</small>' : ` <small>${signedSecs(c.time.lo)} to ${signedSecs(c.time.hi)}</small>`}` : '—')}</tbody></table></div><p class="analysis-subtitle">Difference ranges are ${confText} confidence intervals${conf !== 0.95 ? `, widened from 95% because ${comparisons.length} designs are each compared with ${letter(0)}` : ''}; each design's own range is 95%. Overlapping ranges in the chart above are not a test: use the difference ranges. Secondary measures are for context and are not adjusted for being several looks at the same data. Active time excludes time away after a page reload and includes both successful and unsuccessful attempts.</p>` : '';

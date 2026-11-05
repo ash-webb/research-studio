@@ -19,6 +19,7 @@ export function validateStudy(study) {
   if (!study || !/^[a-z0-9-]{3,64}$/.test(study.id ?? '')) throw new Error('Study ID must be 3–64 lowercase letters, numbers, or hyphens.');
   if (!String(study.title || '').trim()) throw new Error('Study title is required.');
   if (!Array.isArray(study.tasks) || !study.tasks.length) throw new Error('At least one activity is required.');
+  if (study.allowedDevices !== undefined && !['any', 'desktop'].includes(study.allowedDevices)) throw new Error('allowedDevices must be "any" or "desktop".');
   validateQuestions(study.preQuestions || []);validateQuestions(study.postQuestions || []);
   const ids = new Set(), experiments = new Map();
   for (const task of study.tasks) {

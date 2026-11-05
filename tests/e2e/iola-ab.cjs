@@ -100,7 +100,7 @@ async function startSession(ctx, query) {
   await p.waitForSelector('#consentCheck');
   await p.check('#consentCheck');
   await rerender(p, () => p.click('#startStudy'));
-  await fillForm(p, { 'iola-use': 'Yes, once or twice', 'device-type': 'Laptop or desktop computer' });
+  await fillForm(p, { 'iola-use': 'Yes, once or twice' });
   return p;
 }
 async function openTask(p, viewport) {
@@ -205,10 +205,10 @@ const doRight = (v, t, f, p) => t === 'one-time-payment' ? DESIGN[v].pay(f, { p 
 
 // ---------- scenarios ----------
 const scenarios = {
-  // Every task done correctly, desktop and phone, for both designs.
+  // Every task done correctly on computers (a full-size and a small laptop window), for both designs.
   async success(browser) {
-    for (const v of VARIANTS) for (const viewport of [null, { width: 390, height: 844 }]) {
-      const g = `success ${v} ${viewport ? 'phone' : 'desktop'}`;
+    for (const v of VARIANTS) for (const viewport of [null, { width: 1024, height: 700 }]) {
+      const g = `success ${v} ${viewport ? 'small laptop window' : 'desktop'}`;
       const c = await newContext(browser, g, { viewport });
       const p = await startSession(c.ctx, `variant=${v}`);
       for (const [i, t] of TASKS.entries()) {
@@ -239,6 +239,31 @@ const scenarios = {
       check(g, 'session completed', evs.some(e => e.kind === 'session_completed'), 'no session_completed');
       await c.done();
     }
+  },
+  // Laptops and desktops only (study allowedDevices = desktop): phones and tablets are turned away before anything is recorded.
+  async devices(browser) {
+    const g = 'phones and tablets turned away';
+    eq(g, 'the study is set to computers only', study.allowedDevices, 'desktop');
+    const kinds = [
+      ['phone', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1' }],
+      ['Android tablet', { viewport: { width: 1280, height: 800 }, isMobile: true, hasTouch: true, userAgent: 'Mozilla/5.0 (Linux; Android 14; SM-X710) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36' }],
+      ['iPad (reports itself as a Mac)', { viewport: { width: 1180, height: 820 }, hasTouch: true, isMobile: true, userAgent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15' }]
+    ];
+    for (const [name, opts] of kinds) {
+      const ctx = await browser.newContext(opts); await serveRule(ctx);
+      const p = await ctx.newPage();
+      await p.goto(`${BASE}study.html?study=${STUDY_ID}&variant=iola-new`);
+      await p.waitForSelector('h1');
+      eq(g, `${name}: told to use a computer`, (await p.textContent('h1')).trim(), 'Please use a laptop or desktop computer');
+      check(g, `${name}: cannot start`, !(await p.$('#startStudy')), 'Begin shown');
+      eq(g, `${name}: nothing recorded`, (await allEvents(p)).filter(e => e.study_id === STUDY_ID).length, 0);
+      await ctx.close();
+    }
+    const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } }); await serveRule(ctx);
+    const p = await ctx.newPage(); await p.goto(`${BASE}study.html?study=${STUDY_ID}`);
+    await p.waitForSelector('#consentCheck');
+    check(g, 'a narrow window on a computer is still allowed', true);
+    await ctx.close();
   },
   // Clearly wrong outcomes: none may count, and the wrong outcome is logged as a custom event.
   async wrong(browser) {

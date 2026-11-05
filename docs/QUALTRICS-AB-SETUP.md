@@ -98,7 +98,7 @@ The files are read in your browser only; nothing is uploaded or stored. Select *
 1. Export Survey 1 (with `ResponseID` and `Variant`) and Survey 2 (with the `rs_…` fields).
 2. Join them: Survey 1 `ResponseID` = Survey 2 `rs_pid`.
 3. **Compare drop-off by design before comparing outcomes.** People who start a design but never reach Survey 2 appear in Survey 1 with that `Variant` and no Survey 2 row. If one design loses more people, that is itself a finding, and it can bias the outcome comparison.
-4. Treat `rs_ab1_success = received` as the observed success measure and `rs_ab1_self` as the participant's own view. They answer different questions. `not_observed` and `unavailable` are not proof of failure.
+4. Treat `rs_ab1_success = received` as the observed success measure (the prototype confirmed the task was done correctly) and `rs_ab1_self` as the participant's own view. They answer different questions: people often say they completed a task they didn't. Research Studio's results show both, and how many said they had completed it when the prototype recorded no success. `not_observed` and `unavailable` are not proof of failure.
 
 ## Good to know
 
@@ -131,6 +131,8 @@ Everything in the route A table (same `rs_…` names), plus:
 
 ### Setting it up
 
+**Quickest:** on the setup page, select **Download starter survey (.qsf)** and import it in Qualtrics (**Create project ▸ Survey ▸ Import a QSF file**). It already has every field declared, the randomizer, the Research Studio page with its script, and (for laptop/desktop-only studies) the device screening described below. Replace its welcome page with your consent and PRA notice, add your follow-up questions, and preview. The steps below are the same set-up done by hand.
+
 1. **Research Studio.** In the study builder tick **Consent is collected in the survey before this study**, then publish the study as usual. Open **`qualtrics-embed.html?study=STUDY-ID`** on the Research Studio site: it gives the exact field list and the script for that study.
 2. **Fields.** In **Survey Flow**, add an **Embedded Data** element near the top with every name from the setup page (no values). Newer survey layouts store values set by JavaScript under `__js_` names, older ones under the plain names; your JavaScript test showed which (whether `__js_rs_small` or `rs_small` had the value). The setup page lists either set; declare both if unsure.
 3. **Randomizer.** As in route A, but set `rs_variant` (not `Variant`) in each branch: `rs_variant` = `design-a`, and so on, with **Evenly Present Elements** ticked. Without a randomizer, Research Studio assigns designs itself.
@@ -142,12 +144,23 @@ Everything in the route A table (same `rs_…` names), plus:
 5. **Follow-up and thank-you pages** after it. You can branch on `rs_variant`.
 6. **Approved survey addresses.** Research Studio only sends results to a page on a host listed in `embedHosts` in `settings.js` (default `qualtrics.com`, which includes `irsresearch.gov1.qualtrics.com`). A page anywhere else that embeds the study gets nothing, and the participant is told not to continue. The same happens if the survey page's script is missing. `qualtrics.com` admits any Qualtrics account; to accept only yours, list its address instead, for example `embedHosts: ['irsresearch.gov1.qualtrics.com']`.
 
+### Laptops and desktops only
+
+Set **Devices: Laptop or desktop computers only** in the study builder (`allowedDevices: "desktop"` in the study file). Then:
+
+- **Before the randomizer**, put `docs/qualtrics-device-check.js` (also on the setup page) in the JavaScript of a question on the consent or welcome page. It sets `rs_device_class` to `desktop`, `tablet` or `phone`. Add a **Branch** after that page: if `rs_device_class` is equal to `phone` **or** `tablet`, show a short “computer needed” page, then **End of Survey**. Phones and tablets are then never assigned a design, so the groups stay balanced.
+- **Research Studio checks as well.** On a phone or tablet it records nothing, tells the person to use a computer, and returns to the survey with `rs_status` = `device_not_supported`. Add a second branch after the Research Studio page for that value, ending the survey.
+- Phones and tablets are recognised by what the browser reports (mobile browsers, iPads that report themselves as Macs, touch-only screens), not by window size: a small browser window on a laptop is still allowed.
+- The import leaves out phone and tablet responses and says how many; they are not counted as drop-outs.
+
+The starter survey includes all of this.
+
 ### Test before launch
 
 - [ ] Preview the survey several times with made-up answers: you should land on each design, see **Begin** (no second consent), and return to the survey automatically at the end.
 - [ ] In **Data & Analysis** (with previews shown), `rs_embed_ok` is `yes`, `rs_status` is `complete`, and `rs_data_parts` is filled.
 - [ ] Reload the page in the middle of the activity once: Research Studio continues where it was, and the saved data still has everything.
-- [ ] Try once on a phone and once on an iPhone (Safari).
+- [ ] For a computers-only study, open the survey link once on a phone: it should end at the “computer needed” page. Otherwise try once on a phone and once on an iPhone (Safari).
 - [ ] Export the responses and import them into Research Studio (below): the status line should say every response came **with the full session record**.
 
 ### Results

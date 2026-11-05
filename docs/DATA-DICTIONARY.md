@@ -58,6 +58,15 @@ Saved as `plan` in the working-copy JSON; removed from the published study file 
 - `time_seconds` remains wall-clock from activity start to end, including time away. Active time ≈ `time_seconds − interrupted_seconds`.
 - Task CSV and Method CSV include `interruptions` and `interrupted_seconds`.
 
+## Laptops and desktops only (v0.3.12)
+- Study field `allowedDevices`: `"desktop"` (laptops and desktops only) or absent (any device). On a phone or tablet the participant page records nothing and asks for a computer.
+- `session_started.payload.device_kind`: `desktop`, `tablet` or `phone`, from what the browser reports (`src/devices.js`), not window width. `device` stays the width-based class.
+- Survey route: `rs_status = device_not_supported` with `rs_device`; `rs_device_class` from the survey's own device check (`docs/qualtrics-device-check.js`). The import leaves both kinds out and counts them.
+
+## Observed success and self-report in A/B results (v0.3.12)
+- Per design: "Said they completed it but didn't" = finishers with success measured who answered `completed` while the success signal was `not_observed`, with a 95% range; also the count who said `unable` but succeeded.
+- "Median time to success" uses `success_at_seconds` when recorded, otherwise the activity's active time.
+
 ## Research Studio inside a survey (v0.3.11)
 - `study.html?embed=qualtrics` inside a survey page: events are kept only in the tab's session storage (`utp-embed-events-v1:<session>`), not in long-term browser storage, and sent to the survey after the opening questions, after each activity and at the end.
 - Survey fields: the `rs_…` summary (as the return link), `rs_q_<question>` per study question, and the session as `rs_data_1…8` with `rs_data_parts`, `rs_data_chars`, `rs_data_sha256`, `rs_data_truncated`. See `docs/QUALTRICS-AB-SETUP.md` (route B).

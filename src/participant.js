@@ -3,6 +3,7 @@ import { normalizeMethod, scoreTree, scoreFirstClick, randomizeVariants, secureU
 import { StudyWriter } from './storage.js';
 import { deviceClass } from './abstats.js';
 import { EMBED_NS, EMBED_VERSION, hostAllowed, surveyFields } from './qualtrics-embed.js';
+import { deviceKind, allowedOn } from './devices.js';
 
 let study, writer, sessionId, activeTask=null, taskIndex=0;
 let taskStartedAt=0, clickCount=0, taskInteractions=[], trackerConnected=false, observedSuccess=false;
@@ -43,6 +44,24 @@ function connectSurvey(){
     setTimeout(()=>resolve(!!surveyOrigin),9000);
   });
 }
+function surveyAck(seq){
+  return new Promise(resolve=>{
+    const check=()=>{if(surveyAcked>=seq){surveyWaiters.delete(check);resolve(true);}};
+    surveyWaiters.add(check);check();
+    setTimeout(()=>{surveyWaiters.delete(check);resolve(surveyAcked>=seq);},8000);
+  });
+}
+// Laptop/desktop-only study opened on a phone or tablet (v0.3.12): nothing is recorded. Inside a survey,
+// the survey is told (rs_status = device_not_supported) so it can end there and leave them out of results.
+async function deviceNotSupported(kind){
+  progress(0,'Computer needed');
+  render(`<section class="welcome-card"><span class="eyebrow accent">COMPUTER NEEDED</span><h1>Please use a laptop or desktop computer</h1><p>This study only works on a laptop or desktop computer, and this looks like a ${esc(kind)}. ${embedded?'Taking you back to the survey…':'Please open the same link on a computer. You can close this page.'}</p></section>`,null);
+  if(embedded&&surveyOrigin){
+    const seq=++surveySeq;
+    window.parent.postMessage({ns:EMBED_NS,v:EMBED_VERSION,type:'save',seq,status:'device_not_supported',fields:{rs_status:'device_not_supported',rs_device:kind}},surveyOrigin);
+    if(await surveyAck(seq))window.parent.postMessage({ns:EMBED_NS,v:EMBED_VERSION,type:'done'},surveyOrigin);
+  }
+}
 function surveyStatus(text){const el=$('#saveStatus');if(el)el.textContent=text;}
 // Sends everything so far; resolves true once the survey confirms it stored this save (or a later one).
 async function saveToSurvey(status){
@@ -52,11 +71,7 @@ async function saveToSurvey(status){
     const {fields}=await surveyFields({study,sessionId,status,assignments,abResults,externalId:cleanExternalId(query.get('pid')),device:sessionDevice(),events:writer.sessionEvents()});
     window.parent.postMessage({ns:EMBED_NS,v:EMBED_VERSION,type:'save',seq,status,fields},surveyOrigin);
   }catch(err){surveyFailed=true;surveyStatus('Not saved to the survey');console.error(err);return false;}
-  const ok=await new Promise(resolve=>{
-    const check=()=>{if(surveyAcked>=seq){surveyWaiters.delete(check);resolve(true);}};
-    surveyWaiters.add(check);check();
-    setTimeout(()=>{surveyWaiters.delete(check);resolve(surveyAcked>=seq);},8000);
-  });
+  const ok=await surveyAck(seq);
   surveyFailed=!ok;surveyStatus(ok?'Saved to the survey':'Not saved to the survey yet');
   return ok;
 }
@@ -208,6 +223,8 @@ async function init(){
       if(!await connectSurvey()){render(`<section class="welcome-card"><h1>This survey page can't receive your answers</h1><p>The survey isn't set up to store results from this activity, so nothing you did here would be saved. Please let the research team know, and don't continue with this part.</p></section>`,null);surveyStatus('Not connected to the survey');return;}
       surveyStatus('Answers are saved to the survey');
     }
+    const kind=deviceKind();
+    if(!allowedOn(study,kind)){await deviceNotSupported(kind);return;}
     studyHash=hashText(JSON.stringify(study));resumeKey=`utp-resume-v1:${preview?'preview':'live'}:${study.id}`;
     const cp=readCheckpoint();
     if(cp&&cp.v===1&&cp.studyId===study.id&&cp.hash===studyHash&&cp.sessionId&&Date.now()-(cp.savedAt||0)<RESUME_MAX_AGE_MS){await resume(cp);return;}
@@ -223,7 +240,7 @@ function welcome(){
     sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview,{store:embedded?'session':'local'});
     assignments=resolveAssignments(study,sessionId,query);
     const externalId=cleanExternalId(query.get('pid'));
-    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,device:deviceClass(innerWidth),consent:study.consentMode==='external'?'external':true,...(preview?{preview:true}:{}),...(externalId?{external_id:externalId}:{}),...(Object.keys(assignments).length?{assignments}:{}),...(returnUrl?{return_host:returnUrl.hostname}:{})});
+    writer.add('session_started',null,{study_version:study.version||'1.0.0',viewport_width:innerWidth,viewport_height:innerHeight,device:deviceClass(innerWidth),device_kind:deviceKind(),consent:study.consentMode==='external'?'external':true,...(preview?{preview:true}:{}),...(externalId?{external_id:externalId}:{}),...(Object.keys(assignments).length?{assignments}:{}),...(returnUrl?{return_host:returnUrl.hostname}:{})});
     if(study.preQuestions?.length)showPre();else{persist('start',0);startActivity();}
   };
 }

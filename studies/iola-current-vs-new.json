@@ -1,7 +1,8 @@
 {
   "schemaVersion": 3,
   "id": "iola-current-vs-new",
-  "version": "1.0.0",
+  "version": "1.1.0",
+  "allowedDevices": "desktop",
   "title": "IRS online account: current website vs new app",
   "description": "Unmoderated A/B usability test comparing the current Individual Online Account (IOLA) website with the new IRS app design on four tasks: a one-time payment, finding an offer in compromise, responding to a notice and uploading documents. Both designs are simplified research prototypes with fictional account information.",
   "welcome": "You will use a practice version of an IRS online account and try four short tasks. Everything you see is fictional sample information: it is not your account and nothing you do is sent to the IRS. We are testing the design, not you. If you get stuck, it is fine to stop and select \"Finish this task\".",
@@ -16,17 +17,6 @@
         "Yes, once or twice",
         "No, never",
         "Not sure"
-      ],
-      "required": true
-    },
-    {
-      "id": "device-type",
-      "type": "single",
-      "text": "Which device are you using right now?",
-      "options": [
-        "Phone",
-        "Tablet",
-        "Laptop or desktop computer"
       ],
       "required": true
     }
@@ -56,7 +46,7 @@
       "questions": [
         {
           "id": "one-time-payment-ease",
-          "type": "scale7",
+          "type": "scale5",
           "text": "Overall, how easy or difficult was it to make the payment?",
           "required": true,
           "lowLabel": "Very difficult",
@@ -94,7 +84,7 @@
       "questions": [
         {
           "id": "find-oic-ease",
-          "type": "scale7",
+          "type": "scale5",
           "text": "Overall, how easy or difficult was it to find this option?",
           "required": true,
           "lowLabel": "Very difficult",
@@ -132,7 +122,7 @@
       "questions": [
         {
           "id": "respond-to-notice-ease",
-          "type": "scale7",
+          "type": "scale5",
           "text": "Overall, how easy or difficult was it to respond to the notice?",
           "required": true,
           "lowLabel": "Very difficult",
@@ -170,7 +160,7 @@
       "questions": [
         {
           "id": "upload-documents-ease",
-          "type": "scale7",
+          "type": "scale5",
           "text": "Overall, how easy or difficult was it to send the documents?",
           "required": true,
           "lowLabel": "Very difficult",
@@ -188,7 +178,7 @@
   "postQuestions": [
     {
       "id": "overall-ease",
-      "type": "scale7",
+      "type": "scale5",
       "text": "Overall, how easy or difficult was this online account to use?",
       "required": true,
       "lowLabel": "Very difficult",

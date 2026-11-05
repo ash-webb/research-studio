@@ -72,3 +72,20 @@ test('wording: no winner, provisional banner and range language', () => {
   assert.ok(out.includes('Overlapping ranges in the chart above are not a test'));
   assert.ok(!/winner/i.test(out));
 });
+
+test('self-report checked against observed success, and time to success taken from the signal', async () => {
+  const { analyzeAB, renderABCore } = await import('../src/ab-results.js');
+  const a = { id: 't1', method: 'ab_test', experimentId: 'x', successSignal: 'done', variants: [{ id: 'a', label: 'A' }, { id: 'b', label: 'B' }] };
+  const mk = (sid, v, status, self, tts) => ({ session_id: sid, task_id: 't1', variant_id: v, tracker_connected: true, self_report: self, time_seconds: 60, ...(tts ? { success_at_seconds: tts } : {}), result: { success_signal_status: status } });
+  const rows = [];
+  for (let i = 0; i < 6; i++) rows.push(mk(`a${i}`, 'a', i < 2 ? 'received' : 'not_observed', 'completed', i < 2 ? 20 : null));
+  for (let i = 0; i < 6; i++) rows.push(mk(`b${i}`, 'b', i < 5 ? 'received' : 'not_observed', i < 5 ? 'completed' : 'unable', i < 5 ? 30 : null));
+  rows.push(mk('b9', 'b', 'received', 'unable', 25));
+  const flat = { starts: rows.map(r => ({ session_id: r.session_id, task_id: 't1', variant_id: r.variant_id })), tasks: rows, sessions: rows.map(r => ({ session_id: r.session_id, device: 'desktop' })) };
+  const r = analyzeAB(a, rows, flat, null);
+  const [A, B] = r.designs;
+  assert.deepEqual([A.overclaim.k, A.overclaim.n, B.overclaim.k, B.underclaim], [4, 6, 0, 1]);
+  assert.equal(A.successTime.m, 20, 'time to success comes from success_at_seconds');
+  assert.ok(r.checks.some(c => /Self-report and observed success differ/.test(c.title)));
+  assert.match(renderABCore(r, x => String(x)), /Said they completed it but didn't/);
+});

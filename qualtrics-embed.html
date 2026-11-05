@@ -44,6 +44,10 @@
     <p class="muted" id="studyNote" role="status"></p>
   </div>
 
+  <h2>Quickest: start from a ready-made survey</h2>
+  <p>Download a starter survey and import it in Qualtrics (<strong>Create project ▸ Survey ▸ Import a QSF file</strong>). It already declares every field, sets up the randomizer, holds the Research Studio page with its script<span data-desktop-only hidden> and screens out phones and tablets before anyone is assigned a design</span>. Then replace the welcome page with your consent and PRA notice, add your follow-up questions, and preview. Steps 1 and 2 below explain what it contains, if you would rather set it up by hand.</p>
+  <p><button type="button" id="downloadQsf">Download starter survey (.qsf)</button> <span id="qsfStatus" role="status"></span></p>
+
   <h2>1. Declare the fields in Survey Flow</h2>
   <p>Qualtrics only keeps embedded data that is declared. Near the top of <strong>Survey Flow</strong>, add an <strong>Embedded Data</strong> element with each of these names and no values. Which names your account needs depends on the survey layout: your JavaScript test showed whether <code>__js_rs_small</code> or <code>rs_small</code> held the value. When unsure, declare both sets.</p>
   <div class="tabs" role="group" aria-label="Field names"><button type="button" id="namesPlain" aria-pressed="true">Names without prefix</button><button type="button" id="namesJs" aria-pressed="false">Names with __js_ prefix</button></div>
@@ -63,6 +67,20 @@
   <textarea id="script" rows="14" readonly></textarea>
   <p><button type="button" id="copyScript">Copy JavaScript</button> <span id="copyScriptStatus" role="status"></span></p>
 
+  <section data-desktop-only hidden>
+    <h2>Laptops and desktops only</h2>
+    <p>This study runs on computers only. To screen out phones and tablets <em>before</em> the randomizer, so they don't take a design's place:</p>
+    <ol>
+      <li>Add <code>rs_device_class</code> to the embedded data fields (it is in the list above).</li>
+      <li>Paste the script below into the JavaScript of a question on a page before the randomizer, such as the consent question. It sets <code>rs_device_class</code> to <code>desktop</code>, <code>tablet</code> or <code>phone</code>.</li>
+      <li>After that page, add a <strong>Branch</strong>: if <code>rs_device_class</code> is equal to <code>phone</code> or <code>tablet</code>, show a short “computer needed” page, then <strong>End of Survey</strong>.</li>
+      <li>After the Research Studio page, add the same kind of branch for <code>rs_status</code> equal to <code>device_not_supported</code>: Research Studio also checks, and if it finds a phone or tablet it records nothing and returns to the survey with that status.</li>
+    </ol>
+    <label for="deviceScript">Device check JavaScript (page before the randomizer)</label>
+    <textarea id="deviceScript" rows="8" readonly></textarea>
+    <p><button type="button" class="secondary" id="copyDevice">Copy device check</button> <span id="copyDeviceStatus" role="status"></span></p>
+  </section>
+
   <h2>3. Check it in Preview</h2>
   <ol>
     <li>Preview the survey and complete the activity with made-up answers.</li>
@@ -73,6 +91,7 @@
 </main>
 <script type="module">
 import { fieldNames, answerFields } from './src/qualtrics-embed.js';
+import { starterSurvey, fillScript } from './src/qualtrics-qsf.js';
 import { normalizeMethod } from './src/methods.js';
 const $ = s => document.querySelector(s);
 const state = { study: null, js: false, template: '' };
@@ -87,11 +106,9 @@ function render() {
   $('#variantIds').textContent = ab.length ? [...new Set(ab.flatMap(t => t.variants.map(v => v.id)))].join(', ') : 'this study has no A/B activities';
   const qs = answerFields(s).length;
   $('#studyNote').textContent = `${s.tasks.length} activit${s.tasks.length === 1 ? 'y' : 'ies'}, ${ab.length} A/B, ${qs} question${qs === 1 ? '' : 's'} saved as rs_q_ fields.${s.consentMode === 'external' ? '' : ' This study still shows its own consent screen.'}`;
-  $('#script').value = state.template
-    .replace(/studyPage: '[^']*'/, `studyPage: '${studyPage}'`)
-    .replace(/studyId: '[^']*'/, `studyId: '${s.id}'`)
-    .replace(/layout: '[^']*'/, `layout: '${$('#layout').value}'`)
-    .replace(/autoAdvance: (true|false)/, `autoAdvance: ${$('#advance').checked}`);
+  $('#script').value = fillScript(state.template, { studyPage, studyId: s.id, layout: $('#layout').value, autoAdvance: $('#advance').checked });
+  document.querySelectorAll('[data-desktop-only]').forEach(el => { el.hidden = s.allowedDevices !== 'desktop'; });
+  $('#deviceScript').value = state.deviceCheck;
 }
 async function load(id) {
   const r = await fetch(`studies/${id}.json`, { cache: 'no-store' });
@@ -102,6 +119,7 @@ async function load(id) {
 }
 (async () => {
   state.template = await (await fetch('docs/qualtrics-embed.js', { cache: 'no-store' })).text();
+  state.deviceCheck = await (await fetch('docs/qualtrics-device-check.js', { cache: 'no-store' })).text();
   const index = await (await fetch('studies/index.json', { cache: 'no-store' })).json();
   $('#study').innerHTML = index.map(x => `<option value="${x.id}">${x.title.replace(/[<&]/g, c => c === '<' ? '&lt;' : '&amp;')}</option>`).join('');
   const want = new URLSearchParams(location.search).get('study');
@@ -112,6 +130,16 @@ async function load(id) {
   $('#namesJs').onclick = () => { state.js = true; $('#namesJs').setAttribute('aria-pressed', 'true'); $('#namesPlain').setAttribute('aria-pressed', 'false'); render(); };
   $('#copyFields').onclick = () => copy($('#fields').value, $('#copyFieldsStatus'));
   $('#copyScript').onclick = () => copy($('#script').value, $('#copyScriptStatus'));
+  $('#copyDevice').onclick = () => copy($('#deviceScript').value, $('#copyDeviceStatus'));
+  $('#downloadQsf').onclick = () => {
+    const s = state.study; if (!s) return;
+    const qsf = starterSurvey(s, { studyPage, layout: $('#layout').value, autoAdvance: $('#advance').checked, template: state.template, deviceCheck: state.deviceCheck });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(qsf)], { type: 'application/octet-stream' }));
+    a.download = `${s.id}-starter-survey.qsf`; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 2000);
+    flash($('#qsfStatus'), 'Downloaded. Import it in Qualtrics with Create project ▸ Survey ▸ Import a QSF file.');
+  };
   await load($('#study').value);
 })();
 </script>

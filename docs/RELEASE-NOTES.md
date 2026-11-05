@@ -1,3 +1,15 @@
+# v0.3.12 release notes — computers-only studies, starter survey, self-report vs observed success (draft)
+
+## Added
+- **Laptops and desktops only** (study setting `allowedDevices: "desktop"`, builder: Devices). Phones and tablets are told to use a computer and nothing is recorded; recognised from what the browser reports, not window size. Inside a survey, Research Studio returns `rs_status = device_not_supported`.
+- **Survey device check** (`docs/qualtrics-device-check.js`) to screen out phones and tablets before the randomizer.
+- **Starter survey (.qsf)** from the setup page: fields declared, randomizer, Research Studio page and script, device screening and branches for computers-only studies.
+- **A/B results:** “Said they completed it but didn't” per design (self-report against the success signal), a data check when the two differ a lot, and time to success taken from the success signal.
+
+## Changed
+- IOLA study 1.1.0: computers only; ease questions on 1–5; device question removed (recorded automatically).
+- The import leaves out phone and tablet responses and counts them, rather than treating them as drop-outs.
+
 # v0.3.11 release notes — Research Studio inside a Qualtrics survey (draft, not released)
 
 ## Added
