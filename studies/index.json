@@ -41,7 +41,7 @@
   },
   {
     "id": "iola-current-vs-new",
-    "title": "IRS online account: current website vs new app",
+    "title": "IRS online account study",
     "config": "studies/iola-current-vs-new.json"
   }
 ]

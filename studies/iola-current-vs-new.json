@@ -1,10 +1,10 @@
 {
   "schemaVersion": 3,
   "id": "iola-current-vs-new",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "allowedDevices": "desktop",
   "consentMode": "external",
-  "title": "IRS online account: current website vs new app",
+  "title": "IRS online account study",
   "description": "Unmoderated A/B usability test comparing the current Individual Online Account (IOLA) website with the new IRS app design on four tasks: a one-time payment, finding an offer in compromise, responding to a notice and uploading documents. Both designs are simplified research prototypes with fictional account information.",
   "welcome": "You will use a practice version of an IRS online account and try four short tasks. Everything you see is fictional sample information: it is not your account and nothing you do is sent to the IRS. We are testing the design, not you. If you get stuck, it is fine to stop and select \"Finish this task\".",
   "consent": "I agree to take part. I understand that this study records which design version I was shown, my clicks and screens in the practice account, how long each task takes, and my answers. No screen or audio recording is made. I will not enter my own personal, tax or bank information; the practice account uses sample information only.",

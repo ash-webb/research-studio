@@ -1,3 +1,8 @@
+# v0.3.18 release notes — IOLA study title doesn't name the designs (draft)
+
+## Changed
+- **IOLA study 1.3.0: participant-facing title is now “IRS online account study”** (was “IRS online account: current website vs new app”). Participants see the title on the welcome page and in the browser tab, so it no longer tells them which designs are being compared. The study description, which only researchers see, still says what is compared.
+
 # v0.3.17 release notes — device type from the browser, not window width (draft)
 
 ## Changed
