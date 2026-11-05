@@ -1,3 +1,8 @@
+# v0.3.15 release notes — task instructions on the left (draft)
+
+## Changed
+- **During a prototype task, the instructions panel is now on the left and the design on the right** (laptops and desktops). The instructions also come first for screen readers and keyboard users, so the task is read before the design. On narrow screens they still sit above the design.
+
 # v0.3.14 release notes — IRS Qualtrics account only; IOLA consent in the survey (draft)
 
 ## Changed
