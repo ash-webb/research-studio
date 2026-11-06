@@ -16,7 +16,7 @@ function sessionEvents({ clicks = 30 } = {}) {
   add('answers', null, { stage: 'pre', answers: { 'iola-use': 'No, never' } });
   for (const t of study.tasks) {
     add('task_started', t.id, { method: 'ab_test', order: 1, experiment_id: 'iola-current-vs-new', variant_id: 'iola-new', variant_revision: 'proto-v1', assignment: 'link' });
-    // Research Studio sends interactions in batches of up to 20.
+    // Civic Research Studio sends interactions in batches of up to 20.
     for (let k0 = 0; k0 < clicks; k0 += 20) add('interaction_batch', t.id, { items: Array.from({ length: Math.min(20, clicks - k0) }, (_, k) => ({ type: 'click', at: at(i), page: '/home', target: `btn-${k0 + k}`, x_pct: 12.5, y_pct: 40.25, viewport_width: 400, viewport_height: 800, input: 'pointer' })) });
     add('task_ended', t.id, { method: 'ab_test', result: { success_signal_received: true, success_signal_status: 'received' }, time_seconds: 40, success_at_seconds: 21, finished_at_seconds: 33, experiment_id: 'iola-current-vs-new', variant_id: 'iola-new', variant_revision: 'proto-v1', self_report: 'completed', observed_success: true, tracker_connected: true, click_count: clicks });
     add('answers', t.id, { stage: 'post_task', answers: { [`${t.id}-ease`]: '6', [`${t.id}-issue`]: 'Synthetic, "quoted", with a comma' } });
@@ -138,7 +138,7 @@ test('device check: computers pass, phones and tablets do not, whatever the wind
   assert.equal(allowedOn({ allowedDevices: 'desktop' }, 'tablet'), false);
   assert.equal(allowedOn({}, 'phone'), true, 'studies without the setting allow any device');
 });
-test('the survey script\'s device check uses the same rules as Research Studio', () => {
+test('the survey script\'s device check uses the same rules as Civic Research Studio', () => {
   const src = readFileSync(new URL('../docs/qualtrics-device-check.js', import.meta.url), 'utf8');
   assert.ok(src.includes('Android|iPhone|iPad|iPod|Mobile|Silk|Kindle|BlackBerry|Opera Mini|IEMobile'));
   assert.ok(src.includes("'(hover: none) and (pointer: coarse)'") && src.includes("'(any-pointer: fine)'") && src.includes('maxTouchPoints') && src.includes('< 600'));

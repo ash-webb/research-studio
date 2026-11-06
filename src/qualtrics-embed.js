@@ -1,9 +1,9 @@
-// Research Studio inside a Qualtrics survey (v0.3.11): shared by the participant page, the setup
+// Civic Research Studio inside a Qualtrics survey (v0.3.11): shared by the participant page, the setup
 // page and the Qualtrics import.
 //
 // The survey shows study.html?embed=qualtrics in an iframe. Its question JavaScript
-// (docs/qualtrics-embed.js) answers Research Studio's "hello" from an approved Qualtrics address,
-// then saves what Research Studio sends into embedded data fields:
+// (docs/qualtrics-embed.js) answers Civic Research Studio's "hello" from an approved Qualtrics address,
+// then saves what Civic Research Studio sends into embedded data fields:
 //   rs_session, rs_status, rs_pid, rs_device, rs_variant, rs_abN_*   — the same summary as the return link
 //   rs_q_<question>                                                   — answers to the study's own questions
 //   rs_data_1 … rs_data_N, rs_data_parts, rs_data_chars, rs_data_sha256 — every event of the session

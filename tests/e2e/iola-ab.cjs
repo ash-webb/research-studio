@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /* IOLA A/B study: browser integration checks (studies/iola-current-vs-new.json).
  *
- * Runs scripted, clearly synthetic participants through both designs inside Research Studio
+ * Runs scripted, clearly synthetic participants through both designs inside Civic Research Studio
  * and checks what the study records. These are software tests: the sessions stay in a throwaway
  * browser profile in local demo mode and are not research data.
  *
@@ -74,7 +74,7 @@ async function newContext(browser, group, opts = {}) {
   return { ctx, errors, hosts, done: async () => {
     eq(group, 'no browser errors (console, page, HTTP)', errors, []);
     const extra = [...hosts].filter(h => h !== `localhost:${PORT}` && h !== PROTO_HOST);
-    eq(group, 'no requests to hosts other than Research Studio and design-prototypes', extra, []);
+    eq(group, 'no requests to hosts other than Civic Research Studio and design-prototypes', extra, []);
     await ctx.close();
   } };
 }
@@ -380,7 +380,7 @@ const scenarios = {
       await c.done();
     }
   },
-  // Tracker can't load: Research Studio must report "unavailable", not a failed task.
+  // Tracker can't load: Civic Research Studio must report "unavailable", not a failed task.
   async nobridge(browser) {
     for (const v of VARIANTS) {
       const g = `missing tracker ${v}`;

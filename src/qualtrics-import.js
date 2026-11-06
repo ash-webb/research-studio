@@ -1,4 +1,4 @@
-// Import Qualtrics CSV exports into Research Studio's event format (v0.3.7), entirely in the
+// Import Qualtrics CSV exports into Civic Research Studio's event format (v0.3.7), entirely in the
 // browser. Survey 2 (the follow-up survey) carries the rs_* fields from the return link; Survey 1
 // (intake), if supplied, adds people who were assigned a design but never reached Survey 2.
 import { normalizeMethod } from './methods.js';
@@ -53,7 +53,7 @@ export function isLiveResponse(rec) {
   return status === '' || ['0', 'ip address', '16', 'offline'].includes(status.toLowerCase());
 }
 
-// Survey with Research Studio inside (v0.3.11): rebuild each response's full session from rs_data_*
+// Survey with Civic Research Studio inside (v0.3.11): rebuild each response's full session from rs_data_*
 // before calling eventsFromQualtrics. Adds rec.__rs (the session) or rec.__rsProblem.
 export async function expandEmbedded(records) {
   for (const rec of records) {
@@ -73,7 +73,7 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
   const at = i => new Date(Date.UTC(2000, 0, 1) + i * 1000).toISOString();
   const push = (session_id, kind, task_id, payload) => events.push({ id: `qx-${++seq}`, study_id: study.id, session_id, kind, task_id, payload: { ...payload, imported: 'qualtrics' }, created_at: at(seq) });
 
-  // ---- clean Survey 1: live, finished (sent on to Research Studio), with a design; one row per ResponseId
+  // ---- clean Survey 1: live, finished (sent on to Civic Research Studio), with a design; one row per ResponseId
   const s1 = new Map(); let s1NotLive = 0, s1Dupes = 0;
   for (const rec of survey1In) {
     if (!isLiveResponse(rec)) { s1NotLive++; continue; }
@@ -82,7 +82,7 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
     if (s1.has(rid)) { s1Dupes++; continue; }
     s1.set(rid, variant);
   }
-  // ---- clean Survey 2: live, one row per Research Studio session and per participant ID
+  // ---- clean Survey 2: live, one row per Civic Research Studio session and per participant ID
   const seenSessions = new Set(), seenPids = new Set();
   let s2NotLive = 0, s2Dupes = 0, blankPid = 0, unmatched = 0, mismatched = 0, used = 0;
   const rows = [];
@@ -97,7 +97,7 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
     // Laptop/desktop-only studies: phones and tablets are screened out, not drop-outs (v0.3.12).
     if (field(rec, 'rs_status') === 'device_not_supported' || ['phone', 'tablet'].includes(field(rec, 'rs_device_class'))) { screenedOut++; continue; }
     const session = field(rec, 'rs_session');
-    // Research Studio inside the survey: assigned a design by the survey but no results saved
+    // Civic Research Studio inside the survey: assigned a design by the survey but no results saved
     // (left during the activity; Qualtrics keeps an incomplete response's earlier pages only).
     if (!session) { if (embeddedDropouts && field(rec, 'rs_variant') && field(rec, 'ResponseId')) leftEarly.push(rec); continue; }
     const pid = field(rec, 'rs_pid');
@@ -113,7 +113,7 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
     const assigned = pid ? s1.get(pid) : undefined;
     if (survey1Provided && pid && !assigned) unmatched++;
     used++;
-    // Full session saved by the survey: use Research Studio's own records (clicks, screens, answers).
+    // Full session saved by the survey: use Civic Research Studio's own records (clicks, screens, answers).
     if (rec.__rs && rec.__rs.session_id === session) {
       if (rec.__rs.study_id !== study.id) { otherStudy++; used--; continue; }
       fullSessions++; if (rec.__rs.truncated) truncated++;
@@ -150,7 +150,7 @@ export function eventsFromQualtrics(study, survey2In, survey1In = []) {
     }
     if (field(rec, 'rs_status') === 'complete') push(session, 'session_completed', null, {});
   }
-  // ---- people the survey assigned who left during the Research Studio part
+  // ---- people the survey assigned who left during the Civic Research Studio part
   for (const rec of leftEarly) {
     const rid = field(rec, 'ResponseId'), variant = field(rec, 'rs_variant');
     if (seenPids.has(rid)) continue;

@@ -68,7 +68,7 @@ Saved as `plan` in the working-copy JSON; removed from the published study file 
 - Per design: "Said they completed it but didn't" = finishers with success measured who answered `completed` while the success signal was `not_observed`, with a 95% range; also the count who said `unable` but succeeded.
 - "Median time to success" uses `success_at_seconds` when recorded, otherwise the activity's active time.
 
-## Research Studio inside a survey (v0.3.11)
+## Civic Research Studio inside a survey (v0.3.11)
 - `study.html?embed=qualtrics` inside a survey page: events are kept only in the tab's session storage (`utp-embed-events-v1:<session>`), not in long-term browser storage, and sent to the survey after the opening questions, after each activity and at the end.
 - Survey fields: the `rs_…` summary (as the return link), `rs_q_<question>` per study question, and the session as `rs_data_1…8` with `rs_data_parts`, `rs_data_chars`, `rs_data_sha256`, `rs_data_truncated`. See `docs/QUALTRICS-AB-SETUP.md` (route B).
 - Session data format: JSON `{v:1, study_id, session_id, events:[[kind, task_id, created_at, payload], …]}`. Imported events get IDs `qxe-<session>-<n>` and `payload.imported = 'qualtrics-embed'`.

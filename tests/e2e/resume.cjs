@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Resume-after-refresh checks for Research Studio (v0.3.3).
+/* Resume-after-refresh checks for Civic Research Studio (v0.3.3).
  * Reloads the participant page at every kind of point in every study type and checks that
  * the same session continues, in-progress work is restored, nothing is recorded twice,
  * interruptions are recorded, and the safeguards (changed study, expiry, duplicate tab) hold.

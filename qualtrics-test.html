@@ -2,28 +2,29 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Research Studio · Qualtrics connection test</title>
+<title>Civic Research Studio · Qualtrics connection test</title>
+<link rel="stylesheet" href="fonts/public-sans.css">
 <style>
   :root{color-scheme:light}
-  body{margin:0;font:14px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#163041;background:#f5f8fa}
+  body{margin:0;font:14px/1.5 "Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1b2f43;background:#f5f8fa}
   main{max-width:640px;margin:0 auto;padding:16px}
   h1{font-size:18px;margin:0 0 6px}
-  p{margin:0 0 10px;color:#3e5b67}
+  p{margin:0 0 10px;color:#46586c}
   .status{list-style:none;padding:0;margin:12px 0;display:grid;gap:6px}
-  .status li{background:#fff;border:1px solid #dce5e9;border-radius:8px;padding:8px 10px}
+  .status li{background:#fff;border:1px solid #dee4eb;border-radius:8px;padding:8px 10px}
   .status strong{display:inline-block;min-width:1.4em}
-  .ok{color:#0a6b5a}.wait{color:#5e6e7a}.bad{color:#a24b45}
+  .ok{color:#035ea2}.wait{color:#5e6e7a}.bad{color:#a24b45}
   .buttons{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0}
-  button{font:inherit;font-weight:700;border-radius:8px;padding:10px 14px;border:1px solid #0a7473;background:#0a7473;color:#fff;cursor:pointer}
-  button.secondary{background:#fff;color:#0a5f63}
-  button:focus-visible{outline:3px solid #0a5f63;outline-offset:2px}
+  button{font:inherit;font-weight:700;border-radius:8px;padding:10px 14px;border:1px solid #1868ac;background:#1868ac;color:#fff;cursor:pointer}
+  button.secondary{background:#fff;color:#15558e}
+  button:focus-visible{outline:3px solid #15558e;outline-offset:2px}
   small{color:#5e6e7a}
 </style>
 </head>
 <body>
 <main>
   <h1>Qualtrics connection test</h1>
-  <p>This panel is part of a test and records nothing about you. It checks whether the survey around it can receive results from Research Studio.</p>
+  <p>This panel is part of a test and records nothing about you. It checks whether the survey around it can receive results from Civic Research Studio.</p>
   <ul class="status" aria-live="polite">
     <li id="framed"></li>
     <li id="hello"><strong class="wait">…</strong> Waiting for the survey to answer</li>

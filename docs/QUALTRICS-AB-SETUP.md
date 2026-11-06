@@ -1,10 +1,10 @@
 # Running an A/B test with Qualtrics
 
-There are two ways to connect a Research Studio A/B test to Qualtrics. In both, **Qualtrics assigns the design and stores the results**, and Research Studio needs no database.
+There are two ways to connect a Civic Research Studio A/B test to Qualtrics. In both, **Qualtrics assigns the design and stores the results**, and Civic Research Studio needs no database.
 
-| | **Route A: two surveys and links** | **Route B: Research Studio inside the survey** (v0.3.11) |
+| | **Route A: two surveys and links** | **Route B: Civic Research Studio inside the survey** (v0.3.11) |
 | --- | --- | --- |
-| How it works | Survey 1 sends people to Research Studio; Research Studio sends them on to Survey 2 with the results in the link | One survey shows Research Studio on one of its pages; a short script on that page stores the results |
+| How it works | Survey 1 sends people to Civic Research Studio; Civic Research Studio sends them on to Survey 2 with the results in the link | One survey shows Civic Research Studio on one of its pages; a short script on that page stores the results |
 | Qualtrics stores | Design, task outcomes, self-report, times, clicks (counts) | All of route A, **plus** answers to the study's own questions and the full click-by-click record |
 | Needs | Nothing beyond standard Qualtrics | Custom JavaScript allowed in the account (your test showed it is), and about 60 embedded data fields declared |
 | Drop-out during the activity | Counted (Survey 1 rows with no Survey 2 row) | Counted when the export includes incomplete responses |
@@ -13,7 +13,7 @@ Route A is described first; route B is [further down](#route-b-research-studio-i
 
 ```
 Route A
-Survey 1 (Qualtrics)            Research Studio                      Survey 2 (Qualtrics)
+Survey 1 (Qualtrics)            Civic Research Studio                      Survey 2 (Qualtrics)
 consent, PRA notice,      →     the A/B task(s) on the design   →    results arrive in the link;
 screener, randomizer            Qualtrics chose                      follow-up questions; thank you
 picks the design
@@ -28,8 +28,8 @@ Per participant, in Survey 2:
 | Field | Meaning | Example |
 | --- | --- | --- |
 | `rs_pid` | Survey 1 response ID the participant arrived with | `R_3abcDEF123` |
-| `rs_session` | Research Studio session ID | `9f1c…` |
-| `rs_status` | `complete` when they finished the Research Studio part | `complete` |
+| `rs_session` | Civic Research Studio session ID | `9f1c…` |
+| `rs_status` | `complete` when they finished the Civic Research Studio part | `complete` |
 | `rs_device` | `phone`, `tablet` or `desktop`: the kind of device, from what the browser reports (a narrow window on a computer is still `desktop`; before v0.3.17 this came from window width) | `desktop` |
 | `rs_variant` | Design shown (one experiment) | `design-b` |
 | `rs_ab1_task` | ID of the first A/B activity | `find-service-request` |
@@ -42,9 +42,9 @@ Per participant, in Survey 2:
 
 `rs_ab2_…`, `rs_ab3_…` follow for further A/B activities, in study order. With several experiments in one study, `rs_variant_<experiment-id>` replaces `rs_variant`. Nothing that identifies the participant is included.
 
-**Not sent to Qualtrics in route A:** the click-by-click history and screen paths, and the answers to any questions written into the Research Studio study (opening questions, questions after each activity, closing questions). They stay in the participant's browser. Ask those questions in Survey 1 or Survey 2 instead, or use route B.
+**Not sent to Qualtrics in route A:** the click-by-click history and screen paths, and the answers to any questions written into the Civic Research Studio study (opening questions, questions after each activity, closing questions). They stay in the participant's browser. Ask those questions in Survey 1 or Survey 2 instead, or use route B.
 
-## 1. Prepare the study in Research Studio
+## 1. Prepare the study in Civic Research Studio
 
 1. In **Study builder**, fill in the **Study plan** (control design, hypotheses, measures, sample size), then **Lock plan** before launch. **Download plan (.docx)** gives you a document for review.
 1. Add an **A/B implementation test** activity. Give each design a short ID such as `design-a`, `design-b`, `design-c`: these IDs are what Qualtrics will send.
@@ -80,15 +80,15 @@ Per participant, in Survey 2:
 ## 4. Test before launch
 
 - [ ] **Check designs** shows every design ready.
-- [ ] Take Survey 1 at least four times. You should land on each design at least once, and see the Research Studio welcome with a **Begin** button (no second consent).
+- [ ] Take Survey 1 at least four times. You should land on each design at least once, and see the Civic Research Studio welcome with a **Begin** button (no second consent).
 - [ ] After finishing, **Return to the survey** opens Survey 2.
 - [ ] In Survey 2's responses, the `rs_…` fields are filled and `rs_pid` matches a Survey 1 response ID.
 - [ ] Try once on a phone: the designs must work at phone width.
 
-## 5. See the results in Research Studio
+## 5. See the results in Civic Research Studio
 
 1. In Qualtrics, export **Survey 2** as CSV (and **Survey 1**, so people who never came back are counted). The default CSV export with the three header rows is fine.
-2. In Research Studio, open **Results & insights**, choose the study, select **Import Qualtrics results** and pick both files.
+2. In Civic Research Studio, open **Results & insights**, choose the study, select **Import Qualtrics results** and pick both files.
 3. The A/B section then shows, from your Qualtrics data: each design's success rate counting everyone assigned (drop-outs count as not successful) with its 95% range, the difference from the baseline design with its range, the rate among measured finishers as a secondary figure, drop-out, self-reported completion and median times per design, data checks (group sizes, drop-out, tracking, devices) and a sample-size planner. Without Survey 1, drop-out is shown as unknown. The CSV export buttons work on the imported data too.
 
 The files are read in your browser only; nothing is uploaded or stored. Select **Show browser data instead** to leave the imported view.
@@ -98,19 +98,19 @@ The files are read in your browser only; nothing is uploaded or stored. Select *
 1. Export Survey 1 (with `ResponseID` and `Variant`) and Survey 2 (with the `rs_…` fields).
 2. Join them: Survey 1 `ResponseID` = Survey 2 `rs_pid`.
 3. **Compare drop-off by design before comparing outcomes.** People who start a design but never reach Survey 2 appear in Survey 1 with that `Variant` and no Survey 2 row. If one design loses more people, that is itself a finding, and it can bias the outcome comparison.
-4. Treat `rs_ab1_success = received` as the observed success measure (the prototype confirmed the task was done correctly) and `rs_ab1_self` as the participant's own view. They answer different questions: people often say they completed a task they didn't. Research Studio's results show both, and how many said they had completed it when the prototype recorded no success. `not_observed` and `unavailable` are not proof of failure.
+4. Treat `rs_ab1_success = received` as the observed success measure (the prototype confirmed the task was done correctly) and `rs_ab1_self` as the participant's own view. They answer different questions: people often say they completed a task they didn't. Civic Research Studio's results show both, and how many said they had completed it when the prototype recorded no success. `not_observed` and `unavailable` are not proof of failure.
 
 ## Good to know
 
-- **Refreshes are safe.** A participant who reloads Research Studio continues in the same session with the same design.
-- **Values in links are visible.** A participant could, in principle, edit the address bar. Keep design IDs neutral (`design-a`, not `new-improved`) and treat odd values with care. A design ID that the study doesn't have is replaced by a random design and flagged in the Research Studio results.
-- **Without Qualtrics** (for example when piloting), Research Studio assigns designs at random itself. Group sizes are then not guaranteed to be even.
+- **Refreshes are safe.** A participant who reloads Civic Research Studio continues in the same session with the same design.
+- **Values in links are visible.** A participant could, in principle, edit the address bar. Keep design IDs neutral (`design-a`, not `new-improved`) and treat odd values with care. A design ID that the study doesn't have is replaced by a random design and flagged in the Civic Research Studio results.
+- **Without Qualtrics** (for example when piloting), Civic Research Studio assigns designs at random itself. Group sizes are then not guaranteed to be even.
 
-## Route B: Research Studio inside the survey
+## Route B: Civic Research Studio inside the survey
 
 ```
 One survey (Qualtrics)
-consent, PRA notice,  →  page with Research Studio (full screen while it runs):  →  follow-up
+consent, PRA notice,  →  page with Civic Research Studio (full screen while it runs):  →  follow-up
 screener, randomizer     the A/B tasks; results saved into embedded data            questions; thank you
 sets rs_variant          after every activity and at the end
 ```
@@ -121,35 +121,35 @@ Everything in the route A table (same `rs_…` names), plus:
 
 | Field | Meaning |
 | --- | --- |
-| `rs_embed_ok` | `yes` once the page's script answered Research Studio. Blank means the script didn't run |
-| `rs_q_<question>` | The answer to each question in the Research Studio study, for example `rs_q_one_time_payment_ease`. Several choices are joined with `\|`. Long answers are cut at 5,000 characters |
-| `rs_data_1` … `rs_data_8` | The whole Research Studio session (every event, click and screen), in parts of up to 30,000 characters so each fits an Excel cell. Unused parts are blank |
+| `rs_embed_ok` | `yes` once the page's script answered Civic Research Studio. Blank means the script didn't run |
+| `rs_q_<question>` | The answer to each question in the Civic Research Studio study, for example `rs_q_one_time_payment_ease`. Several choices are joined with `\|`. Long answers are cut at 5,000 characters |
+| `rs_data_1` … `rs_data_8` | The whole Civic Research Studio session (every event, click and screen), in parts of up to 30,000 characters so each fits an Excel cell. Unused parts are blank |
 | `rs_data_parts`, `rs_data_chars`, `rs_data_sha256` | How many parts, the total length and a checksum, so the import can confirm nothing was lost |
 | `rs_data_truncated` | `yes` if a very long session (more than about 1,500 clicks) had its oldest click records left out to fit; outcomes and answers are always kept |
 
-`rs_status` is `in_progress` until the last save, then `complete`. Research Studio saves after the opening questions, after every activity and at the end.
+`rs_status` is `in_progress` until the last save, then `complete`. Civic Research Studio saves after the opening questions, after every activity and at the end.
 
 ### Setting it up
 
-**Quickest:** on the setup page, select **Download starter survey (.qsf)** and import it in Qualtrics (**Create project ▸ Survey ▸ Import a QSF file**). It already has every field declared, the randomizer, the Research Studio page with its script, and (for laptop/desktop-only studies) the device screening described below. Replace its welcome page with your consent and PRA notice, add your follow-up questions, and preview. The steps below are the same set-up done by hand.
+**Quickest:** on the setup page, select **Download starter survey (.qsf)** and import it in Qualtrics (**Create project ▸ Survey ▸ Import a QSF file**). It already has every field declared, the randomizer, the Civic Research Studio page with its script, and (for laptop/desktop-only studies) the device screening described below. Replace its welcome page with your consent and PRA notice, add your follow-up questions, and preview. The steps below are the same set-up done by hand.
 
-1. **Research Studio.** In the study builder tick **Consent is collected in the survey before this study**, then publish the study as usual. Open **`qualtrics-embed.html?study=STUDY-ID`** on the Research Studio site: it gives the exact field list and the script for that study.
+1. **Civic Research Studio.** In the study builder tick **Consent is collected in the survey before this study**, then publish the study as usual. Open **`qualtrics-embed.html?study=STUDY-ID`** on the Civic Research Studio site: it gives the exact field list and the script for that study.
 2. **Fields.** In **Survey Flow**, add an **Embedded Data** element near the top with every name from the setup page (no values). Newer survey layouts store values set by JavaScript under `__js_` names, older ones under the plain names; your JavaScript test showed which (whether `__js_rs_small` or `rs_small` had the value). The setup page lists either set; declare both if unsure.
-3. **Randomizer.** As in route A, but set `rs_variant` (not `Variant`) in each branch: `rs_variant` = `design-a`, and so on, with **Evenly Present Elements** ticked. Without a randomizer, Research Studio assigns designs itself.
+3. **Randomizer.** As in route A, but set `rs_variant` (not `Variant`) in each branch: `rs_variant` = `design-a`, and so on, with **Evenly Present Elements** ticked. Without a randomizer, Civic Research Studio assigns designs itself.
 4. **The page.** After consent and screening, add a page with one **Text / Graphic** question (“Please complete the activity.”). Paste the script from the setup page into that question's **JavaScript**. The script:
-   - opens Research Studio full screen (or inside the question, if you chose that), passing `rs_variant` and the response ID;
+   - opens Civic Research Studio full screen (or inside the question, if you chose that), passing `rs_variant` and the response ID;
    - hides the survey's Next button until the activity is finished;
-   - saves only fields whose names start with `rs_`, and only when the message comes from the Research Studio address in the script;
-   - goes to the next page by itself when Research Studio has finished and saved (you can turn this off).
+   - saves only fields whose names start with `rs_`, and only when the message comes from the Civic Research Studio address in the script;
+   - goes to the next page by itself when Civic Research Studio has finished and saved (you can turn this off).
 5. **Follow-up and thank-you pages** after it. You can branch on `rs_variant`.
-6. **Approved survey addresses.** Research Studio only sends results to a page on a host listed in `embedHosts` in `settings.js`. This site lists only the IRS account, `irsresearch.gov1.qualtrics.com`, so surveys in any other Qualtrics account get nothing. A page anywhere else that embeds the study gets nothing, and the participant is told not to continue. The same happens if the survey page's script is missing. To allow another account, add its address; `qualtrics.com` would admit every Qualtrics account.
+6. **Approved survey addresses.** Civic Research Studio only sends results to a page on a host listed in `embedHosts` in `settings.js`. This site lists only the IRS account, `irsresearch.gov1.qualtrics.com`, so surveys in any other Qualtrics account get nothing. A page anywhere else that embeds the study gets nothing, and the participant is told not to continue. The same happens if the survey page's script is missing. To allow another account, add its address; `qualtrics.com` would admit every Qualtrics account.
 
 ### Laptops and desktops only
 
 Set **Devices: Laptop or desktop computers only** in the study builder (`allowedDevices: "desktop"` in the study file). Then:
 
 - **Before the randomizer**, put `docs/qualtrics-device-check.js` (also on the setup page) in the JavaScript of a question on the consent or welcome page. It sets `rs_device_class` to `desktop`, `tablet` or `phone`. Add a **Branch** after that page: if `rs_device_class` is equal to `phone` **or** `tablet`, show a short “computer needed” page, then **End of Survey**. Phones and tablets are then never assigned a design, so the groups stay balanced.
-- **Research Studio checks as well.** On a phone or tablet it records nothing, tells the person to use a computer, and returns to the survey with `rs_status` = `device_not_supported`. Add a second branch after the Research Studio page for that value, ending the survey.
+- **Civic Research Studio checks as well.** On a phone or tablet it records nothing, tells the person to use a computer, and returns to the survey with `rs_status` = `device_not_supported`. Add a second branch after the Civic Research Studio page for that value, ending the survey.
 - Phones and tablets are recognised by what the browser reports (mobile browsers, iPads that report themselves as Macs, touch-only screens), not by window size: a small browser window on a laptop is still allowed.
 - The import leaves out phone and tablet responses and says how many; they are not counted as drop-outs.
 
@@ -159,18 +159,18 @@ The starter survey includes all of this.
 
 - [ ] Preview the survey several times with made-up answers: you should land on each design, see **Begin** (no second consent), and return to the survey automatically at the end.
 - [ ] In **Data & Analysis** (with previews shown), `rs_embed_ok` is `yes`, `rs_status` is `complete`, and `rs_data_parts` is filled.
-- [ ] Reload the page in the middle of the activity once: Research Studio continues where it was, and the saved data still has everything.
+- [ ] Reload the page in the middle of the activity once: Civic Research Studio continues where it was, and the saved data still has everything.
 - [ ] For a computers-only study, open the survey link once on a phone: it should end at the “computer needed” page. Otherwise try once on a phone and once on an iPhone (Safari).
-- [ ] Export the responses and import them into Research Studio (below): the status line should say every response came **with the full session record**.
+- [ ] Export the responses and import them into Civic Research Studio (below): the status line should say every response came **with the full session record**.
 
 ### Results
 
-Export the survey as CSV, **including incomplete responses** if you want drop-out counted, and select **Results & insights ▸ Import Qualtrics results**. The import rebuilds each participant's full Research Studio session from `rs_data_…` and checks it against `rs_data_sha256`, so the dashboard, click maps, paths, answers and every CSV export work as if the data had been collected by Research Studio itself. A response whose data is incomplete (for example a part that wasn't declared) is shown from its summary fields, with a warning. People assigned a design who left during the activity are counted as drop-outs. Survey previews and tests are left out.
+Export the survey as CSV, **including incomplete responses** if you want drop-out counted, and select **Results & insights ▸ Import Qualtrics results**. The import rebuilds each participant's full Civic Research Studio session from `rs_data_…` and checks it against `rs_data_sha256`, so the dashboard, click maps, paths, answers and every CSV export work as if the data had been collected by Civic Research Studio itself. A response whose data is incomplete (for example a part that wasn't declared) is shown from its summary fields, with a warning. People assigned a design who left during the activity are counted as drop-outs. Survey previews and tests are left out.
 
 ### Limits to know
 
 - **Qualtrics keeps what was saved on pages people submitted.** Someone who closes the survey during the activity has an incomplete response with their assigned design, but not the activity results; they count as drop-outs.
-- **Inside the survey, nothing is kept on the participant's device** after the tab closes: Research Studio holds the session only for the open tab, so it can continue after a reload.
+- **Inside the survey, nothing is kept on the participant's device** after the tab closes: Civic Research Studio holds the session only for the open tab, so it can continue after a reload.
 - **Field limits.** Each value is kept under Excel's 32,767-character cell limit. Qualtrics' own limit for embedded data is larger; your JavaScript test stored 100,000 characters intact.
 - **About 60 fields** to declare for a four-task study with 13 questions. The setup page lists them in order, so they can be added one after another.
 

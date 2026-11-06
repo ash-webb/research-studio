@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /* Automated accessibility scan (axe-core, WCAG 2.2 A/AA + best practice) of every
- * participant and researcher screen in Research Studio, at desktop and phone width.
+ * participant and researcher screen in Civic Research Studio, at desktop and phone width.
  * Usage: npm run test:a11y   (needs Playwright + axe-core: npm install --no-save playwright axe-core)
  * Env:   E2E_PORT, E2E_OUT, A11Y_STRICT=0 to report without failing.
  */

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Research Studio inside a Qualtrics survey: browser checks of docs/qualtrics-embed.js and
+/* Civic Research Studio inside a Qualtrics survey: browser checks of docs/qualtrics-embed.js and
  * study.html?embed=qualtrics, with a stand-in for the Qualtrics page served at a qualtrics.com
  * address. Runs the IOLA A/B study end to end and imports the stored fields back.
  * Synthetic participants only; these are software tests, not research data.
@@ -14,7 +14,7 @@ const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 
 const ROOT = path.resolve(__dirname, '..', '..');
-// Research Studio is served from this folder at its published address, inside the test browser only:
+// Civic Research Studio is served from this folder at its published address, inside the test browser only:
 // a public survey page may not frame a localhost address (Chrome's local network protection).
 const BASE = 'https://ash-webb.github.io/research-studio/';
 const OUT = process.env.E2E_OUT || path.join(__dirname, 'output', 'embed');
@@ -99,7 +99,7 @@ async function newContext(browser, group, { viewport, survey } = {}) {
   return { ctx, done: async () => { eq(group, 'no browser errors', errors, []); await ctx.close(); } };
 }
 
-// ---------- driving Research Studio inside the survey ----------
+// ---------- driving Civic Research Studio inside the survey ----------
 const rsFrame = page => page.frames().find(f => /study\.html/.test(f.url()));
 async function waitRs(page) { await page.waitForFunction(() => !!document.querySelector('iframe[title="Research activity"]')); for (let i = 0; i < 100 && !rsFrame(page); i++) await page.waitForTimeout(50); const rs = rsFrame(page); await rs.waitForLoadState(); return rs; }
 async function rerender(rs, action) {
@@ -166,11 +166,11 @@ const scenarios = {
       const page = await c.ctx.newPage(); await page.goto(SURVEY);
       const rs = await waitRs(page);
       const box = await page.locator('iframe[title="Research activity"]').boundingBox();
-      check(g, 'Research Studio covers the survey page', box && box.x === 0 && box.y === 0 && Math.abs(box.width - (viewport?.width || 1360)) < 2, box);
+      check(g, 'Civic Research Studio covers the survey page', box && box.x === 0 && box.y === 0 && Math.abs(box.width - (viewport?.width || 1360)) < 2, box);
       check(g, 'survey Next button hidden while it runs', (await stored(page)).nextHidden, 'visible');
       if (!viewport) eq(g, 'survey page behind is inert while it runs (keyboard stays in the activity)', await page.evaluate(() => [document.getElementById('Questions').inert, document.getElementById('Buttons').inert]), [true, true]);
       await page.waitForTimeout(500);
-      eq(g, 'focus moves into Research Studio', await page.evaluate(() => document.activeElement?.title), 'Research activity');
+      eq(g, 'focus moves into Civic Research Studio', await page.evaluate(() => document.activeElement?.title), 'Research activity');
       await begin(rs);
       check(g, 'header says answers go to the survey', /^(Answers are saved to the survey|Saved to the survey)$/.test((await rs.textContent('#saveStatus')).trim()), await rs.textContent('#saveStatus'));
       const designs = [];
@@ -231,9 +231,9 @@ const scenarios = {
     eq(g, 'import: phone and tablet left out, not drop-outs', [r.summary.responses, r.summary.dropouts], [1, 0]);
     check(g, 'import says how many were left out', r.warnings.some(w => /2 participants on a phone or tablet/.test(w)), r.warnings);
   },
-  // Older layout, inline in the question, no design from the survey (Research Studio picks).
+  // Older layout, inline in the question, no design from the survey (Civic Research Studio picks).
   async classicInline(browser) {
-    const g = 'older layout, inline, Research Studio picks the design';
+    const g = 'older layout, inline, Civic Research Studio picks the design';
     const c = await newContext(browser, g, { survey: { mode: 'classic', layout: 'inline', variant: '' } });
     const page = await c.ctx.newPage(); await page.goto(SURVEY);
     const rs = await waitRs(page);
@@ -250,7 +250,7 @@ const scenarios = {
     check(g, 'full session reads back', !(await M.sessionFromRecord(s.ed)).problem, 'problem');
     await page.close(); await c.done();
   },
-  // The survey page reloads in the middle: Research Studio continues and the final data has everything.
+  // The survey page reloads in the middle: Civic Research Studio continues and the final data has everything.
   // A new survey response in the same tab (a restarted preview, or a second response without the
   // resume cookie) must start a fresh session, not resume the earlier response's one (v0.3.16).
   async newResponse(browser) {
@@ -338,7 +338,7 @@ const scenarios = {
     await page.goto(`${BASE}qualtrics-embed.html?study=${STUDY_ID}`);
     await page.waitForFunction(() => /rs_session/.test(document.querySelector('#fields').value));
     const names = (await page.inputValue('#fields')).split('\n');
-    eq(g, 'field list is exactly what Research Studio sends', names, M.fieldNames(study));
+    eq(g, 'field list is exactly what Civic Research Studio sends', names, M.fieldNames(study));
     await page.click('#namesJs');
     check(g, '__js_ names on request', (await page.inputValue('#fields')).split('\n').every(n => n.startsWith('__js_rs_')), 'not prefixed');
     const script = await page.inputValue('#script');
@@ -354,9 +354,9 @@ const scenarios = {
     eq(g, 'no sideways scroll at 360px', await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth), 0);
     await page.close(); await c.done();
   },
-  // The stored fields, exported, give the same results in Research Studio's dashboard.
+  // The stored fields, exported, give the same results in Civic Research Studio's dashboard.
   async importBack(browser) {
-    const g = 'import the survey export into Research Studio';
+    const g = 'import the survey export into Civic Research Studio';
     const recs = fs.readdirSync(OUT).filter(f => /^export-.*\.json$/.test(f)).map(f => JSON.parse(fs.readFileSync(path.join(OUT, f), 'utf8')));
     if (!recs.length) { check(g, 'exports from the full-study runs exist', false, 'run the full scenario first'); return; }
     // Distinct response IDs, as in a real export.

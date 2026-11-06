@@ -5,7 +5,7 @@
 //   - for laptop/desktop-only studies, the device check on the first page and a branch that ends the
 //     survey for phones and tablets before the randomizer;
 //   - a randomizer (evenly presented) that sets rs_variant for A/B studies;
-//   - the Research Studio page with its script, a branch that ends the survey if Research Studio
+//   - the Civic Research Studio page with its script, a branch that ends the survey if Civic Research Studio
 //     still found an unsupported device, and a follow-up page.
 import { normalizeMethod } from './methods.js';
 import { fieldNames } from './qualtrics-embed.js';
@@ -39,12 +39,12 @@ export function starterSurvey(study, { studyPage, layout, autoAdvance, template,
 
   const blocks = [
     { Type: 'Default', Description: 'Welcome and consent (add yours)', ID: 'BL_rsWelcome', BlockElements: [{ Type: 'Question', QuestionID: 'QID1' }] },
-    { Type: 'Standard', SubType: '', Description: 'Research Studio activity', ID: 'BL_rsActivity', BlockElements: [{ Type: 'Question', QuestionID: 'QID2' }] },
+    { Type: 'Standard', SubType: '', Description: 'Civic Research Studio activity', ID: 'BL_rsActivity', BlockElements: [{ Type: 'Question', QuestionID: 'QID2' }] },
     { Type: 'Standard', SubType: '', Description: 'Follow-up (add yours)', ID: 'BL_rsFollow', BlockElements: [{ Type: 'Question', QuestionID: 'QID3' }] }
   ];
   // Two copies of the "computer needed" page: a block may appear only once in a survey flow.
   if (desktopOnly) blocks.push({ Type: 'Standard', SubType: '', Description: 'Computer needed (before assignment)', ID: 'BL_rsDevice', BlockElements: [{ Type: 'Question', QuestionID: 'QID4' }] },
-    { Type: 'Standard', SubType: '', Description: 'Computer needed (found by Research Studio)', ID: 'BL_rsDevice2', BlockElements: [{ Type: 'Question', QuestionID: 'QID5' }] });
+    { Type: 'Standard', SubType: '', Description: 'Computer needed (found by Civic Research Studio)', ID: 'BL_rsDevice2', BlockElements: [{ Type: 'Question', QuestionID: 'QID5' }] });
   const notOnComputer = desktopOnly ? [{ Type: 'Block', ID: 'BL_rsDevice', FlowID: 'FL_21', Autofill: [] }, { Type: 'EndSurvey', FlowID: 'FL_22' }] : [];
   const flow = [
     { Type: 'EmbeddedData', FlowID: 'FL_2', EmbeddedData: fieldNames(study).map(ed) },
@@ -56,7 +56,7 @@ export function starterSurvey(study, { studyPage, layout, autoAdvance, template,
     ...(desktopOnly ? [branch('FL_23', [expr('rs_status', 'device_not_supported')], [{ Type: 'Block', ID: 'BL_rsDevice2', FlowID: 'FL_24', Autofill: [] }, { Type: 'EndSurvey', FlowID: 'FL_25' }])] : []),
     { Type: 'Block', ID: 'BL_rsFollow', FlowID: 'FL_16', Autofill: [] }
   ];
-  const welcome = `<strong>Replace this page with your consent statement and Paperwork Reduction Act notice.</strong> The next page runs “${esc(study.title || study.id)}” in Research Studio.${desktopOnly ? ' This study needs a laptop or desktop computer.' : ''}`;
+  const welcome = `<strong>Replace this page with your consent statement and Paperwork Reduction Act notice.</strong> The next page runs “${esc(study.title || study.id)}” in Civic Research Studio.${desktopOnly ? ' This study needs a laptop or desktop computer.' : ''}`;
   const elements = [
     { SurveyID: SV, Element: 'BL', PrimaryAttribute: 'Survey Blocks', SecondaryAttribute: null, TertiaryAttribute: null, Payload: blocks },
     { SurveyID: SV, Element: 'FL', PrimaryAttribute: 'Survey Flow', SecondaryAttribute: null, TertiaryAttribute: null, Payload: { Type: 'Root', FlowID: 'FL_1', Flow: flow, Properties: { Count: 25 } } },
@@ -69,6 +69,6 @@ export function starterSurvey(study, { studyPage, layout, autoAdvance, template,
   ];
   const deviceText = 'This study needs a laptop or desktop computer. Thank you for your interest. Please open the survey link again on a computer if you can.';
   if (desktopOnly) elements.push(q('QID4', 'Q4', deviceText), q('QID5', 'Q5', deviceText));
-  return { SurveyEntry: { SurveyID: SV, SurveyName: `${study.title || study.id} (Research Studio)`, SurveyDescription: null, SurveyOwnerID: UR, SurveyBrandID: brandId || 'default', DivisionID: null, SurveyLanguage: 'EN', SurveyActiveResponseSet: RS, SurveyStatus: 'Inactive', SurveyStartDate: '0000-00-00 00:00:00', SurveyExpirationDate: '0000-00-00 00:00:00', SurveyCreationDate: stamp, CreatorID: UR, LastModified: stamp, LastAccessed: '0000-00-00 00:00:00', LastActivated: '0000-00-00 00:00:00', Deleted: null },
+  return { SurveyEntry: { SurveyID: SV, SurveyName: `${study.title || study.id} (Civic Research Studio)`, SurveyDescription: null, SurveyOwnerID: UR, SurveyBrandID: brandId || 'default', DivisionID: null, SurveyLanguage: 'EN', SurveyActiveResponseSet: RS, SurveyStatus: 'Inactive', SurveyStartDate: '0000-00-00 00:00:00', SurveyExpirationDate: '0000-00-00 00:00:00', SurveyCreationDate: stamp, CreatorID: UR, LastModified: stamp, LastAccessed: '0000-00-00 00:00:00', LastActivated: '0000-00-00 00:00:00', Deleted: null },
     SurveyElements: elements };
 }

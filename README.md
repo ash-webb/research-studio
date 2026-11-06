@@ -1,4 +1,4 @@
-# Research Studio v0.3.9 — multi-method unmoderated UX research
+# Civic Research Studio v0.3.24 — open-source, multi-method unmoderated UX research for public services
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 
@@ -91,7 +91,7 @@ The plan lives in your working copy only. **Export study JSON** leaves it out, s
 
 ### A/B/n implementation testing
 
-**Using Qualtrics?** See [`docs/QUALTRICS-AB-SETUP.md`](docs/QUALTRICS-AB-SETUP.md). Route A: Qualtrics assigns the design and receives each task's results through the return link, with no custom JavaScript. Route B (v0.3.11): the survey shows Research Studio on one of its pages and stores everything, including answers and the full click record; `qualtrics-embed.html?study=<id>` gives the script and field list.
+**Using Qualtrics?** See [`docs/QUALTRICS-AB-SETUP.md`](docs/QUALTRICS-AB-SETUP.md). Route A: Qualtrics assigns the design and receives each task's results through the return link, with no custom JavaScript. Route B (v0.3.11): the survey shows Civic Research Studio on one of its pages and stores everything, including answers and the full click record; `qualtrics-embed.html?study=<id>` gives the script and field list.
 
 In the builder (v0.3.6), each design is a row (name, ID, prototype link, version) with inline checks, and **Check designs** confirms before launch that every design loads the tracker and sends the success signal.
 
@@ -215,7 +215,7 @@ A separate database is required for participants to submit responses from differ
 2. On a **new** database, execute `supabase/schema.sql`. If you already deployed v0.1, instead execute `supabase/migration-v0.2.sql` to permit the new `method_event` record kind. Do not run the migration blindly against production.
 3. Set the Supabase URL and **publishable key only** in public `settings.js`. Never put a secret or service-role key in GitHub Pages.
 4. Invite/create a researcher account through Supabase Auth. Turn off unrestricted account signup for researcher-only access.
-5. In Research Studio, go to **Setup & security** and sign in; then **Publish to response database** on a validated study. Also commit the JSON to your GitHub Pages site (the button does *not* publish GitHub files).
+5. In Civic Research Studio, go to **Setup & security** and sign in; then **Publish to response database** on a validated study. Also commit the JSON to your GitHub Pages site (the button does *not* publish GitHub files).
 6. Open a participant study link from another browser/device, submit fictional test responses, sign back in as the study owner, and verify rows and exports. Check RLS for anonymous read denial before any real deployment.
 7. Close collection by changing `studies.published` to `false` using the database administrator UI. The current interface does not manage enrollment, study closure, deletion, or study owners.
 
@@ -223,7 +223,7 @@ A separate database is required for participants to submit responses from differ
 
 ## GitHub Pages deployment
 
-Use a **separate repository** for Research Studio. Commit the extracted `research-studio` folder contents at repository root, push to `main`, then in **Settings → Pages**, select **GitHub Actions** as the source. `.github/workflows/pages.yml` deploys the static site. Add your prototype links or tracker script to *your own existing prototype repo* separately.
+Use a **separate repository** for Civic Research Studio. Commit the extracted `research-studio` folder contents at repository root, push to `main`, then in **Settings → Pages**, select **GitHub Actions** as the source. `.github/workflows/pages.yml` deploys the static site. Add your prototype links or tracker script to *your own existing prototype repo* separately.
 
 The platform was built as a standalone ZIP because the connected GitHub account did not expose an accessible repository in this session. No GitHub commits or published URLs are claimed.
 
@@ -258,3 +258,11 @@ An observed success event is evidence that a **configured detection rule fired**
 - Raw feedback may contain voluntarily entered personal data even though prototype keystroke logging is disabled.
 
 For deeper schema details and a sample deployment checklist, review `docs/DATA-DICTIONARY.md`.
+
+## License
+
+Civic Research Studio is dedicated to the public domain under [CC0 1.0 Universal](LICENSE): anyone may copy, change and reuse it, for any purpose, without asking. Contributions are accepted under the same terms.
+
+The Public Sans font in `fonts/` is from the [Public Sans project](https://github.com/uswds/public-sans) and is licensed separately under the SIL Open Font License 1.1 (`fonts/OFL.txt`). It is served from this site, so participants' browsers make no third-party font requests.
+
+Civic Research Studio is an independent open-source project. It is not an official product of, or endorsed by, any government agency.

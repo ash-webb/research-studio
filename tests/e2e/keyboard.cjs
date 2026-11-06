@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Keyboard-only accessibility checks for Research Studio.
+/* Keyboard-only accessibility checks for Civic Research Studio.
  * Completes every study type using only Tab / Shift+Tab / Enter / Space / arrow keys,
  * and checks focus placement after each screen change, visible focus indicators,
  * keyboard reachability of every control, screen-reader announcements, and that

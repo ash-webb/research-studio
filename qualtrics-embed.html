@@ -3,37 +3,38 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="robots" content="noindex">
-<title>Qualtrics setup · Research Studio</title>
+<title>Qualtrics setup · Civic Research Studio</title>
+<link rel="stylesheet" href="fonts/public-sans.css">
 <style>
   :root{color-scheme:light}
   *{box-sizing:border-box}
-  body{margin:0;font:15px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#163041;background:#f5f8fa}
+  body{margin:0;font:15px/1.55 "Public Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#1b2f43;background:#f5f8fa}
   main{max-width:860px;margin:0 auto;padding:24px 16px 56px}
   h1{font-size:26px;margin:0 0 6px} h2{font-size:18px;margin:28px 0 8px}
-  p,li{color:#2f4a56} .muted{color:#5e6e7a;font-size:13px}
-  a{color:#0a5f63}
-  .card{background:#fff;border:1px solid #dce5e9;border-radius:10px;padding:16px;margin:12px 0}
+  p,li{color:#36475a} .muted{color:#5e6e7a;font-size:13px}
+  a{color:#15558e}
+  .card{background:#fff;border:1px solid #dee4eb;border-radius:10px;padding:16px;margin:12px 0}
   label{font-weight:700;display:block;margin:10px 0 4px}
-  select,input[type=text]{font:inherit;padding:8px 10px;border:1px solid #9fb4bd;border-radius:6px;width:100%;max-width:520px;background:#fff}
+  select,input[type=text]{font:inherit;padding:8px 10px;border:1px solid #a4b2c1;border-radius:6px;width:100%;max-width:520px;background:#fff}
   .row{display:flex;flex-wrap:wrap;gap:16px;align-items:flex-end}
   .row>div{flex:1 1 220px}
   .choice{display:flex;gap:8px;align-items:center;font-weight:400;margin:6px 0}
-  textarea{width:100%;font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;border:1px solid #9fb4bd;border-radius:6px;padding:10px;background:#fbfcfd;color:#163041}
-  button{font:inherit;font-weight:700;border-radius:8px;padding:9px 14px;border:1px solid #0a7473;background:#0a7473;color:#fff;cursor:pointer}
-  button.secondary{background:#fff;color:#0a5f63}
-  button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #0a5f63;outline-offset:2px}
+  textarea{width:100%;font:12.5px/1.45 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;border:1px solid #a4b2c1;border-radius:6px;padding:10px;background:#fbfcfd;color:#1b2f43}
+  button{font:inherit;font-weight:700;border-radius:8px;padding:9px 14px;border:1px solid #1868ac;background:#1868ac;color:#fff;cursor:pointer}
+  button.secondary{background:#fff;color:#15558e}
+  button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible,a:focus-visible{outline:3px solid #15558e;outline-offset:2px}
   ol{padding-left:22px} li{margin:6px 0}
-  code{background:#eef3f5;border-radius:4px;padding:1px 5px;font-size:13px}
+  code{background:#eff2f6;border-radius:4px;padding:1px 5px;font-size:13px}
   .warn{background:#fff6e7;border:1px solid #e7c58b;border-radius:8px;padding:10px 12px;color:#5b4a1f}
   .tabs{display:flex;gap:8px;margin:8px 0}
-  .tabs button[aria-pressed=false]{background:#fff;color:#0a5f63}
+  .tabs button[aria-pressed=false]{background:#fff;color:#15558e}
   [role=status]{min-height:1.4em}
 </style>
 </head>
 <body>
 <main>
   <h1>Run a study inside a Qualtrics survey</h1>
-  <p>The survey shows Research Studio on one of its pages and stores the results in its own data: the design each person saw, task outcomes, answers to the study's questions, and the full click-by-click record. Research Studio needs no database for this. <a href="docs/QUALTRICS-AB-SETUP.md">Full guide</a></p>
+  <p>The survey shows Civic Research Studio on one of its pages and stores the results in its own data: the design each person saw, task outcomes, answers to the study's questions, and the full click-by-click record. Civic Research Studio needs no database for this. <a href="docs/QUALTRICS-AB-SETUP.md">Full guide</a></p>
 
   <div class="card">
     <div class="row">
@@ -45,7 +46,7 @@
   </div>
 
   <h2>Quickest: start from a ready-made survey</h2>
-  <p>Download a starter survey and import it in Qualtrics (<strong>Create project ▸ Survey ▸ Import a QSF file</strong>). It already declares every field, sets up the randomizer, holds the Research Studio page with its script<span data-desktop-only hidden> and screens out phones and tablets before anyone is assigned a design</span>. Then replace the welcome page with your consent and PRA notice, add your follow-up questions, and preview. Steps 1 and 2 below explain what it contains, if you would rather set it up by hand.</p>
+  <p>Download a starter survey and import it in Qualtrics (<strong>Create project ▸ Survey ▸ Import a QSF file</strong>). It already declares every field, sets up the randomizer, holds the Civic Research Studio page with its script<span data-desktop-only hidden> and screens out phones and tablets before anyone is assigned a design</span>. Then replace the welcome page with your consent and PRA notice, add your follow-up questions, and preview. Steps 1 and 2 below explain what it contains, if you would rather set it up by hand.</p>
   <p><button type="button" id="downloadQsf">Download starter survey (.qsf)</button> <span id="qsfStatus" role="status"></span></p>
 
   <h2>1. Declare the fields in Survey Flow</h2>
@@ -54,7 +55,7 @@
   <label for="fields">Field names, one per line (<span id="fieldCount">0</span>)</label>
   <textarea id="fields" rows="10" readonly></textarea>
   <p><button type="button" class="secondary" id="copyFields">Copy field names</button> <span id="copyFieldsStatus" role="status"></span></p>
-  <p class="muted">If your randomizer sets the design, it should set <code>rs_variant</code> to one of: <span id="variantIds"></span>. Leave <code>rs_variant</code> blank to let Research Studio pick at random.</p>
+  <p class="muted">If your randomizer sets the design, it should set <code>rs_variant</code> to one of: <span id="variantIds"></span>. Leave <code>rs_variant</code> blank to let Civic Research Studio pick at random.</p>
 
   <h2>2. Add the page and its JavaScript</h2>
   <ol>
@@ -74,7 +75,7 @@
       <li>Add <code>rs_device_class</code> to the embedded data fields (it is in the list above).</li>
       <li>Paste the script below into the JavaScript of a question on a page before the randomizer, such as the consent question. It sets <code>rs_device_class</code> to <code>desktop</code>, <code>tablet</code> or <code>phone</code>.</li>
       <li>After that page, add a <strong>Branch</strong>: if <code>rs_device_class</code> is equal to <code>phone</code> or <code>tablet</code>, show a short “computer needed” page, then <strong>End of Survey</strong>.</li>
-      <li>After the Research Studio page, add the same kind of branch for <code>rs_status</code> equal to <code>device_not_supported</code>: Research Studio also checks, and if it finds a phone or tablet it records nothing and returns to the survey with that status.</li>
+      <li>After the Civic Research Studio page, add the same kind of branch for <code>rs_status</code> equal to <code>device_not_supported</code>: Civic Research Studio also checks, and if it finds a phone or tablet it records nothing and returns to the survey with that status.</li>
     </ol>
     <label for="deviceScript">Device check JavaScript (page before the randomizer)</label>
     <textarea id="deviceScript" rows="8" readonly></textarea>
@@ -85,7 +86,7 @@
   <ol>
     <li>Preview the survey and complete the activity with made-up answers.</li>
     <li>In <strong>Data &amp; Analysis</strong>, include survey previews, and check that <code>rs_embed_ok</code> is <code>yes</code> and <code>rs_data_parts</code> is filled in.</li>
-    <li>Export the responses as CSV and use <strong>Results ▸ Import Qualtrics results</strong> in Research Studio. The import checks every response's data against its checksum. Previews are left out of the results, and a note says how many were left out.</li>
+    <li>Export the responses as CSV and use <strong>Results ▸ Import Qualtrics results</strong> in Civic Research Studio. The import checks every response's data against its checksum. Previews are left out of the results, and a note says how many were left out.</li>
   </ol>
   <p class="warn">Only addresses on the list in <code>settings.js</code> (<code>embedHosts</code>; on this site only <code>irsresearch.gov1.qualtrics.com</code>) can receive results. A page that is opened anywhere else gets nothing.</p>
 </main>

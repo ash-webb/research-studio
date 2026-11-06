@@ -1,6 +1,6 @@
 @echo off
 cd /d "%~dp0"
-echo Research Studio local demo is starting.
+echo Civic Research Studio local demo is starting.
 echo Open http://localhost:8000/ in your browser.
 echo Keep this window open while using the demo.
 echo.

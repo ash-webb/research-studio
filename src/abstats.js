@@ -1,4 +1,4 @@
-// A/B statistics for Research Studio (v0.3.7). Pure functions, no dependencies.
+// A/B statistics for Civic Research Studio (v0.3.7). Pure functions, no dependencies.
 // Everything here is descriptive estimation: ranges are 95% confidence intervals unless
 // stated otherwise. Nothing in this module declares a "winner".
 

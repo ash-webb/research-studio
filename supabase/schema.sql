@@ -1,4 +1,4 @@
--- Research Studio MVP. Run in your OWN approved Supabase project (SQL editor).
+-- Civic Research Studio MVP. Run in your OWN approved Supabase project (SQL editor).
 -- Never store secrets or identifiable real taxpayer data in GitHub Pages.
 -- Re-run carefully in staging first; intended for first-time installation.
 

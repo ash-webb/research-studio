@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* End-to-end browser QA for Research Studio.
+/* End-to-end browser QA for Civic Research Studio.
  *
  * Runs scripted (clearly synthetic) participants through every example study in
  * Chromium, then checks the stored events, the researcher dashboard and every export

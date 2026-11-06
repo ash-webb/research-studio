@@ -1,4 +1,4 @@
-// Research Studio · Qualtrics JavaScript test (v1)
+// Civic Research Studio · Qualtrics JavaScript test (v1)
 // Paste into the JavaScript of the question that shows the test panel.
 // Change ALLOWED_ORIGIN if the site moves (for example to the IRS GitHub Pages address).
 Qualtrics.SurveyEngine.addOnload(function () {

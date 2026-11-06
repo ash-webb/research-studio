@@ -1,3 +1,10 @@
+# v0.3.24 release notes — Civic Research Studio: new name, public-service look, CC0 license (draft)
+
+## Changed
+- **New name: Civic Research Studio** (was Research Studio) in the researcher and participant pages, page titles, the starter Qualtrics survey, the study plan download and the docs. The web address and repository stay `research-studio`, so existing study links and the Qualtrics surveys that show it keep working. Saved data, field names (`rs_*`) and storage keys are unchanged. Earlier release notes and reports keep the old name.
+- **Public-service look.** Public Sans type, navy side bar and blue actions in the style of the U.S. Web Design System, and a new “c.” mark. There is no seal, flag or government banner, and the README says it is an independent project, not an official government product. Public Sans is served from this site (`fonts/`), so participants' browsers make no requests to a font service. The colours were converted from the old teal at the same lightness, so text contrast is unchanged; the accessibility scan passes.
+- **Open-source license.** The project is dedicated to the public domain under CC0 1.0 (`LICENSE`, and `"license": "CC0-1.0"` in `package.json`). The Public Sans font keeps its own SIL Open Font License (`fonts/OFL.txt`).
+
 # v0.3.23 release notes — task instructions sit above the design on laptop screens (draft)
 
 ## Changed

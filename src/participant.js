@@ -217,7 +217,7 @@ async function init(){
       if(study.id!==id)throw new Error('Study ID does not match its published configuration.');
     }
     validateStudy(study);
-    document.title=`${study.title} · Research Studio`;
+    document.title=`${study.title} · Civic Research Studio`;
     if(embedRequested&&!embedded&&!preview){render(`<section class="welcome-card"><h1>Open this activity from the survey</h1><p>This part of the study runs inside the survey. Please go back to the survey link you were given.</p></section>`,null);progress(0,'Survey activity');return;}
     if(embedded){
       surveyStatus('Connecting to the survey…');progress(0,'Connecting');
@@ -233,7 +233,7 @@ async function init(){
     if(cp&&cp.v===1&&cp.studyId===study.id&&cp.hash===studyHash&&cp.sessionId&&Date.now()-(cp.savedAt||0)<RESUME_MAX_AGE_MS){await resume(cp);return;}
     if(cp)clearCheckpoint(); // changed study, expired, or unreadable: start a fresh session
     progress(0,'Introduction');welcome();
-  }catch(err){render(`<section class="welcome-card"><h1>Study unavailable</h1><p>${esc(err.message)}</p><a class="btn btn-outline" href="index.html">Return to Research Studio</a></section>`,null);}
+  }catch(err){render(`<section class="welcome-card"><h1>Study unavailable</h1><p>${esc(err.message)}</p><a class="btn btn-outline" href="index.html">Return to Civic Research Studio</a></section>`,null);}
 }
 // v0.3.23: the welcome notice lists only what this study's activities record, not every method the toolkit supports.
 function collectNotice(){

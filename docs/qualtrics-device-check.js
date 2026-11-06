@@ -1,9 +1,9 @@
-// Research Studio · device check for a Qualtrics survey (v1).
+// Civic Research Studio · device check for a Qualtrics survey (v1).
 // For studies that run on laptops and desktops only. Paste into the JavaScript of a question on a page
 // BEFORE the randomizer (for example the welcome or consent question). It sets rs_device_class to
 // desktop, tablet or phone; a Branch after that page ends the survey for phone and tablet, so they are
 // never assigned a design. Declare rs_device_class in the survey flow's embedded data.
-// Same logic as Research Studio's src/devices.js.
+// Same logic as Civic Research Studio's src/devices.js.
 Qualtrics.SurveyEngine.addOnload(function () {
   function save(name, value) {
     try { Qualtrics.SurveyEngine.setJSEmbeddedData(name, value); } catch (e) {}

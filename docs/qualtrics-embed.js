@@ -1,14 +1,14 @@
-// Research Studio inside a Qualtrics survey (v1). Paste into the JavaScript of the question that runs
-// the Research Studio part (a Text/Graphic question on a page of its own). Research Studio's
+// Civic Research Studio inside a Qualtrics survey (v1). Paste into the JavaScript of the question that runs
+// the Civic Research Studio part (a Text/Graphic question on a page of its own). Civic Research Studio's
 // "Qualtrics setup" page (qualtrics-embed.html?study=<id>) fills in CONFIG for your study.
 Qualtrics.SurveyEngine.addOnReady(function () {
   var CONFIG = {
-    studyPage: 'https://YOUR-RESEARCH-STUDIO-SITE/study.html', // Research Studio's study.html
+    studyPage: 'https://YOUR-RESEARCH-STUDIO-SITE/study.html', // Civic Research Studio's study.html
     studyId: 'YOUR-STUDY-ID',
-    variant: '${e://Field/rs_variant}',   // design picked by the survey's randomizer; blank = Research Studio picks
+    variant: '${e://Field/rs_variant}',   // design picked by the survey's randomizer; blank = Civic Research Studio picks
     participantId: '${e://Field/ResponseID}',
     layout: 'fullscreen',                 // 'fullscreen' covers the page while it runs; 'inline' sits in the question
-    autoAdvance: true                     // go to the next page when Research Studio has finished and saved
+    autoAdvance: true                     // go to the next page when Civic Research Studio has finished and saved
   };
   var NS = 'RS_QX', V = 1, MAX_CHARS = 32000, FIELD = /^rs_[a-z0-9_]{1,60}$/;
   var q = this, origin = new URL(CONFIG.studyPage).origin, saved = 0, finished = false, inerted = [];
