@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "id": "iola-current-vs-new",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "allowedDevices": "desktop",
   "consentMode": "external",
   "title": "IRS online account study",
@@ -41,7 +41,7 @@
           "id": "iola-new",
           "label": "New IRS app",
           "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/new/#/home",
-          "revision": "proto-v2"
+          "revision": "proto-v3"
         }
       ],
       "questions": [
@@ -79,7 +79,7 @@
           "id": "iola-new",
           "label": "New IRS app",
           "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/new/#/home",
-          "revision": "proto-v2"
+          "revision": "proto-v3"
         }
       ],
       "questions": [
@@ -117,7 +117,7 @@
           "id": "iola-new",
           "label": "New IRS app",
           "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/new/#/home",
-          "revision": "proto-v2"
+          "revision": "proto-v3"
         }
       ],
       "questions": [
@@ -155,7 +155,7 @@
           "id": "iola-new",
           "label": "New IRS app",
           "prototypeUrl": "https://taxpayer-services-and-online-accounts.github.io/design-prototypes/iola-ab-test/new/#/home",
-          "revision": "proto-v2"
+          "revision": "proto-v3"
         }
       ],
       "questions": [

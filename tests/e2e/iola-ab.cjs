@@ -157,15 +157,20 @@ const DESIGN = {
   },
   'iola-new': {
     pay: async (f, { amount = '200', slide = false, p } = {}) => {
-      await click(f, 'home-pay-now'); await click(f, 'paysheet-amount');
-      await f.locator('#amt').fill(amount); await click(f, 'paysheet-amount-done');
-      if (slide) {
+      // The app's quick-pay sheet: choose the type first, then the amount (app/pay-sheet.tsx).
+      await click(f, 'home-pay-now'); await click(f, 'paysheet-type'); await click(f, 'paysheet-type-payTowardsBalance');
+      await click(f, 'paysheet-amount'); await f.locator('#amt').fill(amount); await click(f, 'paysheet-amount-done');
+      // Computers get a Pay now button; touch screens get slide to pay, whose knob also pays with Enter.
+      const knobOnly = !(await f.locator('[data-ut-id="paysheet-pay-button"]').count());
+      if (knobOnly && !slide) { await f.locator('#knob').focus(); await f.locator('#knob').press('Enter'); }
+      else if (slide) {
         const box = await f.locator('#slider').boundingBox(), k = await f.locator('#knob').boundingBox();
         await p.mouse.move(k.x + k.width / 2, k.y + k.height / 2); await p.mouse.down();
         for (let i = 1; i <= 12; i++) await p.mouse.move(k.x + k.width / 2 + box.width * i / 12, k.y + k.height / 2);
         await p.mouse.up();
-      } else await click(f, 'paysheet-pay-button');
-      await click(f, 'confirm-yes'); await f.locator('[data-ut-id="paysheet-done"]').waitFor();
+      } else if (!knobOnly) await click(f, 'paysheet-pay-button');
+      if (!slide) await click(f, 'confirm-yes'); // a full slide is the confirmation; the button and the knob's Enter ask first
+      await f.locator('[data-ut-id="paysheet-done"]').waitFor();
     },
     oic: async f => { await click(f, 'tab-pay'); await click(f, 'pay-over-time'); await click(f, 'options-oic'); await f.getByRole('heading', { name: /offer in compromise/i }).first().waitFor(); },
     respond: async (f, choice = 'agree') => {
@@ -226,7 +231,7 @@ const scenarios = {
       for (const t of TASKS) {
         const e = ended(evs, t); const r = e?.payload?.result || {};
         eq(g, `${t}: success recorded`, [r.success_signal_received, r.success_signal_status], [true, 'received']);
-        eq(g, `${t}: design recorded`, [e?.payload?.variant_id, e?.payload?.experiment_id, e?.payload?.variant_revision], [v, 'iola-current-vs-new', { 'iola-current': 'proto-v3', 'iola-new': 'proto-v2' }[v]]);
+        eq(g, `${t}: design recorded`, [e?.payload?.variant_id, e?.payload?.experiment_id, e?.payload?.variant_revision], [v, 'iola-current-vs-new', { 'iola-current': 'proto-v3', 'iola-new': 'proto-v3' }[v]]);
         eq(g, `${t}: tracker_connected recorded`, e?.payload?.tracker_connected, true);
         const P = e?.payload || {};
         check(g, `${t}: time to success <= time to Finish <= total time`, Number.isFinite(P.success_at_seconds) && P.success_at_seconds <= P.finished_at_seconds && P.finished_at_seconds <= P.time_seconds, [P.success_at_seconds, P.finished_at_seconds, P.time_seconds]);
@@ -418,6 +423,45 @@ const scenarios = {
   // Inside the study: no theme switch, light theme, no research banner text check (the deployed design omits it by choice).
   // Desktop width for the design (v0.3.20): at least 1,024 px from a 1366 px laptop window, the same for both designs,
   // so the new app's desktop layout (1,024 px and up) appears. 1366x657 is a 1366x768 screen less the browser's own bars.
+  // Design B's one-time payment follows the app's quick-pay sheet (expo-irs app/pay-sheet.tsx, Nov 5 2026):
+  // type first, then amount; computers get Pay now and a confirmation, touch screens get slide to pay.
+  async paySheet(browser) {
+    const g = 'new app payment form follows the app code';
+    const c = await newContext(browser, g);
+    const p = await startSession(c.ctx, 'variant=iola-new');
+    const { f } = await openTask(p);
+    const val = id => f.locator(`[data-ut-id="${id}"] .v`).innerText();
+    await click(f, 'home-pay-now');
+    eq(g, 'opens with the type and amount not chosen', [await val('paysheet-type'), await val('paysheet-amount')], ['Select payment type', 'Enter amount']);
+    check(g, 'the amount waits for a type', await f.locator('[data-ut-id="paysheet-amount"]').isDisabled());
+    check(g, 'a computer gets a Pay now button and no slide', (await f.locator('[data-ut-id="paysheet-pay-button"]').count()) === 1 && (await f.locator('#knob').count()) === 0);
+    check(g, 'Pay over time and Close sit under the action', (await f.locator('[data-ut-id="paysheet-pay-over-time"]').count()) === 1 && (await f.locator('[data-ut-id="paysheet-close-quiet"]').count()) === 1);
+    await click(f, 'paysheet-pay-button');
+    eq(g, 'paying before choosing a type asks for it', (await f.locator('.err').innerText()).trim(), 'Select what this payment is for.');
+    await click(f, 'paysheet-type-payBalanceInFull');
+    eq(g, 'Pay balance in full fills in the balance', await val('paysheet-amount'), '$1,247.53');
+    await click(f, 'paysheet-amount'); await f.locator('#amt').fill('200'); await click(f, 'paysheet-amount-done');
+    eq(g, 'a smaller amount becomes Pay toward balance, without zero cents', [await val('paysheet-type'), await val('paysheet-amount'), await val('paysheet-for')], ['Pay toward balance', '$200', '2024 federal taxes']);
+    await click(f, 'paysheet-pay-button');
+    eq(g, 'Pay now asks to confirm the amount, date and account', [await f.locator('#mT').innerText(), /^\$200 · [A-Z][a-z]+ \d{1,2}, \d{4} · Checking ••6789$/.test(await f.locator('.modal .muted').innerText())], ['Pay $200?', true]);
+    await click(f, 'confirm-yes');
+    check(g, 'the receipt shows a payment identifier', /^Payment identifier: \d{15}$/.test((await f.locator('.done .muted').innerText()).trim()));
+    await c.done();
+    // A touch screen (straight to the design; the study itself screens out phones and tablets).
+    const t = await newContext(browser, `${g} touch`, { viewport: { width: 390, height: 844 } });
+    const page = await t.ctx.newPage();
+    await page.goto(URL_OF['iola-new']);
+    await page.locator('[data-ut-id="home-pay-now"]').click();
+    check(g, 'a touch screen gets slide to pay instead of the button', (await page.locator('#knob').count()) === 1 && (await page.locator('[data-ut-id="paysheet-pay-button"]').count()) === 0);
+    await page.locator('[data-ut-id="paysheet-type"]').click(); await page.locator('[data-ut-id="paysheet-type-payTowardsBalance"]').click();
+    await page.locator('[data-ut-id="paysheet-amount"]').click(); await page.locator('#amt').fill('200'); await page.locator('[data-ut-id="paysheet-amount-done"]').click();
+    const box = await page.locator('#slider').boundingBox(), k = await page.locator('#knob').boundingBox();
+    await page.mouse.move(k.x + k.width / 2, k.y + k.height / 2); await page.mouse.down();
+    for (let i = 1; i <= 12; i++) await page.mouse.move(k.x + k.width / 2 + box.width * i / 12, k.y + k.height / 2);
+    await page.mouse.up();
+    check(g, 'a full slide pays without a second confirmation', (await page.locator('[data-ut-id="paysheet-done"]').count()) === 1 && (await page.locator('.modal-bg').count()) === 0);
+    await t.done();
+  },
   async frameWidth(browser) {
     const g = 'design area width on laptop screens';
     for (const [w, h, min, layout] of [[1366, 657, 1024, 'desktop'], [1366, 768, 1024, 'desktop'], [1440, 900, 1100, 'desktop'], [1280, 800, 960, 'tablet'], [1920, 1080, 1300, 'desktop']]) {
@@ -473,8 +517,10 @@ const STATES = {
     'upload done': ['nav-notices', 'notices-view-cp2000', 'cp2000-dut-link', '#dutNotice=CP2000', '#dutYear=2024', 'dut-continue', 'dut-choose-files', '+picker-f1099', '+picker-fstmt', 'picker-add', 'dut-submit']
   },
   'iola-new': {
-    'home': [], 'pay sheet': ['home-pay-now'], 'pay sheet editing amount': ['home-pay-now', 'paysheet-amount'], 'pay confirm': ['home-pay-now', 'paysheet-pay-button'],
-    'payment done': ['home-pay-now', 'paysheet-pay-button', 'confirm-yes'], 'payments tab': ['tab-pay'], 'payment options': ['tab-pay', 'pay-over-time'],
+    'home': [], 'pay sheet': ['home-pay-now'], 'pay sheet type open': ['home-pay-now', 'paysheet-type'], 'pay sheet missing type': ['home-pay-now', '>pay'],
+    'pay sheet editing amount': ['home-pay-now', 'paysheet-type', 'paysheet-type-payTowardsBalance', 'paysheet-amount'],
+    'pay confirm': ['home-pay-now', 'paysheet-type', 'paysheet-type-payBalanceInFull', '>pay'],
+    'payment done': ['home-pay-now', 'paysheet-type', 'paysheet-type-payBalanceInFull', '>pay', 'confirm-yes'], 'payments tab': ['tab-pay'], 'payment options': ['tab-pay', 'pay-over-time'],
     'offer in compromise': ['tab-pay', 'pay-over-time', 'options-oic'], 'notices': ['tab-notices'], 'notice CP2000': ['tab-notices', 'notices-cp2000'],
     'records': ['tab-records'], 'transcripts': ['tab-records', 'records-transcripts'],
     'respond confirm': ['tab-notices', 'notices-cp2000', 'cp2000-respond', '+respond-agree', 'respond-send'],
@@ -483,6 +529,8 @@ const STATES = {
   }
 };
 async function runStep(page, step) {
+  // '>pay': the payment action, a Pay now button on computers or the slide knob (Enter) on touch screens.
+  if (step === '>pay') { await page.locator('[data-ut-id="paysheet-pay-button"], #knob').first().waitFor(); if (await page.locator('[data-ut-id="paysheet-pay-button"]').count()) return page.locator('[data-ut-id="paysheet-pay-button"]').click(); await page.locator('#knob').focus(); return page.locator('#knob').press('Enter'); }
   if (step.startsWith('#')) { const [sel, val] = step.split('='); const el = page.locator(sel); if (await el.evaluate(e => e.tagName) === 'SELECT') await el.selectOption(val); else await el.fill(val); return; }
   if (step.startsWith('+')) return page.locator(`[data-ut-id="${step.slice(1)}"]`).first().check();
   await page.locator(`[data-ut-id="${step}"]`).first().click();

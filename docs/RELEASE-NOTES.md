@@ -1,3 +1,9 @@
+# v0.3.22 release notes — IOLA study 1.4.1: Design B's payment form follows the app code (draft)
+
+## Changed
+- **IOLA study 1.4.1.** Design B's revision is now `proto-v3`: its one-time payment follows the app's current quick-pay sheet (expo-irs `app/pay-sheet.tsx`). Participants choose the payment type, then the amount, then select Pay now and confirm; computers get the button, touch screens get slide to pay. Design A stays `proto-v3`. The study plan's description of Design B is updated.
+- **IOLA browser checks.** The Design B payment scripts choose the type first, and a new `paySheet` check compares the form with the app code: type and amount start empty, the amount waits for a type, a smaller amount becomes Pay toward balance, Pay now asks to confirm with the amount, date and account, a touch screen gets slide to pay, and a full slide pays without a second question. The "what participants see" scan adds the type list and the missing-type message.
+
 # v0.3.21 release notes — IOLA study 1.4.0 for the updated designs (draft)
 
 ## Changed
