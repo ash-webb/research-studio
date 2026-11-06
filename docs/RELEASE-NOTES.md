@@ -1,3 +1,10 @@
+# v0.3.23 release notes — task instructions sit above the design on laptop screens (draft)
+
+## Changed
+- **Between 951 and 1,499 px wide, the task instructions are a slim bar above the design** instead of a panel beside it, so the design gets the full width. This covers laptops with display scaling: a 1366 px screen at 125% is about 1,093 CSS px wide, and a 1920 px screen at 150% is about 1,280. Measured design area: 1,059 px at 1093×600, 1,246 px at 1280×640, 1,332 px at 1366×768 and 1,406 px at 1440×900, so the new app shows its desktop layout on all of them. From 1,500 px up the panel stays beside the design (1,190 px at 1536×730, 1,334 px at 1920×1080). The page header is shorter during tasks at these widths, and the page still doesn't scroll down; the design is about 366 px tall on a 600 px tall window and 380 px or more on taller ones.
+- **The welcome page lists only what the study's own activities collect** (“What this study collects”), built from the study's methods, instead of a list of everything the toolkit can record. For the IOLA study it lists the randomly chosen design, the screens visited, clicks and what is submitted in the designs, activity times and question answers, and says there is no screen, video or audio recording and no passwords.
+- The `frameWidth` check in `npm run test:iola` adds the two scaled-laptop sizes and checks the design's height; a new check confirms the welcome list for the IOLA study.
+
 # v0.3.22 release notes — IOLA study 1.4.1: Design B's payment form follows the app code (draft)
 
 ## Changed

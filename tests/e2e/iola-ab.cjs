@@ -268,6 +268,9 @@ const scenarios = {
     const ctx = await browser.newContext({ viewport: { width: 900, height: 700 } }); await serveRule(ctx);
     const p = await ctx.newPage(); await p.goto(`${BASE}study.html?study=${STUDY_ID}`);
     await p.waitForSelector('#startStudy');
+    const collect = await p.locator('.collect-notice').innerText();
+    check(g, 'the welcome lists what this study collects, not other methods (v0.3.23)', /Which of two designs/.test(collect) && /answers to the questions/.test(collect) && !/card|first click|menu locations/i.test(collect), collect.replace(/\s+/g, ' '));
+    await p.screenshot({ path: path.join(OUT, 'welcome-collect.png'), fullPage: true });
     check(g, 'a narrow window on a computer is still allowed', true);
     await rerender(p, () => p.click('#startStudy'));
     const st = (await allEvents(p)).filter(e => e.study_id === STUDY_ID && e.kind === 'session_started').pop()?.payload || {};
@@ -464,7 +467,8 @@ const scenarios = {
   },
   async frameWidth(browser) {
     const g = 'design area width on laptop screens';
-    for (const [w, h, min, layout] of [[1366, 657, 1024, 'desktop'], [1366, 768, 1024, 'desktop'], [1440, 900, 1100, 'desktop'], [1280, 800, 960, 'tablet'], [1920, 1080, 1300, 'desktop']]) {
+    // 1093x600 and 1280x640 are 1366 and 1920 px laptops at 125% and 150% display scaling, less the browser's bars.
+    for (const [w, h, min, layout] of [[1093, 600, 1024, 'desktop'], [1280, 640, 1200, 'desktop'], [1366, 657, 1300, 'desktop'], [1366, 768, 1300, 'desktop'], [1440, 900, 1380, 'desktop'], [1536, 730, 1180, 'desktop'], [1920, 1080, 1300, 'desktop']]) {
       const widths = [];
       for (const v of VARIANTS) {
         const c = await newContext(browser, `${g} ${w} ${v}`, { viewport: { width: w, height: h } });
@@ -478,7 +482,11 @@ const scenarios = {
           await fr.waitForFunction(() => document.documentElement.getAttribute('data-layout'));
           eq(g, `${w}x${h} new app: ${layout} layout`, await fr.evaluate(() => document.documentElement.getAttribute('data-layout')), layout);
         }
-        if (w === 1366) { await p.waitForTimeout(300); await p.screenshot({ path: path.join(OUT, `${v}-frame-${w}x${h}.png`) }); }
+        const fh = await p.evaluate(() => Math.round(document.querySelector('#prototypeFrame').getBoundingClientRect().height));
+        // The 600 px tall window is the tightest case (a 1366x768 laptop at 125%); the design still gets about 366 px.
+      const minH = h <= 600 ? 350 : 380;
+      check(g, `${w}x${h} ${v}: the design is at least ${minH} px tall`, fh >= minH, String(fh));
+        if ([1093, 1366, 1536].includes(w)) { await p.waitForTimeout(300); await p.screenshot({ path: path.join(OUT, `${v}-frame-${w}x${h}.png`) }); }
         await c.done();
       }
       if (process.env.IOLA_SHOW_WIDTHS) console.log(`${w}x${h}: ${widths.join(', ')}`);

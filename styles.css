@@ -154,4 +154,28 @@ dialog.design-check::backdrop{background:#0f2c3a80}
 @media(max-width:950px){.participant-main:has(.task-shell){padding:12px}}
 /* v0.3.20: on laptop screens the design gets at least 1,024 px from a 1366 px window (the desktop layout of the new app starts at 1,024), and the task page fits the window height so it does not scroll */
 @media(min-width:951px){.participant-main:has(.task-shell){padding:12px 16px}.task-shell{gap:12px;min-height:calc(100vh - 96px)}.task-shell .prototype-pane{min-height:max(480px,calc(100vh - 96px))}.task-shell .prototype-pane iframe{min-height:420px}}
-@media(min-width:951px) and (max-width:1500px){.task-shell{grid-template-columns:264px minmax(0,1fr)}}
+/* v0.3.23: below 1,500 px wide the task instructions become a slim bar above the design, so the design gets the
+   full width (a 1366 px laptop at 125% scaling is about 1,093 CSS px wide). From 1,500 px up the left panel stays. */
+.task-side{display:contents}
+@media(min-width:951px) and (max-width:1499px){
+.participant-page:has(.task-shell) .participant-header{height:56px}
+.participant-main:has(.task-shell){padding:10px 16px}
+.task-shell{grid-template-columns:minmax(0,1fr);grid-template-rows:auto minmax(0,1fr);gap:10px;height:max(380px,calc(100vh - 78px));min-height:0}
+.task-shell .task-instructions{position:static;grid-row:1;display:grid;grid-template-columns:minmax(0,1fr) auto;grid-auto-rows:min-content;column-gap:28px;align-content:start;padding:8px 16px 10px;border-radius:10px}
+.task-shell .task-instructions>*{grid-column:1}
+.task-shell .task-instructions .eyebrow{margin:0}
+.task-shell .task-instructions h1{font-size:18px;letter-spacing:-.3px;margin:2px 0 0;line-height:1.3}
+.task-shell .task-instructions>p{font-size:14px;line-height:1.5;margin:2px 0 0;max-width:110ch}
+.task-shell .task-instructions .notice{margin:6px 0 0;font-size:12px;padding:6px 10px}
+.task-shell .task-side{grid-column:2;grid-row:1/span 6;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;gap:6px}
+.task-shell .task-instructions .task-meta{border:0;margin:0;padding:0;gap:16px;font-size:12px}
+.task-shell .task-instructions .btn{width:auto;margin:0;padding:9px 18px;white-space:nowrap}
+.task-shell .task-instructions .small{margin:0;max-width:250px;text-align:right;font-size:11px;line-height:1.4}
+.task-shell .prototype-pane{grid-row:2;min-height:0}
+.task-shell .prototype-pane iframe{min-height:0}
+.task-shell .pane-top{padding:5px 14px}
+.task-shell .live-indicator{padding:4px 9px}
+}
+
+
+.collect-notice ul{margin:6px 0 8px;padding-left:20px}.collect-notice li{margin:2px 0}

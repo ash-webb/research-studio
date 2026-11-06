@@ -235,9 +235,23 @@ async function init(){
     progress(0,'Introduction');welcome();
   }catch(err){render(`<section class="welcome-card"><h1>Study unavailable</h1><p>${esc(err.message)}</p><a class="btn btn-outline" href="index.html">Return to Research Studio</a></section>`,null);}
 }
+// v0.3.23: the welcome notice lists only what this study's activities record, not every method the toolkit supports.
+function collectNotice(){
+  const tasks=study.tasks||[], has=m=>tasks.some(t=>normalizeMethod(t)===m);
+  const items=[];
+  if(has('ab_test'))items.push('Which of two designs you are shown. The design is chosen at random.');
+  if(has('ab_test')||has('prototype'))items.push('In the practice designs: the screens you visit, where you click, and what you submit in them.');
+  if(has('tree_test'))items.push('The menu locations you choose.');
+  if(has('card_sort'))items.push('How you group and name the cards.');
+  if(has('first_click'))items.push('Where you click first on each image.');
+  if(has('preference'))items.push('Which design you prefer.');
+  if(tasks.some(t=>normalizeMethod(t)!=='survey'))items.push('How long each activity takes.');
+  if(tasks.some(t=>t.questions?.length))items.push('Your answers to the questions.');
+  return `<div class="notice collect-notice"><strong>What this study collects</strong><ul>${items.map(i=>`<li>${esc(i)}</li>`).join('')}</ul>There is no screen, video or audio recording, and no passwords are collected. Please do not enter real personal information.</div>`;
+}
 function welcome(){
   stage='welcome';
-  render(`<section class="welcome-card"><span class="eyebrow accent">UNMODERATED RESEARCH STUDY</span><h1>${esc(study.title)}</h1><p>${esc(study.welcome||study.description||'')}</p><div class="notice"><strong>What this study may collect</strong><br>Task timing, navigation choices, random design assignment for implementation comparisons, card groupings and names, first-click locations, preferences, and answers you explicitly submit. An instrumented prototype may also record click locations and navigation. No screen recording, passwords, or typed prototype form values are collected by the tracker. Please do not enter sensitive personal information.</div>${study.consentMode==='external'?'<p class="notice">You agreed to take part in the survey before this activity.</p><button id="startStudy" class="btn btn-primary">Begin →</button>':`<label class="consent"><input id="consentCheck" type="checkbox"><span>${esc(study.consent||'I agree to participate and to the data collection described above.')}</span></label><button id="startStudy" class="btn btn-primary" disabled>Agree and begin study →</button>`}<p class="small muted" style="margin-top:18px">Participation is voluntary. You can close the page at any point.</p></section>`,null);
+  render(`<section class="welcome-card"><span class="eyebrow accent">UNMODERATED RESEARCH STUDY</span><h1>${esc(study.title)}</h1><p>${esc(study.welcome||study.description||'')}</p>${collectNotice()}${study.consentMode==='external'?'<p class="notice">You agreed to take part in the survey before this activity.</p><button id="startStudy" class="btn btn-primary">Begin →</button>':`<label class="consent"><input id="consentCheck" type="checkbox"><span>${esc(study.consent||'I agree to participate and to the data collection described above.')}</span></label><button id="startStudy" class="btn btn-primary" disabled>Agree and begin study →</button>`}<p class="small muted" style="margin-top:18px">Participation is voluntary. You can close the page at any point.</p></section>`,null);
   if($('#consentCheck'))$('#consentCheck').onchange=e=>$('#startStudy').disabled=!e.target.checked;
   $('#startStudy').onclick=()=>{
     sessionId=uuid();writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview,{store:embedded?'session':'local'});
@@ -343,7 +357,7 @@ async function showCompleted(already){
 function startPrototype(){
   const url=prototypeURL(activeVariant?.prototypeUrl||activeTask.prototypeUrl||study.prototypeUrl);
   prototypeOrigin=new URL(url).origin;
-  render(`<div class="task-shell"><aside class="task-instructions"><span class="eyebrow accent">ACTIVITY ${taskIndex+1} OF ${study.tasks.length}</span><h1>${esc(activeTask.title||'Prototype task')}</h1><p>${esc(activeTask.instructions)}</p>${resumedIntoActivity?'<div class="notice" id="resumeNotice">The page was reloaded, so the design has restarted from its first screen. Your time and clicks so far are kept.</div>':''}<div class="task-meta"><span>Elapsed <strong id="taskElapsed">0:00</strong></span><span>Clicks <strong id="taskClicks">${clickCount}</strong></span></div>${cardButton('Finish this task →','finishTask')}<span class="small muted">When finished, or if you cannot complete the task, select Finish this task.</span></aside><section class="prototype-pane"><div class="pane-top"><span>INTERACTIVE DESIGN</span><span id="bridgeIndicator" class="live-indicator">Waiting for tracker</span></div><iframe id="prototypeFrame" src="${esc(url)}" title="Prototype for ${esc(activeTask.title||activeTask.id)}" allow="fullscreen"></iframe></section></div>`);
+  render(`<div class="task-shell"><aside class="task-instructions"><span class="eyebrow accent">ACTIVITY ${taskIndex+1} OF ${study.tasks.length}</span><h1>${esc(activeTask.title||'Prototype task')}</h1><p>${esc(activeTask.instructions)}</p>${resumedIntoActivity?'<div class="notice" id="resumeNotice">The page was reloaded, so the design has restarted from its first screen. Your time and clicks so far are kept.</div>':''}<div class="task-side"><div class="task-meta"><span>Elapsed <strong id="taskElapsed">0:00</strong></span><span>Clicks <strong id="taskClicks">${clickCount}</strong></span></div>${cardButton('Finish this task →','finishTask')}<span class="small muted">When finished, or if you cannot complete the task, select Finish this task.</span></div></aside><section class="prototype-pane"><div class="pane-top"><span>INTERACTIVE DESIGN</span><span id="bridgeIndicator" class="live-indicator">Waiting for tracker</span></div><iframe id="prototypeFrame" src="${esc(url)}" title="Prototype for ${esc(activeTask.title||activeTask.id)}" allow="fullscreen"></iframe></section></div>`);
   timer=setInterval(()=>{const t=Math.floor((Date.now()-taskStartedAt)/1000);const f=$('#taskElapsed');if(f)f.textContent=`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;},1000);
   $('#finishTask').onclick=finishPrototype;
 }
