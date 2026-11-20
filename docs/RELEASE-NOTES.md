@@ -1,3 +1,9 @@
+# v0.3.30 release notes — no design numbers on the comparison page (draft)
+
+## Changed
+- **The two cards are no longer called Design 1 and Design 2.** With the columns in random order the numbers added nothing and could confuse. Each card is titled by what the person did with it: "The design you used for the tasks" or "The design you just looked at". The button on each card reads **I'd rather use this one** (screen readers hear which design it is), and the follow-up reads **How strong is your preference?** (Slightly / Strongly). The larger view is titled the same way ("The design you just looked at: Notices").
+- Recorded data unchanged. **IOLA study 1.5.3.**
+
 # v0.3.29 release notes — pick a design, then say how strongly (draft)
 
 ## Changed

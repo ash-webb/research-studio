@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "id": "iola-current-vs-new",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "allowedDevices": "desktop",
   "consentMode": "external",
   "title": "IRS online account study",
@@ -208,10 +208,8 @@
       "doneLabel": "Done looking →"
     },
     "labels": {
-      "used": "Design 1",
-      "usedNote": "The one you used for the tasks",
-      "explored": "Design 2",
-      "exploredNote": "The one you just looked at"
+      "used": "The design you used for the tasks",
+      "explored": "The design you just looked at"
     },
     "snapshots": {
       "iola-current": [

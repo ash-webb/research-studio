@@ -1,4 +1,4 @@
-# Civic Research Studio v0.3.29 — open-source, multi-method unmoderated UX research for public services
+# Civic Research Studio v0.3.30 — open-source, multi-method unmoderated UX research for public services
 
 **Mac / Windows / Linux · GitHub Pages-ready · No front-end build step**
 

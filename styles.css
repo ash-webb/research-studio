@@ -230,7 +230,8 @@ html:not(.rs-preview) .task-shell .pane-top{display:none}
 .compare-col{border:2px solid #d8e1ea;border-radius:12px;padding:16px;cursor:pointer;background:#fff;transition:border-color .12s,background .12s}
 .compare-col:hover{border-color:#8fb5da}
 .compare-col.is-picked{border-color:#1868ac;background:#f1f7fe;box-shadow:0 0 0 2px #1868ac33}
-.compare-col h2{font-size:20px;margin:0}
+.compare-col h2{font-size:20px;margin:0 0 12px}
+.compare-col h2:has(+.compare-note){margin-bottom:0}
 .compare-note{margin:2px 0 12px!important;font-size:14px!important;color:#4c5d70!important}
 .compare-pick{display:flex;align-items:center;gap:10px;border:1px solid #b9c9da;border-radius:9px;padding:12px 14px;font-size:15px;font-weight:700;color:#1b4770;background:#fff;cursor:pointer}
 .compare-pick input{width:20px;height:20px;accent-color:#1868ac;margin:0}

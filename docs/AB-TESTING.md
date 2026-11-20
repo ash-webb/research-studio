@@ -42,7 +42,7 @@ For a two-design experiment, an optional `comparison` block shows each participa
 "comparison": {
   "experimentId": "iola-current-vs-new",
   "explore": { "title": "Look at the other design", "instructions": "…look over the home screen, then open the Payments and Notices areas…", "doneLabel": "Done looking →" },
-  "labels": { "used": "Design 1", "usedNote": "The one you used for the tasks", "explored": "Design 2", "exploredNote": "The one you just looked at" },
+  "labels": { "used": "The design you used for the tasks", "explored": "The design you just looked at" },
   "snapshots": {
     "iola-current": [{ "label": "Home", "imageUrl": "studies/assets/iola/current-home.webp" }, …],
     "iola-new": [{ "label": "Home", "imageUrl": "studies/assets/iola/new-home.webp" }, …]
@@ -54,7 +54,7 @@ For a two-design experiment, an optional `comparison` block shows each participa
 
 - `experimentId` must name an A/B experiment with exactly two designs. Every design needs at least one snapshot with a label and an image address; use the same screens in the same order for both. Only `experimentId` and `snapshots` are required.
 - The explored design opens at its first `prototypeUrl` in the same frame as the tasks, so both are seen at the same size. Take snapshots at that size (1,348×640 on a 1366-wide laptop) and retake them whenever a design changes.
-- Left/right order is random per session (`comparison_answered.left_variant`). Since v0.3.29 each column is an answer ("I'd rather use Design 1"), with "No preference" below; choosing a design then asks "How strongly do you prefer Design N?" (Slightly / Strongly). `design-preference` stores the preferred design's ID (or `none`), so analysis doesn't need the order; `scale_value` keeps the earlier 1–5 coding (1 = strongly the left column … 5 = strongly the right).
+- Left/right order is random per session (`comparison_answered.left_variant`). Since v0.3.29 each column is an answer ("I'd rather use this one"), with "No preference" below; choosing a design then asks "How strong is your preference?" (Slightly / Strongly). Columns are named by what the person did with each design, never by number or side, because the order is random (v0.3.30). An optional `usedNote`/`exploredNote` adds a line under each name. `design-preference` stores the preferred design's ID (or `none`), so analysis doesn't need the order; `scale_value` keeps the earlier 1–5 coding (1 = strongly the left column … 5 = strongly the right).
 - Seeing the second design only after the tasks means the explored design gets a shorter, task-free look; read the preference as a first impression of it, not a usability comparison.
 
 ### Dashboard metric definitions (v0.3.7)

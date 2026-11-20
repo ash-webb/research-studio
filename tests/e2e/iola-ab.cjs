@@ -125,7 +125,7 @@ async function finishTask(p, taskId, self = 'completed', ease = '5') {
 async function answerPreference(p, pick) {
   pick = Number(pick);
   if (pick === 3) await p.locator('.compare-none').click();
-  else if (pick < 3) await p.locator('.compare-col').nth(0).locator('.compare-note').click();
+  else if (pick < 3) await p.locator('.compare-col').nth(0).locator('h2').click();
   else await p.locator('.compare-col').nth(1).locator('.compare-pick').click();
   if (pick !== 3) { await p.waitForSelector('#compareStrength:not([hidden])'); await p.locator(`#compareStrength label:has(input[value="${pick === 1 || pick === 5 ? 'strongly' : 'slightly'}"])`).click(); }
 }
@@ -160,7 +160,7 @@ async function compareDesigns(p, { pick = '4', why = 'Synthetic comparison note'
   let axeViolations = null;
   if (shots) await p.screenshot({ path: path.join(OUT, `${shots}-compare-preference.png`), fullPage: true });
   const page = await p.evaluate(() => ({
-    columns: [...document.querySelectorAll('.compare-col')].map(c => [c.querySelector('h2').textContent.trim(), c.querySelector('.compare-note').textContent.trim()].join(' · ')),
+    columns: [...document.querySelectorAll('.compare-col h2')].map(h => h.textContent.trim()),
     shots: [...document.querySelectorAll('.compare-col')].map(c => [...c.querySelectorAll('figcaption')].map(x => x.textContent.trim())),
     loaded: [...document.querySelectorAll('.compare-shot img')].map(i => i.naturalWidth > 0),
     choices: [...document.querySelectorAll('[name="comparePreference"]')].map(i => i.closest('label').textContent.trim()),
@@ -290,11 +290,11 @@ const scenarios = {
       const other = VARIANTS.find(x => x !== v);
       if (!viewport) eq(g, 'comparison page: no WCAG 2.2 A/AA violations', cmp.axeViolations, []);
       eq(g, 'comparison: shows the other design in the same frame', cmp.src, new URL(URL_OF[other], BASE).href);
-      eq(g, 'comparison: labelled columns', [...cmp.page.columns].sort(), ['Design 1 · The one you used for the tasks', 'Design 2 · The one you just looked at']);
+      eq(g, 'comparison: columns named by what was done with each design, no numbers', [...cmp.page.columns].sort(), ['The design you just looked at', 'The design you used for the tasks']);
       eq(g, 'comparison: Home, Payments, Notices for both', cmp.page.shots, [['Home', 'Payments', 'Notices'], ['Home', 'Payments', 'Notices']]);
       check(g, 'comparison: all six snapshots load', cmp.page.loaded.length === 6 && cmp.page.loaded.every(Boolean), cmp.page.loaded);
       eq(g, 'comparison: one choice per column plus no preference; strength hidden until a design is picked', [cmp.page.choices.length, cmp.page.choices[2], cmp.page.strengthHidden, cmp.page.stayedWhenEmpty], [3, 'No preference', true, true]);
-      check(g, 'comparison: strength question names the chosen design', /^How strongly do you prefer Design [12]\?$/.test(cmp.page.strengthQuestion), cmp.page.strengthQuestion);
+      eq(g, 'comparison: strength question', cmp.page.strengthQuestion, 'How strong is your preference?');
       check(g, 'comparison: larger view opens on the page with focus on Close', cmp.viewer.opened.focus === 'closeViewer' && /: Home$/.test(cmp.viewer.opened.title) && cmp.viewer.opened.fits, cmp.viewer.opened);
       eq(g, 'comparison: larger view closes by button, Esc and outside click; no new tab', [cmp.viewer.closedByButton, cmp.viewer.closedByEsc, cmp.viewer.closedByBackdrop, cmp.viewer.newTabs], [true, true, true, 0]);
       const cs = evs.find(e => e.kind === 'comparison_started')?.payload || {}, cx = evs.find(e => e.kind === 'comparison_explored')?.payload || {}, ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
@@ -367,11 +367,11 @@ const scenarios = {
       const evs = await sessionEvents(p);
       const other = VARIANTS.find(x => x !== v);
       eq(g, 'comparison: shows the other design in the same frame', cmp.src, new URL(URL_OF[other], BASE).href);
-      eq(g, 'comparison: labelled columns', [...cmp.page.columns].sort(), ['Design 1 · The one you used for the tasks', 'Design 2 · The one you just looked at']);
+      eq(g, 'comparison: columns named by what was done with each design, no numbers', [...cmp.page.columns].sort(), ['The design you just looked at', 'The design you used for the tasks']);
       eq(g, 'comparison: Home, Payments, Notices for both', cmp.page.shots, [['Home', 'Payments', 'Notices'], ['Home', 'Payments', 'Notices']]);
       check(g, 'comparison: all six snapshots load', cmp.page.loaded.length === 6 && cmp.page.loaded.every(Boolean), cmp.page.loaded);
       eq(g, 'comparison: one choice per column plus no preference; strength hidden until a design is picked', [cmp.page.choices.length, cmp.page.choices[2], cmp.page.strengthHidden, cmp.page.stayedWhenEmpty], [3, 'No preference', true, true]);
-      check(g, 'comparison: strength question names the chosen design', /^How strongly do you prefer Design [12]\?$/.test(cmp.page.strengthQuestion), cmp.page.strengthQuestion);
+      eq(g, 'comparison: strength question', cmp.page.strengthQuestion, 'How strong is your preference?');
       check(g, 'comparison: larger view opens on the page with focus on Close', cmp.viewer.opened.focus === 'closeViewer' && /: Home$/.test(cmp.viewer.opened.title) && cmp.viewer.opened.fits, cmp.viewer.opened);
       eq(g, 'comparison: larger view closes by button, Esc and outside click; no new tab', [cmp.viewer.closedByButton, cmp.viewer.closedByEsc, cmp.viewer.closedByBackdrop, cmp.viewer.newTabs], [true, true, true, 0]);
       const cs = evs.find(e => e.kind === 'comparison_started')?.payload || {}, cx = evs.find(e => e.kind === 'comparison_explored')?.payload || {}, ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
