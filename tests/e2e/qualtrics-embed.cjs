@@ -204,7 +204,7 @@ const scenarios = {
       eq(g, 'summary fields', [ed.rs_embed_ok, ed.rs_status, ed.rs_variant, ed.rs_pid, ...TASKS.map((_, k) => ed[`rs_ab${k + 1}_success`])], ['yes', 'complete', v, 'R_mockResponse1', ...TASKS.map(() => 'received')]);
       check(g, 'time to success recorded for every task', TASKS.every((_, k) => /^\d+$/.test(ed[`rs_ab${k + 1}_tts`])), TASKS.map((_, k) => ed[`rs_ab${k + 1}_tts`]));
       const other = v === 'iola-new' ? 'iola-current' : 'iola-new';
-      eq(g, 'comparison stored as its own fields', [ed.rs_cmp_variant, [v, other].includes(ed.rs_cmp_left), ed.rs_q_design_preference, ed.rs_q_design_preference_strength, ed.rs_q_design_preference_why, /^\d+$/.test(ed.rs_cmp_time), Number(ed.rs_cmp_clicks) >= 1], [other, true, ed.rs_cmp_left, 'somewhat', 'Synthetic, "comparison" note', true, true]);
+      eq(g, 'comparison stored as its own fields', [ed.rs_cmp_variant, [v, other].includes(ed.rs_cmp_left), ed.rs_q_design_preference, ed.rs_q_design_preference_strength, ed.rs_q_design_preference_why, /^\d+$/.test(ed.rs_cmp_time), Number(ed.rs_cmp_clicks) >= 1], [other, true, ed.rs_cmp_left, 'slightly', 'Synthetic, "comparison" note', true, true]);
       eq(g, 'answers stored as their own fields', [ed.rs_q_iola_use, ed.rs_q_one_time_payment_ease, ed.rs_q_upload_documents_issue, ed.rs_q_confidence], ['No, never', '5', 'Synthetic note for upload-documents, with "quotes"', '4']);
       check(g, 'every value fits in an Excel cell', Object.values(s.ed).every(x => x.length <= 32767), Math.max(...Object.values(s.ed).map(x => x.length)));
       const back = await M.sessionFromRecord(s.ed);

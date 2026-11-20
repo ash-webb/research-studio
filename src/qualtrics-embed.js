@@ -46,7 +46,7 @@ export function answerFields(study) {
   if (study.comparison) {
     const qid = study.comparison.question?.id || 'design-preference', whyId = study.comparison.why?.id || 'design-preference-why';
     add({ id: qid, text: study.comparison.question?.text || 'Which design would you rather use?' }, 'comparison');
-    add({ id: `${qid}-strength`, text: 'How strongly (strongly, somewhat, or blank for no preference)' }, 'comparison');
+    add({ id: `${qid}-strength`, text: 'How strongly (strongly, slightly, or blank for no preference)' }, 'comparison');
     add({ id: whyId, text: study.comparison.why?.text || 'What influenced your preference?' }, 'comparison');
   }
   return out;

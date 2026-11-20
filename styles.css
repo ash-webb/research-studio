@@ -227,6 +227,18 @@ html:not(.rs-preview) .task-shell .pane-top{display:none}
 .compare-shot figcaption{font-size:13px;color:#4c5d70;margin-top:5px;font-weight:600}
 .compare-question{border:0;padding:0;margin:0 0 18px}
 .compare-question legend{padding:0;margin-bottom:10px}
-.choice-grid.compare-scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
-.compare-scale .choice{display:flex}.compare-scale .choice span{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.4;font-size:13px}
-@media(max-width:860px){.compare-grid{grid-template-columns:1fr}.choice-grid.compare-scale{grid-template-columns:1fr}}
+.compare-ends{display:flex;justify-content:space-between;gap:16px;font-size:14px;font-weight:750;color:#1b4770;margin:4px 0 8px}
+.compare-scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:relative;border:1px solid #d2dce6;border-radius:10px;background:#fbfcfd}
+.compare-scale::before{content:"";position:absolute;left:10%;right:10%;top:27px;height:2px;background:#c9d5e1}
+.compare-point{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 6px 14px;cursor:pointer;border-radius:9px;font-size:14px;color:#3c5065;text-align:center}
+.compare-point:hover{background:#eef5fc}
+.compare-point input{position:absolute;opacity:0;width:1px;height:1px}
+.compare-dot{width:22px;height:22px;border-radius:50%;border:2px solid #7f93a8;background:#fff;position:relative;z-index:1}
+.compare-point input:checked~.compare-dot{border-color:#1868ac;background:radial-gradient(circle,#1868ac 0 5px,#fff 6px)}
+.compare-point input:checked~.compare-short{font-weight:800;color:#125a97}
+.compare-point:has(input:checked){background:#e4f0fd}
+.compare-point input:focus-visible~.compare-dot{outline:3px solid #15558e;outline-offset:3px}
+.compare-point.is-middle .compare-short{color:#4b5e73}
+.compare-long{position:absolute!important;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.optional{font-weight:500;color:#5f6d7c}
+@media(max-width:860px){.compare-grid{grid-template-columns:1fr}.compare-ends{display:none}.compare-scale{grid-template-columns:1fr}.compare-scale::before{display:none}.compare-point{flex-direction:row;justify-content:flex-start;text-align:left}.compare-short{display:none}.compare-long{position:static!important;width:auto;height:auto;overflow:visible;clip:auto;white-space:normal}}

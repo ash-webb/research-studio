@@ -1,3 +1,11 @@
+# v0.3.28 release notes — a clearer preference question (draft)
+
+## Changed
+- **The comparison's preference question is one row under the pictures.** The ends of the row are labelled with the columns above them ("◀ The design you used for the tasks", "The design you just looked at ▶", in whichever order the columns are), and the five points read Strongly, Slightly, No preference, Slightly, Strongly. Before, each option was a long sentence naming a design. Screen readers still hear the full meaning of each point ("Slightly prefer the design you just looked at (left)"), and on narrow screens the full wording shows.
+- The page heading is "Compare the two designs" instead of a second "Which design…" question, and the comment box reads "What made you choose it? (optional)".
+- `design-preference-strength` is now `slightly` instead of `somewhat` for points 2 and 4. Sessions from study 1.5.0 (the first hour of the comparison) have `somewhat`; treat the two as the same.
+- **IOLA study 1.5.1.**
+
 # v0.3.27 release notes — snapshots open larger on the same page (draft)
 
 ## Fixed

@@ -73,7 +73,7 @@ Saved as `plan` in the working-copy JSON; removed from the published study file 
 - Clicks and screens in the explored design: `interaction_batch` with task ID `design-comparison`. No `task_started`/`task_ended`.
 - `comparison_explored`: `explored_variant`, `time_seconds`, `click_count`, `tracker_connected`.
 - `comparison_zoomed` (v0.3.27): `snapshot` (column and screen, e.g. "The design you just looked at: Notices") each time a snapshot is opened in the larger view.
-- `answers` at stage `comparison`: `design-preference` (preferred design ID or `none`), `design-preference-strength` (`strongly`, `somewhat`, or blank for no preference), `design-preference-why` (free text, up to 4,000 characters).
+- `answers` at stage `comparison`: `design-preference` (preferred design ID or `none`), `design-preference-strength` (`strongly`, `slightly` — `somewhat` in study 1.5.0 —, or blank for no preference), `design-preference-why` (free text, up to 4,000 characters).
 - `comparison_answered`: `left_variant`, `right_variant`, `scale_value` (1 = strongly prefer left … 5 = strongly prefer right), `preferred_variant`, `strength`, `used_variant`, `explored_variant`.
 - Survey fields: `rs_q_design_preference`, `rs_q_design_preference_strength`, `rs_q_design_preference_why`, `rs_cmp_variant`, `rs_cmp_left`, `rs_cmp_time`, `rs_cmp_clicks`.
 

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "id": "iola-current-vs-new",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "allowedDevices": "desktop",
   "consentMode": "external",
   "title": "IRS online account study",
@@ -243,13 +243,13 @@
     },
     "question": {
       "id": "design-preference",
-      "title": "Which design do you prefer?",
+      "title": "Compare the two designs",
       "intro": "Here are the Home, Payments and Notices screens from both designs. Select a screen to see it larger.",
       "text": "Which design would you rather use?"
     },
     "why": {
       "id": "design-preference-why",
-      "text": "What made you prefer one design over the other, or neither?"
+      "text": "What made you choose it?"
     }
   }
 }
