@@ -51,7 +51,7 @@ const kinds = (evs, kind, task) => evs.filter(e => e.kind === kind && (task === 
 async function pick(p, name, value) { await p.locator(`#questionForm label.choice:has(input[name="${name}"][value="${value}"])`).click(); }
 async function submitForm(p) { await rerender(p, () => p.click('#questionForm button[type=submit]')); }
 async function protoClick(p, ids) {
-  await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 });
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 });
   for (const id of ids) { await p.frameLocator('#prototypeFrame').locator(`[data-ut-id="${id}"]`).click(); await p.waitForTimeout(150); }
   await p.waitForTimeout(200);
 }
@@ -77,7 +77,7 @@ scenarios.prototype = async ctx => {
   // Reach the success screen, then reload before finishing.
   await protoClick(p, ['nav-activity', 'activity-open-detail']);
   await reload(p);
-  await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 });
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 });
   await rerender(p, () => p.click('#finishTask'));
   // Reload on "How did that task go?".
   await reload(p);

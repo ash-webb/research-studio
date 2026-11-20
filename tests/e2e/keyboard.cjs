@@ -108,7 +108,7 @@ scenarios.prototype = async ctx => {
   const p = await ctx.newPage(); await p.goto(BASE + 'study.html?study=demo-portal'); await p.waitForSelector('#consentCheck');
   await consentByKeyboard(p, g);
   await answerForm(p, g, { experience: 'Weekly' }, 'Pre-study questions → prototype task');
-  await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 }).catch(() => {});
   // Tab into the embedded prototype and activate its navigation with the keyboard.
   await tabTo(p, f => f.inFrame && /Activity/.test(f.text), { g, label: 'prototype "Activity" nav', max: 60 });
   await p.keyboard.press('Enter'); await p.waitForTimeout(150);

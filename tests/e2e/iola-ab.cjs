@@ -106,7 +106,7 @@ async function startSession(ctx, query) {
 }
 async function openTask(p, viewport) {
   await p.waitForSelector('#prototypeFrame');
-  const connected = await p.waitForSelector('#bridgeIndicator.connected', { timeout: 10000 }).then(() => true, () => false);
+  const connected = await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 10000 }).then(() => true, () => false);
   const f = p.frameLocator('#prototypeFrame');
   await f.locator('#app').first().waitFor();
   // Playwright doesn't scroll the page to reach fixed elements inside an iframe; a person scrolls.
@@ -231,7 +231,7 @@ const scenarios = {
       for (const t of TASKS) {
         const e = ended(evs, t); const r = e?.payload?.result || {};
         eq(g, `${t}: success recorded`, [r.success_signal_received, r.success_signal_status], [true, 'received']);
-        eq(g, `${t}: design recorded`, [e?.payload?.variant_id, e?.payload?.experiment_id, e?.payload?.variant_revision], [v, 'iola-current-vs-new', { 'iola-current': 'proto-v3', 'iola-new': 'proto-v3' }[v]]);
+        eq(g, `${t}: design recorded`, [e?.payload?.variant_id, e?.payload?.experiment_id, e?.payload?.variant_revision], [v, 'iola-current-vs-new', { 'iola-current': 'proto-v3', 'iola-new': 'proto-v4' }[v]]);
         eq(g, `${t}: tracker_connected recorded`, e?.payload?.tracker_connected, true);
         const P = e?.payload || {};
         check(g, `${t}: time to success <= time to Finish <= total time`, Number.isFinite(P.success_at_seconds) && P.success_at_seconds <= P.finished_at_seconds && P.finished_at_seconds <= P.time_seconds, [P.success_at_seconds, P.finished_at_seconds, P.time_seconds]);

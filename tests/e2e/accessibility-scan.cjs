@@ -58,7 +58,7 @@ async function participantScreens(p, vp) {
   await consent(p); await scan(p, 'Pre-study questions', vp);
   await p.locator('label.choice:has(input[value="Weekly"])').click();
   await rerender(p, () => p.click('#questionForm button[type=submit]'));
-  await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 }).catch(() => {});
   await scan(p, 'Prototype task (with embedded prototype)', vp);
   await p.reload(); await p.waitForSelector('#resumeNotice'); await p.waitForTimeout(300);
   await scan(p, 'Prototype task after a reload (resume notice)', vp);
@@ -69,7 +69,7 @@ async function participantScreens(p, vp) {
   await p.evaluate(() => { try { sessionStorage.clear(); } catch {} });
   await p.goto(`${BASE}study.html?study=demo-ab-implementation&variant=design-b&return=${encodeURIComponent('https://irsresearch.gov1.qualtrics.com/jfe/form/SV_x')}`);
   await p.waitForSelector('#consentCheck'); await consent(p);
-  await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 }).catch(() => {});
   await scan(p, 'A/B task (design from study link)', vp);
   for (const q of ['request-ease', 'message-ease']) {
     await rerender(p, () => p.click('#finishTask'));

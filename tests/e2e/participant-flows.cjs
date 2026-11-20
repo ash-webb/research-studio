@@ -89,7 +89,7 @@ async function fillForm(p, answers) {
 }
 
 async function prototypeTask(p, clicks, selfReport) {
-  const connected = await p.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).then(() => true, () => false);
+  const connected = await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 }).then(() => true, () => false);
   const frame = p.frameLocator('#prototypeFrame');
   for (const id of clicks) { await frame.locator(`[data-ut-id="${id}"]`).click(); await p.waitForTimeout(120); }
   await p.waitForTimeout(250);
@@ -895,7 +895,7 @@ scenarios.mobile = async browser => {
   await mixedRun(p, G, true);
   const { p: p2 } = await startSession(ctx, 'demo-portal', p);
   await fillForm(p2, { experience: 'Daily' });
-  await p2.waitForSelector('#bridgeIndicator.connected', { timeout: 8000 }).catch(() => {});
+  await p2.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 }).catch(() => {});
   await screenshot(p2, 'mobile-7-prototype');
   await noHorizontalScroll(p2, G, 'prototype task');
   const r = await openResults(ctx, 'demo-mixed');

@@ -20,6 +20,7 @@ let assignments={}, abResults={};
 const alertBox=$('#participantAlert');
 const query=new URLSearchParams(location.search);
 const preview=query.get('preview')==='1';
+document.documentElement.classList.toggle('rs-preview',preview);
 const returnUrl=safeReturnUrl(query.get('return'),(window.UTP_SETTINGS||{}).returnUrlHosts||['qualtrics.com']);
 const $main=()=>$('#participantMain');
 // Inside a Qualtrics survey (v0.3.11): study.html?embed=qualtrics shown in the survey's iframe.
@@ -357,9 +358,11 @@ async function showCompleted(already){
 function startPrototype(){
   const url=prototypeURL(activeVariant?.prototypeUrl||activeTask.prototypeUrl||study.prototypeUrl);
   prototypeOrigin=new URL(url).origin;
-  render(`<div class="task-shell"><aside class="task-instructions"><span class="eyebrow accent">ACTIVITY ${taskIndex+1} OF ${study.tasks.length}</span><h1>${esc(activeTask.title||'Prototype task')}</h1><p>${esc(activeTask.instructions)}</p>${resumedIntoActivity?'<div class="notice" id="resumeNotice">The page was reloaded, so the design has restarted from its first screen. Your time and clicks so far are kept.</div>':''}<div class="task-side"><div class="task-meta"><span>Elapsed <strong id="taskElapsed">0:00</strong></span><span>Clicks <strong id="taskClicks">${clickCount}</strong></span></div>${cardButton('Finish this task →','finishTask')}<span class="small muted">When finished, or if you cannot complete the task, select Finish this task.</span></div></aside><section class="prototype-pane"><div class="pane-top"><span>INTERACTIVE DESIGN</span><span id="bridgeIndicator" class="live-indicator">Waiting for tracker</span></div><iframe id="prototypeFrame" src="${esc(url)}" title="Prototype for ${esc(activeTask.title||activeTask.id)}" allow="fullscreen"></iframe></section></div>`);
+  render(`<div class="task-shell"><aside class="task-instructions"><span class="eyebrow accent">ACTIVITY ${taskIndex+1} OF ${study.tasks.length}</span><h1>${esc(activeTask.title||'Prototype task')}</h1><p id="taskText">${esc(activeTask.instructions)}</p><p class="small muted task-help">When finished, or if you cannot complete the task, select Finish this task.</p>${resumedIntoActivity?'<div class="notice" id="resumeNotice">The page was reloaded, so the design has restarted from its first screen. Your time and clicks so far are kept.</div>':''}<div class="task-side"><div class="task-meta"><span>Elapsed <strong id="taskElapsed">0:00</strong></span><span>Clicks <strong id="taskClicks">${clickCount}</strong></span></div>${cardButton('Finish this task →','finishTask')}<button type="button" id="toggleTask" class="btn btn-outline task-toggle" aria-expanded="true" aria-controls="taskText">Hide task</button></div></aside><section class="prototype-pane"><div class="pane-top"><span>INTERACTIVE DESIGN</span><span id="bridgeIndicator" class="live-indicator">Waiting for tracker</span></div><iframe id="prototypeFrame" src="${esc(url)}" title="Prototype for ${esc(activeTask.title||activeTask.id)}" allow="fullscreen"></iframe></section></div>`);
   timer=setInterval(()=>{const t=Math.floor((Date.now()-taskStartedAt)/1000);const f=$('#taskElapsed');if(f)f.textContent=`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;},1000);
   $('#finishTask').onclick=finishPrototype;
+  // v0.3.25: the task text can be folded away to give the design more height; the title and Finish stay visible.
+  $('#toggleTask').onclick=()=>{const box=$('.task-instructions'),open=box.classList.toggle('collapsed')===false;const b=$('#toggleTask');b.textContent=open?'Hide task':'Show task';b.setAttribute('aria-expanded',String(open));};
 }
 function flushInteractions(){if(!taskInteractions.length||!writer||!activeTask)return;const hits=taskInteractions.splice(0);for(let i=0;i<hits.length;i+=20)writer.add('interaction_batch',activeTask.id,{items:hits.slice(i,i+20)});}
 function finishPrototype(){

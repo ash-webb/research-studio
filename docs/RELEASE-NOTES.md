@@ -1,3 +1,11 @@
+# v0.3.25 release notes — the design gets most of the window during prototype tasks (draft)
+
+## Changed
+- **On computers (951 px wide and up), a prototype task is one slim bar above the design.** During the task the page header, the "Interactive design" strip and the elapsed time and click count are hidden. Time and clicks are still recorded, and preview mode still shows the tracker strip. The bar shows the activity number, the task title and text, the "When finished…" line, **Finish this task** and a new **Hide task** button. Hide task folds the text away so only the title and the two buttons stay; **Show task** brings it back. It's a button with `aria-expanded`, and the task's title and Finish button never hide.
+- **Design area, measured:** at 1366×591 (the window participants had in the IOLA sessions) 1,348×479 px with the task shown and 1,348×519 px hidden, up from 1,332×358; at 1436×602, 1,418×490 / 1,418×530, up from 1,402×369; at 1920×960, 1,902×848 / 1,902×888, up from 1,334×813, since the side panel above 1,500 px is replaced by the same bar. The design's width stays above 1,024 px on laptops, so the new app keeps its desktop layout.
+- **IOLA study 1.4.2.** Sessions on this layout are marked study version 1.4.2. Design B's revision is now `proto-v4`: its desktop layout shows at most two columns beside the menu, like the app (design-prototypes, November 18, 2026). Design A stays `proto-v3`.
+- Browser checks wait for the tracker connection itself (`#bridgeIndicator.connected` attached) instead of the strip being visible.
+
 # v0.3.24 release notes — Civic Research Studio: new name, public-service look, CC0 license (draft)
 
 ## Changed

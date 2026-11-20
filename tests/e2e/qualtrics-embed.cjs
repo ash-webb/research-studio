@@ -139,7 +139,7 @@ const RIGHT = {
 };
 async function doTask(page, rs, i, { phone } = {}) {
   await rs.waitForSelector('#prototypeFrame');
-  const connected = await rs.waitForSelector('#bridgeIndicator.connected', { timeout: 12000 }).then(() => true, () => false);
+  const connected = await rs.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 12000 }).then(() => true, () => false);
   const src = await rs.getAttribute('#prototypeFrame', 'src');
   const v = Object.keys(URL_OF).find(k => src === URL_OF[k]);
   const f = rs.frameLocator('#prototypeFrame'); await f.locator('#app').first().waitFor();
