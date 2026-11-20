@@ -206,3 +206,18 @@ dialog.design-check::backdrop{background:#172a3d80}
 .task-shell .prototype-pane iframe{min-height:0}
 html:not(.rs-preview) .task-shell .pane-top{display:none}
 }
+
+/* v0.3.26: design comparison. Snapshots of both designs side by side, then a five-point preference scale. */
+.survey-card.compare-card{max-width:1280px}
+.compare-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:18px 0 24px}
+.compare-col h2{font-size:17px;margin:0 0 10px;letter-spacing:-.2px}
+.compare-shot{margin:0 0 14px}
+.compare-shot a{display:block;border:1px solid #d1dae5;border-radius:8px;overflow:hidden;background:#fff}
+.compare-shot a:focus-visible{outline:3px solid #1868ac;outline-offset:2px}
+.compare-shot img{display:block;width:100%;height:auto;aspect-ratio:1348/640;object-fit:cover;object-position:top}
+.compare-shot figcaption{font-size:13px;color:#4c5d70;margin-top:5px;font-weight:600}
+.compare-question{border:0;padding:0;margin:0 0 18px}
+.compare-question legend{padding:0;margin-bottom:10px}
+.choice-grid.compare-scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}
+.compare-scale .choice{display:flex}.compare-scale .choice span{flex:1;display:flex;align-items:center;justify-content:center;text-align:center;line-height:1.4;font-size:13px}
+@media(max-width:860px){.compare-grid{grid-template-columns:1fr}.choice-grid.compare-scale{grid-template-columns:1fr}}

@@ -1,7 +1,7 @@
 {
   "schemaVersion": 3,
   "id": "iola-current-vs-new",
-  "version": "1.4.2",
+  "version": "1.5.0",
   "allowedDevices": "desktop",
   "consentMode": "external",
   "title": "IRS online account study",
@@ -199,5 +199,57 @@
       "text": "Is there anything else you want to tell us about the online account?",
       "required": false
     }
-  ]
+  ],
+  "comparison": {
+    "experimentId": "iola-current-vs-new",
+    "explore": {
+      "title": "Look at the other design",
+      "instructions": "This is a different design of the same online account. There are no tasks this time. Look over the home screen, then open the Payments and Notices areas. When you're ready, select Done looking.",
+      "doneLabel": "Done looking →"
+    },
+    "labels": {
+      "used": "The design you used for the tasks",
+      "explored": "The design you just looked at"
+    },
+    "snapshots": {
+      "iola-current": [
+        {
+          "label": "Home",
+          "imageUrl": "studies/assets/iola/current-home.webp"
+        },
+        {
+          "label": "Payments",
+          "imageUrl": "studies/assets/iola/current-payments.webp"
+        },
+        {
+          "label": "Notices",
+          "imageUrl": "studies/assets/iola/current-notices.webp"
+        }
+      ],
+      "iola-new": [
+        {
+          "label": "Home",
+          "imageUrl": "studies/assets/iola/new-home.webp"
+        },
+        {
+          "label": "Payments",
+          "imageUrl": "studies/assets/iola/new-payments.webp"
+        },
+        {
+          "label": "Notices",
+          "imageUrl": "studies/assets/iola/new-notices.webp"
+        }
+      ]
+    },
+    "question": {
+      "id": "design-preference",
+      "title": "Which design do you prefer?",
+      "intro": "Here are the Home, Payments and Notices screens from both designs. Select a screen to see it larger.",
+      "text": "Which design would you rather use?"
+    },
+    "why": {
+      "id": "design-preference-why",
+      "text": "What made you prefer one design over the other, or neither?"
+    }
+  }
 }

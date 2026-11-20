@@ -1,4 +1,4 @@
-import { METHODS, validateActivity, validateQuestions, normalizeMethod } from './methods.js';
+import { METHODS, validateActivity, validateQuestions, normalizeMethod, secureURL } from './methods.js';
 export const $ = (selector, root = document) => root.querySelector(selector);
 export const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -37,7 +37,29 @@ export function validateStudy(study) {
       prototypeURL(task.prototypeUrl || study.prototypeUrl);
     }
   }
+  if (study.comparison !== undefined) validateComparison(study.comparison, experiments);
   return study;
+}
+
+// v0.3.26: the optional design comparison after an A/B study's final questions.
+function validateComparison(c, experiments) {
+  if (!c || typeof c !== 'object') throw new Error('comparison must be an object.');
+  const signature = experiments.get(c.experimentId);
+  if (!signature) throw new Error('comparison.experimentId must name one of the study\'s A/B experiments.');
+  const ids = signature.split('|');
+  if (ids.length !== 2) throw new Error('A design comparison needs an A/B experiment with exactly two designs.');
+  for (const id of ids) {
+    const shots = c.snapshots?.[id];
+    if (!Array.isArray(shots) || !shots.length) throw new Error(`comparison.snapshots needs at least one image for design ${id}.`);
+    for (const sh of shots) {
+      if (!String(sh?.label || '').trim() || !String(sh?.imageUrl || '').trim()) throw new Error(`Each comparison snapshot for ${id} needs a label and an imageUrl.`);
+      secureURL(sh.imageUrl, location.href);
+    }
+  }
+  for (const key of ['question', 'why']) {
+    const id = c[key]?.id;
+    if (id !== undefined && !/^[a-z0-9-]{2,50}$/.test(id)) throw new Error(`comparison.${key}.id must be lowercase letters, numbers and hyphens.`);
+  }
 }
 
 export function prototypeURL(value) {

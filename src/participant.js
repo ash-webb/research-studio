@@ -17,6 +17,9 @@ let resumeKey='', studyHash='', resumeStage='welcome', activityState={}, formDra
 let interruptions=0, interruptedMs=0, resumedIntoActivity=false;
 // A/B design per experiment for this session (from the link, e.g. a Qualtrics randomizer, or built in).
 let assignments={}, abResults={};
+// v0.3.26 design comparison: when it started, clicks, what was explored and which design shows on the left.
+let compare={};
+const COMPARE_ID='design-comparison';
 const alertBox=$('#participantAlert');
 const query=new URLSearchParams(location.search);
 const preview=query.get('preview')==='1';
@@ -113,7 +116,7 @@ function persist(stageName=resumeStage,index=taskIndex){
   if(!sessionId||!resumeKey)return;
   resumeStage=stageName;
   const cp={v:1,studyId:study.id,hash:studyHash,sessionId,stage:stageName,taskIndex:index,taskStartedAt,
-    interruptions,interruptedMs,activity:activityState,draft:formDraft,assignments,abResults,savedAt:Date.now()};
+    interruptions,interruptedMs,activity:activityState,draft:formDraft,assignments,abResults,compare,savedAt:Date.now()};
   try{sessionStorage.setItem(resumeKey,JSON.stringify(cp));}catch{}
 }
 function saveActivity(state){activityState={...state,successSeconds,finishedSeconds};persist('activity');}
@@ -140,6 +143,7 @@ async function resume(cp){
   sessionId=cp.sessionId;taskIndex=cp.taskIndex||0;writer=new StudyWriter(study.id,sessionId,setSaveStatus,preview,{store:embedded?'session':'local'});
   assignments=cp.assignments&&typeof cp.assignments==='object'?cp.assignments:resolveAssignments(study,sessionId,query);
   abResults=cp.abResults&&typeof cp.abResults==='object'?cp.abResults:{};
+  compare=cp.compare&&typeof cp.compare==='object'?cp.compare:{};
   if(cp.stage==='complete'){stage='complete';showCompleted(true);return;}
   const gap=Math.max(0,Date.now()-(cp.savedAt||Date.now()));
   const task=study.tasks[taskIndex];
@@ -153,6 +157,8 @@ async function resume(cp){
     case 'followup':activeTask=task;activeVariant=normalizeMethod(task)==='ab_test'?variantForTask(task,assignments):null;showFollowup();break;
     case 'post':showPost();break;
     case 'finish':finishStudy();break;
+    case 'compare':startComparison(true);break;
+    case 'compare_pref':showComparePreference();break;
     case 'activity':case 'reflection':resumeActivity(cp,gap);break;
     default:startActivity();
   }
@@ -320,11 +326,76 @@ function showFollowup(){
   });
 }
 function nextActivity(){taskIndex++;startActivity();}
-function showPost(){stage='post';clearInterval(timer);progress(.94,'Final questions');if(!study.postQuestions?.length){persist('finish');finishStudy();return;}
+function showPost(){stage='post';clearInterval(timer);progress(.94,'Final questions');if(!study.postQuestions?.length){afterPost();return;}
  persist('post');
  formPage('ALMOST FINISHED','Final questions','Your feedback helps identify opportunities for improvement.',study.postQuestions,async answers=>{
-   writer.add('answers',null,{stage:'post',answers});persist('finish');await writer.flush();finishStudy();
+   writer.add('answers',null,{stage:'post',answers});await writer.flush();afterPost();
  });
+}
+function afterPost(){if(comparisonSetup()){compare={};persist('compare');startComparison();return;}persist('finish');finishStudy();}
+
+// ---------- Design comparison (v0.3.26) ----------
+// After the final questions of an A/B study: the design this person didn't use, in the same frame as the tasks (so both
+// were seen at the same size), with no task to complete; then snapshots of both designs side by side and one preference
+// question. Configured by the study's "comparison" block (docs/AB-TESTING.md).
+function comparisonSetup(){
+  const c=study.comparison;if(!c)return null;
+  const task=study.tasks.find(t=>normalizeMethod(t)==='ab_test'&&(t.experimentId||t.id)===c.experimentId);if(!task)return null;
+  const used=variantForTask(task,assignments);if(!used)return null;
+  const other=task.variants.find(v=>v.id!==used.id);if(!other)return null;
+  return {c,task,used,other};
+}
+function bindTaskToggle(){
+  const b=$('#toggleTask');if(!b)return;
+  b.onclick=()=>{const box=$('.task-instructions'),open=box.classList.toggle('collapsed')===false;b.textContent=open?'Hide task':'Show task';b.setAttribute('aria-expanded',String(open));};
+}
+function startComparison(resumed=false){
+  const setup=comparisonSetup();if(!setup){persist('finish');finishStudy();return;}
+  const {c,used,other}=setup, ex=c.explore||{};
+  const url=prototypeURL(other.prototypeUrl);
+  prototypeOrigin=new URL(url).origin;
+  stage='compare';activeTask={id:COMPARE_ID,title:ex.title||'Look at the other design',instructions:ex.instructions||''};activeVariant=null;
+  taskInteractions=[];lastPage='';trackerConnected=false;
+  if(!compare.startedAt){
+    compare={startedAt:Date.now(),clicks:0,used:used.id,explored:other.id};
+    writer.add('comparison_started',COMPARE_ID,{experiment_id:c.experimentId,used_variant:used.id,explored_variant:other.id,explored_revision:other.revision||null});
+  }
+  persist('compare');
+  progress(.96,'Compare the designs');
+  render(`<div class="task-shell"><aside class="task-instructions"><span class="eyebrow accent">${esc(ex.eyebrow||'ONE MORE STEP')}</span><h1>${esc(activeTask.title)}</h1><p id="taskText">${esc(ex.instructions||'This is another version of the same account. There is nothing to complete. Look around, then select Done looking.')}</p>${resumed?'<div class="notice" id="compareResumeNotice">The page was reloaded, so the design has restarted from its first screen.</div>':''}<div class="task-side">${cardButton(ex.doneLabel||'Done looking →','doneComparing')}<button type="button" id="toggleTask" class="btn btn-outline task-toggle" aria-expanded="true" aria-controls="taskText">Hide task</button></div></aside><section class="prototype-pane"><div class="pane-top"><span>INTERACTIVE DESIGN</span><span id="bridgeIndicator" class="live-indicator">Waiting for tracker</span></div><iframe id="prototypeFrame" src="${esc(url)}" title="${esc(activeTask.title)}" allow="fullscreen"></iframe></section></div>`);
+  bindTaskToggle();
+  $('#doneComparing').onclick=async()=>{
+    if(stage!=='compare')return;
+    stage='transition';flushInteractions();
+    const time=Math.round((Date.now()-compare.startedAt)/1000);
+    compare.time=time;
+    writer.add('comparison_explored',COMPARE_ID,{experiment_id:c.experimentId,explored_variant:other.id,time_seconds:time,click_count:compare.clicks||0,tracker_connected:trackerConnected});
+    persist('compare_pref');await writer.flush();showComparePreference();
+  };
+}
+function showComparePreference(){
+  const setup=comparisonSetup();if(!setup){persist('finish');finishStudy();return;}
+  const {c,used,other}=setup, q=c.question||{}, why=c.why||{};
+  stage='compare_pref';activeTask={id:COMPARE_ID,title:'Compare the designs'};
+  if(!compare.left||![used.id,other.id].includes(compare.left))compare.left=Math.random()<.5?used.id:other.id;
+  persist('compare_pref');progress(.98,'Compare the designs');
+  const label=id=>id===used.id?(c.labels?.used||'The design you used for the tasks'):(c.labels?.explored||'The design you just looked at');
+  const left=compare.left, right=left===used.id?other.id:used.id;
+  const col=id=>`<section class="compare-col" aria-label="${esc(label(id))}"><h2>${esc(label(id))}</h2>${(c.snapshots?.[id]||[]).map(sh=>{const src=secureURL(sh.imageUrl,location.href);return `<figure class="compare-shot"><a href="${esc(src)}" target="_blank" rel="noopener" aria-label="${esc(`${label(id)}: ${sh.label} (opens larger in a new tab)`)}"><img src="${esc(src)}" alt="${esc(`${label(id)}: ${sh.label} screen`)}"></a><figcaption>${esc(sh.label)}</figcaption></figure>`;}).join('')}</section>`;
+  const qid=q.id||'design-preference', whyId=why.id||'design-preference-why';
+  const lower=s=>s.charAt(0).toLowerCase()+s.slice(1);
+  const scale=[[1,`Strongly prefer ${lower(label(left))}`],[2,`Somewhat prefer ${lower(label(left))}`],[3,'No preference'],[4,`Somewhat prefer ${lower(label(right))}`],[5,`Strongly prefer ${lower(label(right))}`]];
+  render(`<section class="survey-card compare-card"><span class="eyebrow accent">COMPARE THE DESIGNS</span><h1>${esc(q.title||'Which design do you prefer?')}</h1><p>${esc(q.intro||'Here are the same three screens from both designs. Select a screen to see it larger.')}</p><div class="compare-grid">${col(left)}${col(right)}</div><form id="compareForm"><fieldset class="question compare-question"><legend class="question-title">${esc(q.text||'Which design would you rather use?')} <span class="required">*</span></legend><div class="choice-grid compare-scale">${scale.map(([v,t])=>`<label class="choice"><input type="radio" name="comparePreference" value="${v}" required><span>${esc(t)}</span></label>`).join('')}</div></fieldset><div class="question"><label class="question-title" for="compareWhy">${esc(why.text||'What influenced your preference?')}</label><textarea id="compareWhy" name="compareWhy" rows="3" maxlength="4000" placeholder="Your response"></textarea></div><button class="btn btn-primary" type="submit">Continue →</button></form></section>`);
+  $('#compareForm').onsubmit=async e=>{
+    e.preventDefault();
+    const v=Number(e.currentTarget.querySelector('[name="comparePreference"]:checked')?.value);if(!v)return;
+    if(stage!=='compare_pref')return;stage='transition';
+    const preferred=v===3?'none':(v<3?left:right), strength=v===3?'':(v===1||v===5?'strongly':'somewhat');
+    const text=String($('#compareWhy').value||'').trim().slice(0,4000);
+    writer.add('answers',null,{stage:'comparison',answers:{[qid]:preferred,[`${qid}-strength`]:strength,[whyId]:text}});
+    writer.add('comparison_answered',COMPARE_ID,{experiment_id:c.experimentId,used_variant:used.id,explored_variant:other.id,left_variant:left,right_variant:right,scale_value:v,preferred_variant:preferred,strength});
+    persist('finish');await writer.flush();finishStudy();
+  };
 }
 async function finishStudy(){
   stage='complete';progress(1,'Study complete');writer.add('session_completed',null,{});formDraft=null;activityState={};persist('complete');
@@ -362,7 +433,7 @@ function startPrototype(){
   timer=setInterval(()=>{const t=Math.floor((Date.now()-taskStartedAt)/1000);const f=$('#taskElapsed');if(f)f.textContent=`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;},1000);
   $('#finishTask').onclick=finishPrototype;
   // v0.3.25: the task text can be folded away to give the design more height; the title and Finish stay visible.
-  $('#toggleTask').onclick=()=>{const box=$('.task-instructions'),open=box.classList.toggle('collapsed')===false;const b=$('#toggleTask');b.textContent=open?'Hide task':'Show task';b.setAttribute('aria-expanded',String(open));};
+  bindTaskToggle();
 }
 function flushInteractions(){if(!taskInteractions.length||!writer||!activeTask)return;const hits=taskInteractions.splice(0);for(let i=0;i<hits.length;i+=20)writer.add('interaction_batch',activeTask.id,{items:hits.slice(i,i+20)});}
 function finishPrototype(){
@@ -384,16 +455,19 @@ function finishPrototype(){
   };
 }
 window.addEventListener('message',e=>{
-  if(stage!=='activity'||!activeTask||!['prototype','ab_test'].includes(normalizeMethod(activeTask)))return;
+  const comparing=stage==='compare';
+  if(!comparing&&(stage!=='activity'||!activeTask||!['prototype','ab_test'].includes(normalizeMethod(activeTask))))return;
   const frame=$('#prototypeFrame');if(!frame||e.source!==frame.contentWindow||e.origin!==prototypeOrigin)return;
   const m=e.data;
   if(!m||m.namespace!=='UTP_BRIDGE'||m.version!==1||!['ready','click','scroll','screen','success','custom'].includes(m.type))return;
-  if(!trackerConnected){trackerConnected=true;saveActivity({clickCount,trackerConnected,observedSuccess});}
+  if(!trackerConnected){trackerConnected=true;if(!comparing)saveActivity({clickCount,trackerConnected,observedSuccess});}
   $('#bridgeIndicator').textContent='Click tracking active';$('#bridgeIndicator').classList.add('connected');
+  if(comparing&&m.type==='success')return; // nothing to succeed at while looking around
   if(m.type==='success' && m.task_id===activeTask.successSignal){if(!observedSuccess)successSeconds=elapsed();observedSuccess=true;saveActivity({clickCount,trackerConnected,observedSuccess});return;}
   if(m.type==='ready'){lastPage=String(m.page||'').slice(0,90);return;}
   if(['click','scroll','screen','custom'].includes(m.type)){
     const hit={type:m.type,at:new Date().toISOString(),page:String(m.page||lastPage||'').slice(0,90),target:String(m.target||m.name||'').slice(0,90),x_pct:Math.min(100,Math.max(0,Number(m.x_pct)||0)),y_pct:Math.min(100,Math.max(0,Number(m.y_pct)||0)),viewport_width:Math.max(0,Number(m.viewport_width)||0),viewport_height:Math.max(0,Number(m.viewport_height)||0),...(['keyboard','pointer'].includes(m.input)?{input:m.input}:{})};
+    if(comparing){taskInteractions.push(hit);if(m.type==='click'){compare.clicks=(compare.clicks||0)+1;persist('compare');}if(taskInteractions.length>=20)flushInteractions();return;}
     taskInteractions.push(hit);if(m.type==='click'){clickCount++;if($('#taskClicks'))$('#taskClicks').textContent=clickCount;saveActivity({clickCount,trackerConnected,observedSuccess});}
     if(taskInteractions.length>=20)flushInteractions();
   }

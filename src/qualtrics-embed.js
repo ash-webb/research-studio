@@ -42,7 +42,26 @@ export function answerFields(study) {
     for (const q of t.questions || []) add(q, normalizeMethod(t) === 'survey' ? 'activity' : 'post_task', t.id);
   }
   for (const q of study.postQuestions || []) add(q, 'post');
+  // v0.3.26 design comparison: which design they prefer (a design ID or "none"), how strongly, and why.
+  if (study.comparison) {
+    const qid = study.comparison.question?.id || 'design-preference', whyId = study.comparison.why?.id || 'design-preference-why';
+    add({ id: qid, text: study.comparison.question?.text || 'Which design would you rather use?' }, 'comparison');
+    add({ id: `${qid}-strength`, text: 'How strongly (strongly, somewhat, or blank for no preference)' }, 'comparison');
+    add({ id: whyId, text: study.comparison.why?.text || 'What influenced your preference?' }, 'comparison');
+  }
   return out;
+}
+// The comparison step's summary fields (v0.3.26), from its events.
+export const COMPARE_FIELDS = ['rs_cmp_variant', 'rs_cmp_left', 'rs_cmp_time', 'rs_cmp_clicks'];
+function compareFields(events) {
+  const last = kind => [...events].reverse().find(e => e.kind === kind)?.payload || {};
+  const started = last('comparison_started'), explored = last('comparison_explored'), answered = last('comparison_answered');
+  return {
+    rs_cmp_variant: String(started.explored_variant ?? ''),
+    rs_cmp_left: String(answered.left_variant ?? ''),
+    rs_cmp_time: explored.time_seconds == null ? '' : String(explored.time_seconds),
+    rs_cmp_clicks: explored.click_count == null ? '' : String(explored.click_count),
+  };
 }
 const answerText = v => (Array.isArray(v) ? v.join('|') : String(v ?? '')).slice(0, ANSWER_CHARS);
 
@@ -79,6 +98,7 @@ export async function surveyFields({ study, sessionId, status, assignments, abRe
     const v = latest.get(`${a.stage}|${a.task_id ?? ''}|${a.question_id}`);
     fields[a.field] = v === undefined ? '' : answerText(v);
   }
+  if (study.comparison) Object.assign(fields, compareFields(events));
   let text = packSession(study.id, sessionId, events), truncated = false;
   // Keep within MAX_PARTS: drop the oldest click/scroll batches first, never outcomes or answers.
   if (text.length > PART_CHARS * MAX_PARTS) {
@@ -109,6 +129,7 @@ export function fieldNames(study) {
   if (exps.length <= 1) names.push('rs_variant'); else for (const x of exps) names.push(`rs_variant_${x}`);
   ab.forEach((t, i) => { for (const k of ['task', 'variant', 'success', 'self', 'time', 'tts', 'clicks']) names.push(`rs_ab${i + 1}_${k}`); });
   for (const a of answerFields(study)) names.push(a.field);
+  if (study.comparison) names.push(...COMPARE_FIELDS);
   for (let i = 1; i <= MAX_PARTS; i++) names.push(`rs_data_${i}`);
   names.push('rs_data_parts', 'rs_data_chars', 'rs_data_sha256', 'rs_data_truncated');
   return names;

@@ -1,3 +1,16 @@
+# v0.3.26 release notes — after the A/B tasks, a look at the other design and a preference question (draft)
+
+## Added
+- **Design comparison step.** A study with a `comparison` block (docs/AB-TESTING.md) adds two pages after the final questions. First the design the participant didn't use opens in the same frame and window size as the tasks, with no task to complete: the instructions ask them to look over the home screen and open the payments and notices areas, then select **Done looking**. Then a page shows the same three screens (Home, Payments, Notices) from both designs side by side, labelled "The design you used for the tasks" and "The design you just looked at", with each screen opening larger in a new tab. Which design is on the left is random and stays the same after a reload. One required five-point question follows (strongly or somewhat prefer the left design, no preference, somewhat or strongly prefer the right), with the scale's wording naming the columns, then an optional "why" box.
+- **What's recorded.** `comparison_started` (the design used and the one explored), clicks and screens in the explored design under task ID `design-comparison`, `comparison_explored` (time and clicks), the answers at stage `comparison` (`design-preference` = the preferred design's ID or `none`, `design-preference-strength` = `strongly`, `somewhat` or blank, `design-preference-why`), and `comparison_answered` (left and right designs and the scale value). There's no task outcome for the comparison, and success signals from the explored design are ignored, so A/B results are unchanged. Reloading resumes either page.
+- **Survey fields.** Inside a survey, seven more fields: `rs_q_design_preference`, `rs_q_design_preference_strength`, `rs_q_design_preference_why`, `rs_cmp_variant` (the design explored), `rs_cmp_left` (the design shown on the left), `rs_cmp_time` and `rs_cmp_clicks`. They must be declared in the survey flow like the others.
+- **IOLA study 1.5.0** turns the comparison on, with snapshots of both designs at the 1,348×640 size participants see (`studies/assets/iola/`, light theme, captured from design-prototypes on November 20, 2026: Design A `proto-v3`, Design B `proto-v4`). If either design changes, retake the snapshots.
+- Checks: `npm run test:iola` runs the comparison after every full session (other design in the frame, labels, six snapshots loaded, the five-point scale, events and answers, a WCAG 2.2 A/AA scan of the comparison page) and a new `compareRefresh` scenario reloads on both pages; `npm run test:embed` checks the seven survey fields; unit tests cover the `comparison` block's validation and fields.
+
+## Notes
+- The researcher dashboard doesn't chart the preference yet; it's in the Survey CSV (stage `comparison`), the full JSON and the survey export.
+- Moderators no longer need to send a separate link to the second design.
+
 # v0.3.25 release notes — the design gets most of the window during prototype tasks (draft)
 
 ## Changed

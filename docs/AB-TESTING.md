@@ -34,6 +34,29 @@ CSV exports:
 
 Study-level pre/post questions have no single `variant_id` when a study has multiple experiments; join using `session_id` plus exposure records for the experiment of interest.
 
+### Comparing the two designs at the end (v0.3.26)
+
+For a two-design experiment, an optional `comparison` block shows each participant the design they didn't use, then asks which they prefer. It comes after the final questions, so it can't affect the task results.
+
+```json
+"comparison": {
+  "experimentId": "iola-current-vs-new",
+  "explore": { "title": "Look at the other design", "instructions": "…look over the home screen, then open the Payments and Notices areas…", "doneLabel": "Done looking →" },
+  "labels": { "used": "The design you used for the tasks", "explored": "The design you just looked at" },
+  "snapshots": {
+    "iola-current": [{ "label": "Home", "imageUrl": "studies/assets/iola/current-home.webp" }, …],
+    "iola-new": [{ "label": "Home", "imageUrl": "studies/assets/iola/new-home.webp" }, …]
+  },
+  "question": { "id": "design-preference", "title": "Which design do you prefer?", "intro": "…", "text": "Which design would you rather use?" },
+  "why": { "id": "design-preference-why", "text": "What made you prefer one design over the other, or neither?" }
+}
+```
+
+- `experimentId` must name an A/B experiment with exactly two designs. Every design needs at least one snapshot with a label and an image address; use the same screens in the same order for both. Only `experimentId` and `snapshots` are required.
+- The explored design opens at its first `prototypeUrl` in the same frame as the tasks, so both are seen at the same size. Take snapshots at that size (1,348×640 on a 1366-wide laptop) and retake them whenever a design changes.
+- Left/right order is random per session (`comparison_answered.left_variant`). The scale is 1–5 from "Strongly prefer the left design" to "Strongly prefer the right design"; `design-preference` stores the preferred design's ID (or `none`), so analysis doesn't need the order.
+- Seeing the second design only after the tasks means the explored design gets a shorter, task-free look; read the preference as a first impression of it, not a usability comparison.
+
 ### Dashboard metric definitions (v0.3.7)
 
 - **Assigned**: people with a `task_started` record for that design, counted once per session. For imported Qualtrics data, people assigned in Survey 1 who never reached Survey 2 are included.

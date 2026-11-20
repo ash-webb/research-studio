@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import {validateStudy, csv, flattenEvents, escapeHTML, getQuestionChoices} from '../src/shared.js';
 globalThis.location={href:'http://localhost:8000/'};
 const valid={id:'test-study',title:'Testing',prototypeUrl:'http://localhost:8000/demo/prototype.html',tasks:[{id:'find-thing',instructions:'Find a thing'}]};
@@ -25,4 +26,14 @@ test('flattens sessions, task outcome, answers, clicks with links intact',()=>{
   assert.equal(result.answers[0].response,'2');
   assert.equal(result.interactions[0].x_pct,4);
   assert.equal(result.interactions[0].task_id,'t');
+});
+test('design comparison block is checked against the A/B experiment', () => {
+  const iola = JSON.parse(readFileSync(new URL('../studies/iola-current-vs-new.json', import.meta.url), 'utf8'));
+  assert.equal(validateStudy(iola).comparison.experimentId, 'iola-current-vs-new');
+  const c = iola.comparison;
+  assert.throws(() => validateStudy({ ...iola, comparison: { ...c, experimentId: 'nope' } }), /experimentId/);
+  assert.throws(() => validateStudy({ ...iola, comparison: { ...c, snapshots: { 'iola-current': c.snapshots['iola-current'] } } }), /iola-new/);
+  assert.throws(() => validateStudy({ ...iola, comparison: { ...c, snapshots: { ...c.snapshots, 'iola-new': [{ label: 'Home' }] } } }), /imageUrl/);
+  assert.throws(() => validateStudy({ ...iola, comparison: { ...c, snapshots: { ...c.snapshots, 'iola-new': [{ label: 'Home', imageUrl: 'javascript:alert(1)' }] } } }));
+  assert.throws(() => validateStudy({ ...iola, comparison: { ...c, question: { id: 'Bad ID' } } }), /lowercase/);
 });

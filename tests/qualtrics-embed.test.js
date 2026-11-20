@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
-import { hostAllowed, answerFields, packSession, unpackSession, surveyFields, fieldNames, sessionFromRecord, PART_CHARS, MAX_PARTS } from '../src/qualtrics-embed.js';
+import { hostAllowed, COMPARE_FIELDS, answerFields, packSession, unpackSession, surveyFields, fieldNames, sessionFromRecord, PART_CHARS, MAX_PARTS } from '../src/qualtrics-embed.js';
 import { eventsFromQualtrics, expandEmbedded, classifyExport } from '../src/qualtrics-import.js';
 import { flattenEvents } from '../src/shared.js';
 globalThis.location = { href: 'http://localhost:8000/' };
@@ -38,7 +38,7 @@ test('only https addresses on the list (or their subdomains) can receive results
 });
 test('every study question gets its own rs_q_ field', () => {
   const f = answerFields(study);
-  assert.equal(f.length, study.preQuestions.length + study.tasks.length * 2 + study.postQuestions.length);
+  assert.equal(f.length, study.preQuestions.length + study.tasks.length * 2 + study.postQuestions.length + (study.comparison ? 3 : 0));
   assert.equal(new Set(f.map(x => x.field)).size, f.length);
   assert.ok(f.every(x => /^rs_q_[a-z0-9_]+$/.test(x.field)));
   assert.deepEqual(f.find(x => x.question_id === 'one-time-payment-ease'), { field: 'rs_q_one_time_payment_ease', question_id: 'one-time-payment-ease', stage: 'post_task', task_id: 'one-time-payment', text: f.find(x => x.question_id === 'one-time-payment-ease').text });
@@ -175,4 +175,24 @@ test('starter survey: fields, device screening before the randomizer, randomizer
   assert.match(e.SurveyID, /^SV_[a-zA-Z0-9]{11,15}$/);
   const any = starterSurvey({ ...study, allowedDevices: undefined }, { studyPage: 'https://x.example/study.html', template, deviceCheck });
   assert.deepEqual(any.SurveyElements.find(e => e.Element === 'FL').Payload.Flow.map(f => f.Type), ['EmbeddedData', 'Block', 'BlockRandomizer', 'Block', 'Block']);
+});
+
+test('design comparison: its answers and summary get their own fields', async () => {
+  const f = answerFields(study).filter(x => x.stage === 'comparison');
+  assert.deepEqual(f.map(x => x.field), ['rs_q_design_preference', 'rs_q_design_preference_strength', 'rs_q_design_preference_why']);
+  for (const n of [...f.map(x => x.field), ...COMPARE_FIELDS]) assert.ok(fieldNames(study).includes(n), n);
+  const ev = sessionEvents(); const done = ev.pop();
+  const add = (kind, task_id, payload) => ev.push({ id: `c${ev.length}`, study_id: study.id, session_id: SID, kind, task_id, payload, created_at: at(ev.length) });
+  add('comparison_started', 'design-comparison', { experiment_id: 'iola-current-vs-new', used_variant: 'iola-new', explored_variant: 'iola-current' });
+  add('comparison_explored', 'design-comparison', { experiment_id: 'iola-current-vs-new', explored_variant: 'iola-current', time_seconds: 75, click_count: 9 });
+  add('answers', null, { stage: 'comparison', answers: { 'design-preference': 'iola-new', 'design-preference-strength': 'strongly', 'design-preference-why': 'Clearer layout' } });
+  add('comparison_answered', 'design-comparison', { left_variant: 'iola-current', right_variant: 'iola-new', scale_value: 5, preferred_variant: 'iola-new', strength: 'strongly' });
+  ev.push(done);
+  const { fields } = await build(ev);
+  assert.equal(fields.rs_q_design_preference, 'iola-new'); assert.equal(fields.rs_q_design_preference_strength, 'strongly');
+  assert.equal(fields.rs_q_design_preference_why, 'Clearer layout');
+  assert.equal(fields.rs_cmp_variant, 'iola-current'); assert.equal(fields.rs_cmp_left, 'iola-current');
+  assert.equal(fields.rs_cmp_time, '75'); assert.equal(fields.rs_cmp_clicks, '9');
+  const none = await build(sessionEvents());
+  assert.equal(none.fields.rs_cmp_variant, ''); assert.equal(none.fields.rs_q_design_preference, '');
 });

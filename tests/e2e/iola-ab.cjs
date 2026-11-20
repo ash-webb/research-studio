@@ -120,7 +120,36 @@ async function finishTask(p, taskId, self = 'completed', ease = '5') {
   await rerender(p, () => p.click('#reflectionForm button[type=submit]'));
   await fillForm(p, { [`${taskId}-ease`]: ease });
 }
-async function finishStudy(p) { await fillForm(p, { 'overall-ease': '5', confidence: '4' }); await p.waitForSelector('.done-card'); }
+// v0.3.26: after the final questions, the other design (no tasks), then snapshots of both and one preference question.
+const NAV = { payments: '[data-ut-id="nav-payments"], [data-ut-id="tab-pay"]', notices: '[data-ut-id="nav-notices"], [data-ut-id="tab-notices"]' };
+async function compareDesigns(p, { pick = '4', why = 'Synthetic comparison note', shots } = {}) {
+  await p.waitForSelector('#doneComparing');
+  const src = await p.getAttribute('#prototypeFrame', 'src');
+  const f = p.frameLocator('#prototypeFrame'); await f.locator('#app').first().waitFor();
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 10000 }).catch(() => {});
+  if (shots) { await p.waitForTimeout(400); await p.screenshot({ path: path.join(OUT, `${shots}-compare-explore.png`) }); }
+  for (const sel of [NAV.payments, NAV.notices]) { await f.locator(sel).first().click(); await p.waitForTimeout(150); }
+  await rerender(p, () => p.click('#doneComparing'));
+  await p.waitForSelector('#compareForm');
+  await p.evaluate(() => Promise.all([...document.querySelectorAll('.compare-shot img')].map(i => i.decode().catch(() => {}))));
+  let axeViolations = null;
+  if (shots) {
+    await p.screenshot({ path: path.join(OUT, `${shots}-compare-preference.png`), fullPage: true });
+    await p.addScriptTag({ path: require.resolve('axe-core/axe.min.js', { paths: [ROOT] }) });
+    axeViolations = await p.evaluate(async () => (await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'], resultTypes: ['violations'] })).violations.map(x => `${x.id}: ${x.nodes.slice(0, 2).map(n => n.target.join(' ')).join(', ')}`));
+  }
+  const page = await p.evaluate(() => ({
+    columns: [...document.querySelectorAll('.compare-col h2')].map(h => h.textContent.trim()),
+    shots: [...document.querySelectorAll('.compare-col')].map(c => [...c.querySelectorAll('figcaption')].map(x => x.textContent.trim())),
+    loaded: [...document.querySelectorAll('.compare-shot img')].map(i => i.naturalWidth > 0),
+    scale: [...document.querySelectorAll('[name="comparePreference"]')].map(i => i.closest('label').textContent.trim())
+  }));
+  await p.locator(`.compare-scale label:has(input[value="${pick}"])`).click();
+  await p.fill('#compareWhy', why);
+  await rerender(p, () => p.click('#compareForm button[type=submit]'));
+  return { src, page, axeViolations };
+}
+async function finishStudy(p, opts) { await fillForm(p, { 'overall-ease': '5', confidence: '4' }); const r = await compareDesigns(p, opts); await p.waitForSelector('.done-card'); return r; }
 const allEvents = p => p.evaluate(() => JSON.parse(localStorage.getItem('utp-demo-events-v1') || '[]'));
 async function sessionEvents(p) { const evs = await allEvents(p); const sid = evs[evs.length - 1]?.session_id; return evs.filter(e => e.session_id === sid); }
 const ended = (evs, task) => evs.filter(e => e.kind === 'task_ended' && e.task_id === task).pop();
@@ -226,8 +255,25 @@ const scenarios = {
         if (!viewport && i === 0) await p.screenshot({ path: path.join(OUT, `${v}-task1-done.png`) });
         await finishTask(p, t);
       }
-      await finishStudy(p);
+      const cmp = await finishStudy(p, { pick: '1', shots: viewport ? null : v });
       const evs = await sessionEvents(p);
+      const other = VARIANTS.find(x => x !== v);
+      if (!viewport) eq(g, 'comparison page: no WCAG 2.2 A/AA violations', cmp.axeViolations, []);
+      eq(g, 'comparison: shows the other design in the same frame', cmp.src, new URL(URL_OF[other], BASE).href);
+      eq(g, 'comparison: labelled columns', [...cmp.page.columns].sort(), ['The design you just looked at', 'The design you used for the tasks']);
+      eq(g, 'comparison: Home, Payments, Notices for both', cmp.page.shots, [['Home', 'Payments', 'Notices'], ['Home', 'Payments', 'Notices']]);
+      check(g, 'comparison: all six snapshots load', cmp.page.loaded.length === 6 && cmp.page.loaded.every(Boolean), cmp.page.loaded);
+      eq(g, 'comparison: 5-point scale', cmp.page.scale.length, 5);
+      const cs = evs.find(e => e.kind === 'comparison_started')?.payload || {}, cx = evs.find(e => e.kind === 'comparison_explored')?.payload || {}, ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
+      eq(g, 'comparison: started event', [cs.used_variant, cs.explored_variant], [v, other]);
+      check(g, 'comparison: clicks in the other design counted', cx.click_count >= 2 && Number.isFinite(cx.time_seconds), cx);
+      check(g, 'comparison: other design\'s screens recorded under design-comparison', interactions(evs, 'design-comparison').some(x => x.type === 'screen'), interactions(evs, 'design-comparison').length);
+      const leftV = ca.left_variant;
+      eq(g, 'comparison: "strongly prefer" the left column', [ca.scale_value, ca.preferred_variant, ca.strength], [1, leftV, 'strongly']);
+      const ans = evs.find(e => e.kind === 'answers' && e.payload?.stage === 'comparison')?.payload?.answers || {};
+      eq(g, 'comparison: answers', [ans['design-preference'], ans['design-preference-strength'], ans['design-preference-why']], [leftV, 'strongly', 'Synthetic comparison note']);
+      check(g, 'comparison: no task outcome recorded for it', !evs.some(e => e.kind === 'task_ended' && e.task_id === 'design-comparison'), 'task_ended');
+      if (!viewport) await p.screenshot({ path: path.join(OUT, `${v}-done.png`) });
       for (const t of TASKS) {
         const e = ended(evs, t); const r = e?.payload?.result || {};
         eq(g, `${t}: success recorded`, [r.success_signal_received, r.success_signal_status], [true, 'received']);
@@ -284,8 +330,23 @@ const scenarios = {
       const c = await newContext(browser, g);
       const p = await startSession(c.ctx, `variant=${v}`);
       for (const t of TASKS) { const { f } = await openTask(p); await WRONG[v][t](f); await finishTask(p, t, 'completed', '3'); }
-      await finishStudy(p);
+      const cmp = await finishStudy(p, { pick: '1' });
       const evs = await sessionEvents(p);
+      const other = VARIANTS.find(x => x !== v);
+      eq(g, 'comparison: shows the other design in the same frame', cmp.src, new URL(URL_OF[other], BASE).href);
+      eq(g, 'comparison: labelled columns', [...cmp.page.columns].sort(), ['The design you just looked at', 'The design you used for the tasks']);
+      eq(g, 'comparison: Home, Payments, Notices for both', cmp.page.shots, [['Home', 'Payments', 'Notices'], ['Home', 'Payments', 'Notices']]);
+      check(g, 'comparison: all six snapshots load', cmp.page.loaded.length === 6 && cmp.page.loaded.every(Boolean), cmp.page.loaded);
+      eq(g, 'comparison: 5-point scale', cmp.page.scale.length, 5);
+      const cs = evs.find(e => e.kind === 'comparison_started')?.payload || {}, cx = evs.find(e => e.kind === 'comparison_explored')?.payload || {}, ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
+      eq(g, 'comparison: started event', [cs.used_variant, cs.explored_variant], [v, other]);
+      check(g, 'comparison: clicks in the other design counted', cx.click_count >= 2 && Number.isFinite(cx.time_seconds), cx);
+      check(g, 'comparison: other design\'s screens recorded under design-comparison', interactions(evs, 'design-comparison').some(x => x.type === 'screen'), interactions(evs, 'design-comparison').length);
+      const leftV = ca.left_variant;
+      eq(g, 'comparison: "strongly prefer" the left column', [ca.scale_value, ca.preferred_variant, ca.strength], [1, leftV, 'strongly']);
+      const ans = evs.find(e => e.kind === 'answers' && e.payload?.stage === 'comparison')?.payload?.answers || {};
+      eq(g, 'comparison: answers', [ans['design-preference'], ans['design-preference-strength'], ans['design-preference-why']], [leftV, 'strongly', 'Synthetic comparison note']);
+      check(g, 'comparison: no task outcome recorded for it', !evs.some(e => e.kind === 'task_ended' && e.task_id === 'design-comparison'), 'task_ended');
       for (const t of TASKS) {
         const r = ended(evs, t)?.payload?.result || {};
         eq(g, `${t}: not counted as success`, [r.success_signal_received, r.success_signal_status], [false, 'not_observed']);
@@ -363,6 +424,35 @@ const scenarios = {
       eq(g, 'design unchanged across all tasks', [...new Set(evs.filter(e => e.kind === 'task_ended').map(e => e.payload.variant_id))], [v]);
       await c.done();
     }
+  },
+  // v0.3.26: reload while looking at the other design, and on the preference page.
+  async compareRefresh(browser) {
+    const v = 'iola-current', other = 'iola-new', g = 'comparison survives a reload';
+    const c = await newContext(browser, g);
+    const p = await startSession(c.ctx, `variant=${v}`);
+    for (const t of TASKS) { const { f } = await openTask(p); await doRight(v, t, f, p); await finishTask(p, t); }
+    await fillForm(p, { 'overall-ease': '5', confidence: '4' });
+    await p.waitForSelector('#doneComparing');
+    await p.frameLocator('#prototypeFrame').locator(NAV.payments).first().click(); await p.waitForTimeout(300);
+    await p.reload(); await p.waitForSelector('#compareResumeNotice');
+    eq(g, 'after reload: still the other design', await p.getAttribute('#prototypeFrame', 'src'), new URL(URL_OF[other], BASE).href);
+    await p.frameLocator('#prototypeFrame').locator(NAV.notices).first().click(); await p.waitForTimeout(200);
+    await rerender(p, () => p.click('#doneComparing'));
+    await p.waitForSelector('#compareForm');
+    const order = () => p.evaluate(() => [...document.querySelectorAll('.compare-col h2')].map(h => h.textContent.trim()));
+    const before = await order();
+    await p.reload(); await p.waitForSelector('#compareForm');
+    eq(g, 'after reload on the preference page: same left/right order', await order(), before);
+    await p.locator('.compare-scale label:has(input[value="3"])').click();
+    await rerender(p, () => p.click('#compareForm button[type=submit]'));
+    await p.waitForSelector('.done-card');
+    const evs = await sessionEvents(p);
+    eq(g, 'one start, one look, one answer', ['comparison_started', 'comparison_explored', 'comparison_answered'].map(k => evs.filter(e => e.kind === k).length), [1, 1, 1]);
+    const ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
+    eq(g, '"No preference" recorded', [ca.scale_value, ca.preferred_variant, ca.strength], [3, 'none', '']);
+    check(g, 'clicks before and after the reload both counted', (evs.find(e => e.kind === 'comparison_explored')?.payload?.click_count || 0) >= 2, evs.find(e => e.kind === 'comparison_explored')?.payload);
+    check(g, 'session completed', evs.some(e => e.kind === 'session_completed'), 'no session_completed');
+    await c.done();
   },
   // Leaving mid-study: the record shows an unfinished session, not a failed task.
   async abandon(browser) {
@@ -593,7 +683,7 @@ scenarios.visual = async browser => {
   try {
     for (const [name, run] of Object.entries(scenarios)) {
       if (ONLY.length && !ONLY.includes(name)) continue;
-      try { await run(browser); } catch (e) { check(name, 'scenario ran to completion', false, e.message.split('\n').filter(l => /Timeout|waiting for|Error|expected/i.test(l)).slice(0, 3).join(' | ')); }
+      try { await run(browser); } catch (e) { if (process.env.DEBUG_E2E) console.error(e); check(name, 'scenario ran to completion', false, e.message.split('\n').filter(l => /Timeout|waiting for|Error|expected/i.test(l)).slice(0, 3).join(' | ')); }
     }
   } finally { await browser.close(); server.kill(); }
   const failed = checks.filter(c => !c.pass);

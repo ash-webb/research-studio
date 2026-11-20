@@ -152,7 +152,18 @@ async function doTask(page, rs, i, { phone } = {}) {
   await fillForm(rs, { [`${TASKS[i]}-ease`]: '5', [`${TASKS[i]}-issue`]: `Synthetic note for ${TASKS[i]}, with "quotes"` });
   return { v, connected };
 }
-async function finish(rs) { await fillForm(rs, { 'overall-ease': '5', confidence: '4' }); }
+// v0.3.26: then the other design (no tasks) and the preference question with snapshots of both.
+async function finish(rs) {
+  await fillForm(rs, { 'overall-ease': '5', confidence: '4' });
+  await rs.waitForSelector('#doneComparing');
+  const f = rs.frameLocator('#prototypeFrame'); await f.locator('#app').first().waitFor();
+  await f.locator('[data-ut-id="nav-payments"], [data-ut-id="tab-pay"]').first().click();
+  await rerender(rs, () => rs.click('#doneComparing'));
+  await rs.waitForSelector('#compareForm');
+  await rs.locator('.compare-scale label:has(input[value="2"])').click();
+  await rs.fill('#compareWhy', 'Synthetic, "comparison" note');
+  await rerender(rs, () => rs.click('#compareForm button[type=submit]'));
+}
 const stored = page => page.evaluate(() => ({ ed: window.__ed, next: window.__next, got: window.__got, overlay: !!document.querySelector('iframe[title="Research activity"]'), nextHidden: document.getElementById('NextButton').hidden }));
 const bare = ed => Object.fromEntries(Object.entries(ed).map(([k, v]) => [k.replace(/^__js_/, ''), v]));
 
@@ -192,6 +203,8 @@ const scenarios = {
       check(g, 'only declared rs_ fields were written', Object.keys(s.ed).every(k => /^__js_rs_/.test(k)), Object.keys(s.ed));
       eq(g, 'summary fields', [ed.rs_embed_ok, ed.rs_status, ed.rs_variant, ed.rs_pid, ...TASKS.map((_, k) => ed[`rs_ab${k + 1}_success`])], ['yes', 'complete', v, 'R_mockResponse1', ...TASKS.map(() => 'received')]);
       check(g, 'time to success recorded for every task', TASKS.every((_, k) => /^\d+$/.test(ed[`rs_ab${k + 1}_tts`])), TASKS.map((_, k) => ed[`rs_ab${k + 1}_tts`]));
+      const other = v === 'iola-new' ? 'iola-current' : 'iola-new';
+      eq(g, 'comparison stored as its own fields', [ed.rs_cmp_variant, [v, other].includes(ed.rs_cmp_left), ed.rs_q_design_preference, ed.rs_q_design_preference_strength, ed.rs_q_design_preference_why, /^\d+$/.test(ed.rs_cmp_time), Number(ed.rs_cmp_clicks) >= 1], [other, true, ed.rs_cmp_left, 'somewhat', 'Synthetic, "comparison" note', true, true]);
       eq(g, 'answers stored as their own fields', [ed.rs_q_iola_use, ed.rs_q_one_time_payment_ease, ed.rs_q_upload_documents_issue, ed.rs_q_confidence], ['No, never', '5', 'Synthetic note for upload-documents, with "quotes"', '4']);
       check(g, 'every value fits in an Excel cell', Object.values(s.ed).every(x => x.length <= 32767), Math.max(...Object.values(s.ed).map(x => x.length)));
       const back = await M.sessionFromRecord(s.ed);

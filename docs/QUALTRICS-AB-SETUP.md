@@ -123,6 +123,7 @@ Everything in the route A table (same `rs_…` names), plus:
 | --- | --- |
 | `rs_embed_ok` | `yes` once the page's script answered Civic Research Studio. Blank means the script didn't run |
 | `rs_q_<question>` | The answer to each question in the Civic Research Studio study, for example `rs_q_one_time_payment_ease`. Several choices are joined with `\|`. Long answers are cut at 5,000 characters |
+| `rs_cmp_variant`, `rs_cmp_left`, `rs_cmp_time`, `rs_cmp_clicks` | Only when the study has a design comparison (v0.3.26): the design explored after the tasks, the design shown on the left, seconds and clicks spent looking. The preference itself is in `rs_q_design_preference`, `rs_q_design_preference_strength` and `rs_q_design_preference_why` |
 | `rs_data_1` … `rs_data_8` | The whole Civic Research Studio session (every event, click and screen), in parts of up to 30,000 characters so each fits an Excel cell. Unused parts are blank |
 | `rs_data_parts`, `rs_data_chars`, `rs_data_sha256` | How many parts, the total length and a checksum, so the import can confirm nothing was lost |
 | `rs_data_truncated` | `yes` if a very long session (more than about 1,500 clicks) had its oldest click records left out to fit; outcomes and answers are always kept |
