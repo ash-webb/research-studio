@@ -1,3 +1,8 @@
+# v0.3.31 release notes — "Slightly prefer" / "Strongly prefer" (draft)
+
+## Changed
+- The two answers to "How strong is your preference?" read **Slightly prefer** and **Strongly prefer** (were Slightly / Strongly). Recorded values are unchanged (`slightly`, `strongly`).
+
 # v0.3.30 release notes — no design numbers on the comparison page (draft)
 
 ## Changed
