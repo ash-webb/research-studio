@@ -1,3 +1,8 @@
+# v0.3.32 release notes — new releases reach participants right away (draft)
+
+## Fixed
+- **Browsers could keep using the previous release for up to 10 minutes** (GitHub Pages lets them cache files that long), so a change could be live but not show. The study and researcher pages now load `styles.css`, `settings.js` and every module in `src/` with `?v=<version>` (an import map covers the modules' imports of each other), so a new version is fetched as soon as the page is opened. After bumping the version, run `npm run stamp`; a unit test fails if the pages and `package.json` disagree.
+
 # v0.3.31 release notes — "Slightly prefer" / "Strongly prefer" (draft)
 
 ## Changed
