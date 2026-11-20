@@ -120,6 +120,15 @@ async function finishTask(p, taskId, self = 'completed', ease = '5') {
   await rerender(p, () => p.click('#reflectionForm button[type=submit]'));
   await fillForm(p, { [`${taskId}-ease`]: ease });
 }
+// Answer the preference question like a person: 1/2 = the left column (strongly/slightly), 3 = no preference,
+// 4/5 = the right column (slightly/strongly). The left column is clicked on its card, the right on its radio.
+async function answerPreference(p, pick) {
+  pick = Number(pick);
+  if (pick === 3) await p.locator('.compare-none').click();
+  else if (pick < 3) await p.locator('.compare-col').nth(0).locator('.compare-note').click();
+  else await p.locator('.compare-col').nth(1).locator('.compare-pick').click();
+  if (pick !== 3) { await p.waitForSelector('#compareStrength:not([hidden])'); await p.locator(`#compareStrength label:has(input[value="${pick === 1 || pick === 5 ? 'strongly' : 'slightly'}"])`).click(); }
+}
 // v0.3.26: after the final questions, the other design (no tasks), then snapshots of both and one preference question.
 const NAV = { payments: '[data-ut-id="nav-payments"], [data-ut-id="tab-pay"]', notices: '[data-ut-id="nav-notices"], [data-ut-id="tab-notices"]' };
 async function compareDesigns(p, { pick = '4', why = 'Synthetic comparison note', shots } = {}) {
@@ -149,18 +158,23 @@ async function compareDesigns(p, { pick = '4', why = 'Synthetic comparison note'
   viewer.closedByBackdrop = await p.evaluate(() => !document.getElementById('compareViewer').open);
   viewer.newTabs = p.context().pages().length - viewer.pages;
   let axeViolations = null;
+  if (shots) await p.screenshot({ path: path.join(OUT, `${shots}-compare-preference.png`), fullPage: true });
+  const page = await p.evaluate(() => ({
+    columns: [...document.querySelectorAll('.compare-col')].map(c => [c.querySelector('h2').textContent.trim(), c.querySelector('.compare-note').textContent.trim()].join(' · ')),
+    shots: [...document.querySelectorAll('.compare-col')].map(c => [...c.querySelectorAll('figcaption')].map(x => x.textContent.trim())),
+    loaded: [...document.querySelectorAll('.compare-shot img')].map(i => i.naturalWidth > 0),
+    choices: [...document.querySelectorAll('[name="comparePreference"]')].map(i => i.closest('label').textContent.trim()),
+    strengthHidden: document.getElementById('compareStrength').hidden
+  }));
+  // Continue with nothing chosen does nothing; choosing a design asks how strongly.
+  await p.click('#compareForm button[type=submit]'); const stayed = !!(await p.$('#compareForm'));
+  await answerPreference(p, pick);
   if (shots) {
-    await p.screenshot({ path: path.join(OUT, `${shots}-compare-preference.png`), fullPage: true });
+    await p.screenshot({ path: path.join(OUT, `${shots}-compare-answered.png`), fullPage: true });
     await p.addScriptTag({ path: require.resolve('axe-core/axe.min.js', { paths: [ROOT] }) });
     axeViolations = await p.evaluate(async () => (await axe.run(document, { runOnly: ['wcag2a', 'wcag2aa', 'wcag21aa', 'wcag22aa'], resultTypes: ['violations'] })).violations.map(x => `${x.id}: ${x.nodes.slice(0, 2).map(n => n.target.join(' ')).join(', ')}`));
   }
-  const page = await p.evaluate(() => ({
-    columns: [...document.querySelectorAll('.compare-col h2')].map(h => h.textContent.trim()),
-    shots: [...document.querySelectorAll('.compare-col')].map(c => [...c.querySelectorAll('figcaption')].map(x => x.textContent.trim())),
-    loaded: [...document.querySelectorAll('.compare-shot img')].map(i => i.naturalWidth > 0),
-    scale: [...document.querySelectorAll('[name="comparePreference"]')].map(i => i.closest('label').textContent.trim())
-  }));
-  await p.locator(`.compare-scale label:has(input[value="${pick}"])`).click();
+  page.stayedWhenEmpty = stayed; page.strengthQuestion = (await p.textContent('#compareStrengthText').catch(() => '')).trim();
   await p.fill('#compareWhy', why);
   await rerender(p, () => p.click('#compareForm button[type=submit]'));
   return { src, page, axeViolations, viewer };
@@ -276,10 +290,11 @@ const scenarios = {
       const other = VARIANTS.find(x => x !== v);
       if (!viewport) eq(g, 'comparison page: no WCAG 2.2 A/AA violations', cmp.axeViolations, []);
       eq(g, 'comparison: shows the other design in the same frame', cmp.src, new URL(URL_OF[other], BASE).href);
-      eq(g, 'comparison: labelled columns', [...cmp.page.columns].sort(), ['The design you just looked at', 'The design you used for the tasks']);
+      eq(g, 'comparison: labelled columns', [...cmp.page.columns].sort(), ['Design 1 · The one you used for the tasks', 'Design 2 · The one you just looked at']);
       eq(g, 'comparison: Home, Payments, Notices for both', cmp.page.shots, [['Home', 'Payments', 'Notices'], ['Home', 'Payments', 'Notices']]);
       check(g, 'comparison: all six snapshots load', cmp.page.loaded.length === 6 && cmp.page.loaded.every(Boolean), cmp.page.loaded);
-      eq(g, 'comparison: 5-point scale', cmp.page.scale.length, 5);
+      eq(g, 'comparison: one choice per column plus no preference; strength hidden until a design is picked', [cmp.page.choices.length, cmp.page.choices[2], cmp.page.strengthHidden, cmp.page.stayedWhenEmpty], [3, 'No preference', true, true]);
+      check(g, 'comparison: strength question names the chosen design', /^How strongly do you prefer Design [12]\?$/.test(cmp.page.strengthQuestion), cmp.page.strengthQuestion);
       check(g, 'comparison: larger view opens on the page with focus on Close', cmp.viewer.opened.focus === 'closeViewer' && /: Home$/.test(cmp.viewer.opened.title) && cmp.viewer.opened.fits, cmp.viewer.opened);
       eq(g, 'comparison: larger view closes by button, Esc and outside click; no new tab', [cmp.viewer.closedByButton, cmp.viewer.closedByEsc, cmp.viewer.closedByBackdrop, cmp.viewer.newTabs], [true, true, true, 0]);
       const cs = evs.find(e => e.kind === 'comparison_started')?.payload || {}, cx = evs.find(e => e.kind === 'comparison_explored')?.payload || {}, ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
@@ -352,10 +367,11 @@ const scenarios = {
       const evs = await sessionEvents(p);
       const other = VARIANTS.find(x => x !== v);
       eq(g, 'comparison: shows the other design in the same frame', cmp.src, new URL(URL_OF[other], BASE).href);
-      eq(g, 'comparison: labelled columns', [...cmp.page.columns].sort(), ['The design you just looked at', 'The design you used for the tasks']);
+      eq(g, 'comparison: labelled columns', [...cmp.page.columns].sort(), ['Design 1 · The one you used for the tasks', 'Design 2 · The one you just looked at']);
       eq(g, 'comparison: Home, Payments, Notices for both', cmp.page.shots, [['Home', 'Payments', 'Notices'], ['Home', 'Payments', 'Notices']]);
       check(g, 'comparison: all six snapshots load', cmp.page.loaded.length === 6 && cmp.page.loaded.every(Boolean), cmp.page.loaded);
-      eq(g, 'comparison: 5-point scale', cmp.page.scale.length, 5);
+      eq(g, 'comparison: one choice per column plus no preference; strength hidden until a design is picked', [cmp.page.choices.length, cmp.page.choices[2], cmp.page.strengthHidden, cmp.page.stayedWhenEmpty], [3, 'No preference', true, true]);
+      check(g, 'comparison: strength question names the chosen design', /^How strongly do you prefer Design [12]\?$/.test(cmp.page.strengthQuestion), cmp.page.strengthQuestion);
       check(g, 'comparison: larger view opens on the page with focus on Close', cmp.viewer.opened.focus === 'closeViewer' && /: Home$/.test(cmp.viewer.opened.title) && cmp.viewer.opened.fits, cmp.viewer.opened);
       eq(g, 'comparison: larger view closes by button, Esc and outside click; no new tab', [cmp.viewer.closedByButton, cmp.viewer.closedByEsc, cmp.viewer.closedByBackdrop, cmp.viewer.newTabs], [true, true, true, 0]);
       const cs = evs.find(e => e.kind === 'comparison_started')?.payload || {}, cx = evs.find(e => e.kind === 'comparison_explored')?.payload || {}, ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
@@ -463,7 +479,7 @@ const scenarios = {
     const before = await order();
     await p.reload(); await p.waitForSelector('#compareForm');
     eq(g, 'after reload on the preference page: same left/right order', await order(), before);
-    await p.locator('.compare-scale label:has(input[value="3"])').click();
+    await answerPreference(p, 3);
     await rerender(p, () => p.click('#compareForm button[type=submit]'));
     await p.waitForSelector('.done-card');
     const evs = await sessionEvents(p);

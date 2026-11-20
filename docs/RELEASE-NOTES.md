@@ -1,3 +1,11 @@
+# v0.3.29 release notes — pick a design, then say how strongly (draft)
+
+## Changed
+- **The preference question is answered on the designs themselves.** Each column of screenshots is a card titled **Design 1** ("The one you used for the tasks") or **Design 2** ("The one you just looked at"), named in the order they were seen, with **I'd rather use Design 1/2** at the bottom; selecting anywhere on the card except a screenshot chooses it, and the chosen card is outlined. **No preference** sits below the two cards. After a design is chosen, **How strongly do you prefer Design N?** appears with Slightly and Strongly; it stays hidden for No preference. This replaces the five-point row, which people found hard to map back to the pictures.
+- Recorded data is unchanged: `design-preference` (design ID or `none`), `design-preference-strength` (`slightly`, `strongly` or blank), and `comparison_answered.scale_value` keeps the 1–5 left-to-right coding.
+- The larger view of a screenshot is titled with the design name ("Design 2: Notices").
+- **IOLA study 1.5.2.**
+
 # v0.3.28 release notes — a clearer preference question (draft)
 
 ## Changed

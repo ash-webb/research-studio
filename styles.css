@@ -207,7 +207,7 @@ dialog.design-check::backdrop{background:#172a3d80}
 html:not(.rs-preview) .task-shell .pane-top{display:none}
 }
 
-/* v0.3.26: design comparison. Snapshots of both designs side by side, then a five-point preference scale. */
+/* v0.3.26: design comparison. Snapshots of both designs side by side; v0.3.29: each column is an answer, then how strongly. */
 .survey-card.compare-card{max-width:1280px}
 .compare-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;margin:18px 0 24px}
 .compare-col h2{font-size:17px;margin:0 0 10px;letter-spacing:-.2px}
@@ -225,20 +225,19 @@ html:not(.rs-preview) .task-shell .pane-top{display:none}
 .compare-viewer img{display:block;width:auto;max-width:96vw;max-height:calc(94vh - 62px);height:auto;margin:0 auto}
 .compare-shot img{display:block;width:100%;height:auto;aspect-ratio:1348/640;object-fit:cover;object-position:top}
 .compare-shot figcaption{font-size:13px;color:#4c5d70;margin-top:5px;font-weight:600}
-.compare-question{border:0;padding:0;margin:0 0 18px}
-.compare-question legend{padding:0;margin-bottom:10px}
-.compare-ends{display:flex;justify-content:space-between;gap:16px;font-size:14px;font-weight:750;color:#1b4770;margin:4px 0 8px}
-.compare-scale{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:relative;border:1px solid #d2dce6;border-radius:10px;background:#fbfcfd}
-.compare-scale::before{content:"";position:absolute;left:10%;right:10%;top:27px;height:2px;background:#c9d5e1}
-.compare-point{position:relative;display:flex;flex-direction:column;align-items:center;gap:8px;padding:16px 6px 14px;cursor:pointer;border-radius:9px;font-size:14px;color:#3c5065;text-align:center}
-.compare-point:hover{background:#eef5fc}
-.compare-point input{position:absolute;opacity:0;width:1px;height:1px}
-.compare-dot{width:22px;height:22px;border-radius:50%;border:2px solid #7f93a8;background:#fff;position:relative;z-index:1}
-.compare-point input:checked~.compare-dot{border-color:#1868ac;background:radial-gradient(circle,#1868ac 0 5px,#fff 6px)}
-.compare-point input:checked~.compare-short{font-weight:800;color:#125a97}
-.compare-point:has(input:checked){background:#e4f0fd}
-.compare-point input:focus-visible~.compare-dot{outline:3px solid #15558e;outline-offset:3px}
-.compare-point.is-middle .compare-short{color:#4b5e73}
-.compare-long{position:absolute!important;width:1px;height:1px;padding:0;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+.compare-question{border:0;padding:0;margin:0 0 6px}
+.compare-question>legend{padding:0;margin-bottom:12px;font-size:17px}
+.compare-col{border:2px solid #d8e1ea;border-radius:12px;padding:16px;cursor:pointer;background:#fff;transition:border-color .12s,background .12s}
+.compare-col:hover{border-color:#8fb5da}
+.compare-col.is-picked{border-color:#1868ac;background:#f1f7fe;box-shadow:0 0 0 2px #1868ac33}
+.compare-col h2{font-size:20px;margin:0}
+.compare-note{margin:2px 0 12px!important;font-size:14px!important;color:#4c5d70!important}
+.compare-pick{display:flex;align-items:center;gap:10px;border:1px solid #b9c9da;border-radius:9px;padding:12px 14px;font-size:15px;font-weight:700;color:#1b4770;background:#fff;cursor:pointer}
+.compare-pick input{width:20px;height:20px;accent-color:#1868ac;margin:0}
+.compare-pick:has(input:checked){border-color:#1868ac;background:#ddecfd}
+.compare-pick:has(input:focus-visible){outline:3px solid #15558e;outline-offset:2px}
+.compare-none{width:fit-content;margin:4px auto 0;font-weight:600;color:#3c5065}
+.compare-strength{border:0;margin:14px 0 0;padding:17px 0}
+.compare-strength .choice span{font-size:14px;padding:11px 22px}
 .optional{font-weight:500;color:#5f6d7c}
-@media(max-width:860px){.compare-grid{grid-template-columns:1fr}.compare-ends{display:none}.compare-scale{grid-template-columns:1fr}.compare-scale::before{display:none}.compare-point{flex-direction:row;justify-content:flex-start;text-align:left}.compare-short{display:none}.compare-long{position:static!important;width:auto;height:auto;overflow:visible;clip:auto;white-space:normal}}
+@media(max-width:860px){.compare-grid{grid-template-columns:1fr}}

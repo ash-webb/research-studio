@@ -391,26 +391,41 @@ function bindCompareViewer(){
 }
 function showComparePreference(){
   const setup=comparisonSetup();if(!setup){persist('finish');finishStudy();return;}
-  const {c,used,other}=setup, q=c.question||{}, why=c.why||{};
+  const {c,used,other}=setup, q=c.question||{}, why=c.why||{}, lb=c.labels||{};
   stage='compare_pref';activeTask={id:COMPARE_ID,title:'Compare the designs'};
   if(!compare.left||![used.id,other.id].includes(compare.left))compare.left=Math.random()<.5?used.id:other.id;
   persist('compare_pref');progress(.98,'Compare the designs');
-  const label=id=>id===used.id?(c.labels?.used||'The design you used for the tasks'):(c.labels?.explored||'The design you just looked at');
+  // Names follow the order the designs were seen; the note says which is which. Columns are in random order.
+  const name=id=>id===used.id?(lb.used||'Design 1'):(lb.explored||'Design 2');
+  const note=id=>id===used.id?(lb.usedNote||'The one you used for the tasks'):(lb.exploredNote||'The one you just looked at');
   const left=compare.left, right=left===used.id?other.id:used.id;
-  const col=id=>`<section class="compare-col" aria-label="${esc(label(id))}"><h2>${esc(label(id))}</h2>${(c.snapshots?.[id]||[]).map(sh=>{const src=secureURL(sh.imageUrl,location.href);return `<figure class="compare-shot"><button type="button" class="compare-zoom" data-src="${esc(src)}" data-title="${esc(`${label(id)}: ${sh.label}`)}" aria-label="${esc(`${label(id)}: ${sh.label}. Show larger`)}"><img src="${esc(src)}" alt=""><span class="compare-zoom-hint" aria-hidden="true">Show larger</span></button><figcaption>${esc(sh.label)}</figcaption></figure>`;}).join('')}</section>`;
+  // Each column is the answer: picking it (the radio, or anywhere on the card but the screenshots) chooses that design.
+  const col=id=>`<section class="compare-col" data-variant="${esc(id)}" aria-labelledby="cmp-h-${esc(id)}"><h2 id="cmp-h-${esc(id)}">${esc(name(id))}</h2><p class="compare-note">${esc(note(id))}</p>${(c.snapshots?.[id]||[]).map(sh=>{const src=secureURL(sh.imageUrl,location.href);return `<figure class="compare-shot"><button type="button" class="compare-zoom" data-src="${esc(src)}" data-title="${esc(`${name(id)}: ${sh.label}`)}" aria-label="${esc(`${name(id)}: ${sh.label}. Show larger`)}"><img src="${esc(src)}" alt=""><span class="compare-zoom-hint" aria-hidden="true">Show larger</span></button><figcaption>${esc(sh.label)}</figcaption></figure>`;}).join('')}<label class="compare-pick"><input type="radio" name="comparePreference" value="${esc(id)}" required><span>I'd rather use ${esc(name(id))}</span></label></section>`;
   const qid=q.id||'design-preference', whyId=why.id||'design-preference-why';
-  const lower=s=>s.charAt(0).toLowerCase()+s.slice(1);
-  // One row under the pictures: each end is labelled with the column above it. Short visible words; the full meaning
-  // is in hidden text for screen readers (and shown in full when the columns stack on narrow screens).
-  const L=lower(label(left)), R=lower(label(right));
-  const scale=[[1,'Strongly',`Strongly prefer ${L} (left)`],[2,'Slightly',`Slightly prefer ${L} (left)`],[3,'No preference','No preference'],[4,'Slightly',`Slightly prefer ${R} (right)`],[5,'Strongly',`Strongly prefer ${R} (right)`]];
-  render(`<section class="survey-card compare-card"><span class="eyebrow accent">COMPARE THE DESIGNS</span><h1>${esc(q.title||'Compare the two designs')}</h1><p>${esc(q.intro||'Here are the same three screens from both designs. Select a screen to see it larger.')}</p><div class="compare-grid">${col(left)}${col(right)}</div><form id="compareForm"><fieldset class="question compare-question"><legend class="question-title">${esc(q.text||'Which design would you rather use?')} <span class="required">*</span></legend><div class="compare-ends" aria-hidden="true"><span>◀ ${esc(label(left))}</span><span>${esc(label(right))} ▶</span></div><div class="compare-scale">${scale.map(([v,short,full])=>`<label class="compare-point${v===3?' is-middle':''}"><input type="radio" name="comparePreference" value="${v}" required><span class="compare-dot" aria-hidden="true"></span><span class="compare-short" aria-hidden="true">${esc(short)}</span><span class="compare-long">${esc(full)}</span></label>`).join('')}</div></fieldset><div class="question"><label class="question-title" for="compareWhy">${esc(why.text||'What made you choose it?')} <span class="optional">(optional)</span></label><textarea id="compareWhy" name="compareWhy" rows="3" maxlength="4000" placeholder="Your response"></textarea></div><button class="btn btn-primary" type="submit">Continue →</button></form></section><dialog id="compareViewer" class="compare-viewer" aria-labelledby="compareViewerTitle"><div class="compare-viewer-bar"><h2 id="compareViewerTitle"></h2><button type="button" id="closeViewer" class="btn btn-primary">Close ✕</button></div><img id="compareViewerImg" alt=""></dialog>`);
+  render(`<section class="survey-card compare-card"><span class="eyebrow accent">COMPARE THE DESIGNS</span><h1>${esc(q.title||'Compare the two designs')}</h1><p>${esc(q.intro||'Here are the same three screens from both designs. Select a screen to see it larger.')}</p><form id="compareForm"><fieldset class="compare-question"><legend class="question-title">${esc(q.text||'Which design would you rather use?')} <span class="required">*</span></legend><div class="compare-grid">${col(left)}${col(right)}</div><label class="compare-pick compare-none"><input type="radio" name="comparePreference" value="none" required><span>No preference</span></label></fieldset><fieldset class="question compare-strength" id="compareStrength" hidden disabled><legend class="question-title"><span id="compareStrengthText">How strong is your preference?</span> <span class="required">*</span></legend><div class="choice-grid">${[['slightly','Slightly'],['strongly','Strongly']].map(([v,t])=>`<label class="choice"><input type="radio" name="compareStrength" value="${v}" required><span>${t}</span></label>`).join('')}</div></fieldset><div class="question"><label class="question-title" for="compareWhy">${esc(why.text||'What made you choose it?')} <span class="optional">(optional)</span></label><textarea id="compareWhy" name="compareWhy" rows="3" maxlength="4000" placeholder="Your response"></textarea></div><button class="btn btn-primary" type="submit">Continue →</button></form></section><dialog id="compareViewer" class="compare-viewer" aria-labelledby="compareViewerTitle"><div class="compare-viewer-bar"><h2 id="compareViewerTitle"></h2><button type="button" id="closeViewer" class="btn btn-primary">Close ✕</button></div><img id="compareViewerImg" alt=""></dialog>`);
   bindCompareViewer();
-  $('#compareForm').onsubmit=async e=>{
+  const form=$('#compareForm'), box=$('#compareStrength');
+  const sync=()=>{
+    const pick=form.querySelector('[name="comparePreference"]:checked')?.value;
+    document.querySelectorAll('.compare-col').forEach(cl=>cl.classList.toggle('is-picked',cl.dataset.variant===pick));
+    const show=!!pick&&pick!=='none';
+    box.hidden=!show;box.disabled=!show;
+    if(show)$('#compareStrengthText').textContent=`How strongly do you prefer ${name(pick)}?`;
+  };
+  form.addEventListener('change',sync);
+  document.querySelectorAll('.compare-col').forEach(cl=>cl.addEventListener('click',e=>{
+    if(e.target.closest('.compare-zoom,.compare-pick'))return;
+    const r=cl.querySelector('input[name="comparePreference"]');r.checked=true;r.focus();sync();
+  }));
+  form.onsubmit=async e=>{
     e.preventDefault();
-    const v=Number(e.currentTarget.querySelector('[name="comparePreference"]:checked')?.value);if(!v)return;
+    const pick=form.querySelector('[name="comparePreference"]:checked')?.value;if(!pick)return;
+    const strength=pick==='none'?'':(form.querySelector('[name="compareStrength"]:checked')?.value||'');
+    if(pick!=='none'&&!strength){form.querySelector('[name="compareStrength"]').focus();return;}
     if(stage!=='compare_pref')return;stage='transition';
-    const preferred=v===3?'none':(v<3?left:right), strength=v===3?'':(v===1||v===5?'strongly':'slightly');
+    const preferred=pick;
+    // Same 1–5 as before (1 = strongly prefer the left column … 5 = strongly the right) so analyses carry over.
+    const v=pick==='none'?3:(pick===left?(strength==='strongly'?1:2):(strength==='strongly'?5:4));
     const text=String($('#compareWhy').value||'').trim().slice(0,4000);
     writer.add('answers',null,{stage:'comparison',answers:{[qid]:preferred,[`${qid}-strength`]:strength,[whyId]:text}});
     writer.add('comparison_answered',COMPARE_ID,{experiment_id:c.experimentId,used_variant:used.id,explored_variant:other.id,left_variant:left,right_variant:right,scale_value:v,preferred_variant:preferred,strength});

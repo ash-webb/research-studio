@@ -160,7 +160,8 @@ async function finish(rs) {
   await f.locator('[data-ut-id="nav-payments"], [data-ut-id="tab-pay"]').first().click();
   await rerender(rs, () => rs.click('#doneComparing'));
   await rs.waitForSelector('#compareForm');
-  await rs.locator('.compare-scale label:has(input[value="2"])').click();
+  await rs.locator('.compare-col').nth(0).locator('.compare-pick').click();
+  await rs.locator('#compareStrength label:has(input[value="slightly"])').click();
   await rs.fill('#compareWhy', 'Synthetic, "comparison" note');
   await rerender(rs, () => rs.click('#compareForm button[type=submit]'));
 }
