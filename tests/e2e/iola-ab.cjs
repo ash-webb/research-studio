@@ -132,6 +132,22 @@ async function compareDesigns(p, { pick = '4', why = 'Synthetic comparison note'
   await rerender(p, () => p.click('#doneComparing'));
   await p.waitForSelector('#compareForm');
   await p.evaluate(() => Promise.all([...document.querySelectorAll('.compare-shot img')].map(i => i.decode().catch(() => {}))));
+  // The larger view stays on the page and closes with the Close button, Esc, or a click outside it.
+  const viewer = { pages: p.context().pages().length };
+  await p.locator('.compare-zoom').first().click();
+  await p.waitForSelector('#compareViewer[open]');
+  viewer.opened = await p.evaluate(() => { const d = document.getElementById('compareViewer'), i = document.getElementById('compareViewerImg'); return { title: document.getElementById('compareViewerTitle').textContent, focus: document.activeElement.id, img: i.complete ? i.naturalWidth : 'loading', fits: d.getBoundingClientRect().bottom <= innerHeight + 1 }; });
+  await p.evaluate(() => document.getElementById('compareViewerImg').decode().catch(() => {}));
+  if (shots) await p.screenshot({ path: path.join(OUT, `${shots}-compare-viewer.png`) });
+  await p.click('#closeViewer');
+  viewer.closedByButton = await p.evaluate(() => !document.getElementById('compareViewer').open && document.activeElement.classList.contains('compare-zoom'));
+  await p.locator('.compare-zoom').nth(4).click(); await p.waitForSelector('#compareViewer[open]');
+  await p.keyboard.press('Escape');
+  viewer.closedByEsc = await p.evaluate(() => !document.getElementById('compareViewer').open && document.activeElement === document.querySelectorAll('.compare-zoom')[4]);
+  await p.locator('.compare-zoom').nth(2).click(); await p.waitForSelector('#compareViewer[open]');
+  await p.mouse.click(5, 5);
+  viewer.closedByBackdrop = await p.evaluate(() => !document.getElementById('compareViewer').open);
+  viewer.newTabs = p.context().pages().length - viewer.pages;
   let axeViolations = null;
   if (shots) {
     await p.screenshot({ path: path.join(OUT, `${shots}-compare-preference.png`), fullPage: true });
@@ -147,7 +163,7 @@ async function compareDesigns(p, { pick = '4', why = 'Synthetic comparison note'
   await p.locator(`.compare-scale label:has(input[value="${pick}"])`).click();
   await p.fill('#compareWhy', why);
   await rerender(p, () => p.click('#compareForm button[type=submit]'));
-  return { src, page, axeViolations };
+  return { src, page, axeViolations, viewer };
 }
 async function finishStudy(p, opts) { await fillForm(p, { 'overall-ease': '5', confidence: '4' }); const r = await compareDesigns(p, opts); await p.waitForSelector('.done-card'); return r; }
 const allEvents = p => p.evaluate(() => JSON.parse(localStorage.getItem('utp-demo-events-v1') || '[]'));
@@ -264,6 +280,8 @@ const scenarios = {
       eq(g, 'comparison: Home, Payments, Notices for both', cmp.page.shots, [['Home', 'Payments', 'Notices'], ['Home', 'Payments', 'Notices']]);
       check(g, 'comparison: all six snapshots load', cmp.page.loaded.length === 6 && cmp.page.loaded.every(Boolean), cmp.page.loaded);
       eq(g, 'comparison: 5-point scale', cmp.page.scale.length, 5);
+      check(g, 'comparison: larger view opens on the page with focus on Close', cmp.viewer.opened.focus === 'closeViewer' && /: Home$/.test(cmp.viewer.opened.title) && cmp.viewer.opened.fits, cmp.viewer.opened);
+      eq(g, 'comparison: larger view closes by button, Esc and outside click; no new tab', [cmp.viewer.closedByButton, cmp.viewer.closedByEsc, cmp.viewer.closedByBackdrop, cmp.viewer.newTabs], [true, true, true, 0]);
       const cs = evs.find(e => e.kind === 'comparison_started')?.payload || {}, cx = evs.find(e => e.kind === 'comparison_explored')?.payload || {}, ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
       eq(g, 'comparison: started event', [cs.used_variant, cs.explored_variant], [v, other]);
       check(g, 'comparison: clicks in the other design counted', cx.click_count >= 2 && Number.isFinite(cx.time_seconds), cx);
@@ -338,6 +356,8 @@ const scenarios = {
       eq(g, 'comparison: Home, Payments, Notices for both', cmp.page.shots, [['Home', 'Payments', 'Notices'], ['Home', 'Payments', 'Notices']]);
       check(g, 'comparison: all six snapshots load', cmp.page.loaded.length === 6 && cmp.page.loaded.every(Boolean), cmp.page.loaded);
       eq(g, 'comparison: 5-point scale', cmp.page.scale.length, 5);
+      check(g, 'comparison: larger view opens on the page with focus on Close', cmp.viewer.opened.focus === 'closeViewer' && /: Home$/.test(cmp.viewer.opened.title) && cmp.viewer.opened.fits, cmp.viewer.opened);
+      eq(g, 'comparison: larger view closes by button, Esc and outside click; no new tab', [cmp.viewer.closedByButton, cmp.viewer.closedByEsc, cmp.viewer.closedByBackdrop, cmp.viewer.newTabs], [true, true, true, 0]);
       const cs = evs.find(e => e.kind === 'comparison_started')?.payload || {}, cx = evs.find(e => e.kind === 'comparison_explored')?.payload || {}, ca = evs.find(e => e.kind === 'comparison_answered')?.payload || {};
       eq(g, 'comparison: started event', [cs.used_variant, cs.explored_variant], [v, other]);
       check(g, 'comparison: clicks in the other design counted', cx.click_count >= 2 && Number.isFinite(cx.time_seconds), cx);

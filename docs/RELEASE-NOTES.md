@@ -1,3 +1,10 @@
+# v0.3.27 release notes — snapshots open larger on the same page (draft)
+
+## Fixed
+- **On the design comparison page, selecting a snapshot no longer opens a new tab.** Inside a survey the new tab left people with no obvious way back. The snapshot now opens larger in a window on the same page, sized to fit the screen (the whole screenshot shows without scrolling at 1366×591), with the column and screen name and a **Close** button at the top. Esc or a click outside the picture also closes it, and focus goes back to the snapshot. Each snapshot has a "Show larger" label.
+- New event `comparison_zoomed` (`snapshot`) each time a snapshot is opened larger.
+- `npm run test:iola` checks the larger view opens on the page with focus on Close, closes by button, Esc and outside click, and opens no new tab.
+
 # v0.3.26 release notes — after the A/B tasks, a look at the other design and a preference question (draft)
 
 ## Added

@@ -373,6 +373,22 @@ function startComparison(resumed=false){
     persist('compare_pref');await writer.flush();showComparePreference();
   };
 }
+// Larger view of a snapshot, on the same page (a new tab would take people out of the survey).
+// Close: the Close button, Esc, or a click outside the picture; focus goes back to the snapshot.
+function bindCompareViewer(){
+  const dlg=$('#compareViewer');if(!dlg)return;
+  let opener=null;
+  const close=()=>{if(dlg.open)dlg.close();};
+  dlg.addEventListener('close',()=>{$('#compareViewerImg').removeAttribute('src');opener?.focus();});
+  $('#closeViewer').onclick=close;
+  dlg.addEventListener('click',e=>{if(e.target===dlg)close();});
+  document.querySelectorAll('.compare-zoom').forEach(b=>b.onclick=()=>{
+    opener=b;$('#compareViewerTitle').textContent=b.dataset.title;
+    const img=$('#compareViewerImg');img.src=b.dataset.src;img.alt=`${b.dataset.title} screen`;
+    dlg.showModal();$('#closeViewer').focus();
+    writer.add('comparison_zoomed',COMPARE_ID,{snapshot:b.dataset.title});
+  });
+}
 function showComparePreference(){
   const setup=comparisonSetup();if(!setup){persist('finish');finishStudy();return;}
   const {c,used,other}=setup, q=c.question||{}, why=c.why||{};
@@ -381,11 +397,12 @@ function showComparePreference(){
   persist('compare_pref');progress(.98,'Compare the designs');
   const label=id=>id===used.id?(c.labels?.used||'The design you used for the tasks'):(c.labels?.explored||'The design you just looked at');
   const left=compare.left, right=left===used.id?other.id:used.id;
-  const col=id=>`<section class="compare-col" aria-label="${esc(label(id))}"><h2>${esc(label(id))}</h2>${(c.snapshots?.[id]||[]).map(sh=>{const src=secureURL(sh.imageUrl,location.href);return `<figure class="compare-shot"><a href="${esc(src)}" target="_blank" rel="noopener" aria-label="${esc(`${label(id)}: ${sh.label} (opens larger in a new tab)`)}"><img src="${esc(src)}" alt="${esc(`${label(id)}: ${sh.label} screen`)}"></a><figcaption>${esc(sh.label)}</figcaption></figure>`;}).join('')}</section>`;
+  const col=id=>`<section class="compare-col" aria-label="${esc(label(id))}"><h2>${esc(label(id))}</h2>${(c.snapshots?.[id]||[]).map(sh=>{const src=secureURL(sh.imageUrl,location.href);return `<figure class="compare-shot"><button type="button" class="compare-zoom" data-src="${esc(src)}" data-title="${esc(`${label(id)}: ${sh.label}`)}" aria-label="${esc(`${label(id)}: ${sh.label}. Show larger`)}"><img src="${esc(src)}" alt=""><span class="compare-zoom-hint" aria-hidden="true">Show larger</span></button><figcaption>${esc(sh.label)}</figcaption></figure>`;}).join('')}</section>`;
   const qid=q.id||'design-preference', whyId=why.id||'design-preference-why';
   const lower=s=>s.charAt(0).toLowerCase()+s.slice(1);
   const scale=[[1,`Strongly prefer ${lower(label(left))}`],[2,`Somewhat prefer ${lower(label(left))}`],[3,'No preference'],[4,`Somewhat prefer ${lower(label(right))}`],[5,`Strongly prefer ${lower(label(right))}`]];
-  render(`<section class="survey-card compare-card"><span class="eyebrow accent">COMPARE THE DESIGNS</span><h1>${esc(q.title||'Which design do you prefer?')}</h1><p>${esc(q.intro||'Here are the same three screens from both designs. Select a screen to see it larger.')}</p><div class="compare-grid">${col(left)}${col(right)}</div><form id="compareForm"><fieldset class="question compare-question"><legend class="question-title">${esc(q.text||'Which design would you rather use?')} <span class="required">*</span></legend><div class="choice-grid compare-scale">${scale.map(([v,t])=>`<label class="choice"><input type="radio" name="comparePreference" value="${v}" required><span>${esc(t)}</span></label>`).join('')}</div></fieldset><div class="question"><label class="question-title" for="compareWhy">${esc(why.text||'What influenced your preference?')}</label><textarea id="compareWhy" name="compareWhy" rows="3" maxlength="4000" placeholder="Your response"></textarea></div><button class="btn btn-primary" type="submit">Continue →</button></form></section>`);
+  render(`<section class="survey-card compare-card"><span class="eyebrow accent">COMPARE THE DESIGNS</span><h1>${esc(q.title||'Which design do you prefer?')}</h1><p>${esc(q.intro||'Here are the same three screens from both designs. Select a screen to see it larger.')}</p><div class="compare-grid">${col(left)}${col(right)}</div><form id="compareForm"><fieldset class="question compare-question"><legend class="question-title">${esc(q.text||'Which design would you rather use?')} <span class="required">*</span></legend><div class="choice-grid compare-scale">${scale.map(([v,t])=>`<label class="choice"><input type="radio" name="comparePreference" value="${v}" required><span>${esc(t)}</span></label>`).join('')}</div></fieldset><div class="question"><label class="question-title" for="compareWhy">${esc(why.text||'What influenced your preference?')}</label><textarea id="compareWhy" name="compareWhy" rows="3" maxlength="4000" placeholder="Your response"></textarea></div><button class="btn btn-primary" type="submit">Continue →</button></form></section><dialog id="compareViewer" class="compare-viewer" aria-labelledby="compareViewerTitle"><div class="compare-viewer-bar"><h2 id="compareViewerTitle"></h2><button type="button" id="closeViewer" class="btn btn-primary">Close ✕</button></div><img id="compareViewerImg" alt=""></dialog>`);
+  bindCompareViewer();
   $('#compareForm').onsubmit=async e=>{
     e.preventDefault();
     const v=Number(e.currentTarget.querySelector('[name="comparePreference"]:checked')?.value);if(!v)return;
