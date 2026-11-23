@@ -242,3 +242,8 @@ html:not(.rs-preview) .task-shell .pane-top{display:none}
 .compare-strength .choice span{font-size:14px;padding:11px 22px}
 .optional{font-weight:500;color:#5f6d7c}
 @media(max-width:860px){.compare-grid{grid-template-columns:1fr}}
+
+/* v0.3.33: way back from "How did that task go?" after an accidental Finish. */
+.back-to-task{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 16px;background:#f5f8fa;border:1px solid #e3e8ee;border-radius:9px;padding:12px 14px;margin:4px 0 20px}
+.back-to-task p{margin:0;flex:1 1 260px;font-size:13px;line-height:1.5;color:#3f5266}
+.survey-card .back-to-task .btn{padding:9px 16px;white-space:nowrap}

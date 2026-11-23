@@ -105,7 +105,7 @@ async function waitRs(page) { await page.waitForFunction(() => !!document.queryS
 async function rerender(rs, action) {
   await rs.evaluate(() => document.querySelector('#participantMain').firstElementChild?.setAttribute('data-e2e-old', '1'));
   await action();
-  await rs.waitForFunction(() => !document.querySelector('#participantMain [data-e2e-old]'), null, { timeout: 15000 });
+  await rs.waitForFunction(() => { const o = document.querySelector('#participantMain [data-e2e-old]'); return !o || o.hidden; }, null, { timeout: 15000 });
 }
 async function fillForm(rs, answers) {
   for (const [name, value] of Object.entries(answers)) {

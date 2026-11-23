@@ -60,7 +60,7 @@ async function newContext(browser, group, viewport = { width: 1360, height: 900 
 async function rerender(p, action) {
   await p.evaluate(() => { const m = document.querySelector('#participantMain'); m.firstElementChild?.setAttribute('data-e2e-old', '1'); });
   await action();
-  await p.waitForFunction(() => !document.querySelector('#participantMain [data-e2e-old]'), null, { timeout: 8000 });
+  await p.waitForFunction(() => { const o = document.querySelector('#participantMain [data-e2e-old]'); return !o || o.hidden; }, null, { timeout: 8000 });
 }
 
 // Each session uses a new tab: reloading the same tab now resumes the earlier session.
@@ -229,6 +229,81 @@ scenarios.portal = async browser => {
   eq(G, 'interactions CSV: 7 clicks', x.interactions.filter(i => i.type === 'click').length, 7);
   eq(G, 'method outcomes CSV: 4 rows', x.methods.length, 4);
   eq(G, 'all-events JSON matches stored events', x.all.length, evs.length);
+  await done();
+};
+
+// v0.3.33: "Back to the task" after an accidental Finish (UT12 in the IOLA study had no way back).
+scenarios.backToTask = async browser => {
+  const G = 'Back to the task after an accidental Finish (demo-portal)';
+  const { ctx, done } = await newContext(browser, G);
+  let { p } = await startSession(ctx, 'demo-portal');
+  await fillForm(p, { experience: 'Weekly' });
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 });
+  const frame = p.frameLocator('#prototypeFrame');
+  await frame.locator('[data-ut-id="nav-activity"]').click(); await p.waitForTimeout(200);
+  const taskTitle = (await p.textContent('#participantMain h1')).trim();
+  // Finish by mistake, partway through.
+  await rerender(p, () => p.click('#finishTask'));
+  check(G, 'Finish shows "How did that task go?"', /How did that task go/.test(await p.textContent('#reflectionCard h1')));
+  check(G, 'the question offers "Back to the task"', await p.isVisible('#backToTask'));
+  check(G, 'it says the design is kept where they were', /back to where you were/.test(await p.textContent('#backToTaskHelp')));
+  check(G, 'the task is hidden, not removed', await p.$eval('.task-shell-parked', el => el.hidden && !!el.querySelector('#prototypeFrame')).catch(() => false));
+  check(G, 'page header returns on the question (task layout off)', await p.isVisible('.participant-header'));
+  eq(G, 'focus moves to the question heading', await p.evaluate(() => document.activeElement?.closest('#reflectionCard') ? document.activeElement.tagName : null), 'H1');
+  await screenshot(p, 'back-to-task-question');
+  // Go back: same screen of the design, same clicks, Finish still there.
+  await p.click('#backToTask');
+  await p.waitForSelector('.task-shell:not([hidden])');
+  check(G, 'question removed after going back', !(await p.$('#reflectionCard')));
+  eq(G, 'back on the same task', (await p.textContent('.task-shell h1')).trim(), taskTitle);
+  check(G, 'the design is still on the screen they had reached (Activity)', await frame.locator('#activity').isVisible());
+  eq(G, 'clicks so far kept', await p.textContent('#taskClicks'), '1');
+  eq(G, 'focus moves to the task heading', await p.evaluate(() => document.activeElement?.matches('.task-shell h1')), true);
+  check(G, 'no "page was reloaded" note when nothing reloaded', !(await p.$('#resumeNotice')));
+  check(G, 'task layout back on (header hidden)', !(await p.isVisible('.participant-header')));
+  // Clicks after going back are still tracked; finish properly.
+  await frame.locator('[data-ut-id="activity-open-detail"]').click(); await p.waitForTimeout(250);
+  eq(G, 'click after going back is counted', await p.textContent('#taskClicks'), '2');
+  await rerender(p, () => p.click('#finishTask'));
+  await p.locator('.reflection-choice label:has(input[value="completed"])').click();
+  await rerender(p, () => p.click('#reflectionForm button[type=submit]'));
+  await fillForm(p, { ease: '6', clarity: '4' });
+  // Task 2: finish by mistake, reload on the question, then go back.
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 });
+  await frame.locator('[data-ut-id="nav-messages"]').click(); await p.waitForTimeout(200);
+  await rerender(p, () => p.click('#finishTask'));
+  await p.reload();
+  await p.waitForSelector('#reflectionCard'); await p.waitForTimeout(350);
+  check(G, 'after a reload the question still offers Back', await p.isVisible('#backToTask'));
+  check(G, 'after a reload it says the design starts again', /start again from its first screen/.test(await p.textContent('#backToTaskHelp')));
+  await rerender(p, () => p.click('#backToTask'));
+  check(G, 'after a reload, Back opens the task with the reload note', await p.isVisible('#resumeNotice'));
+  eq(G, 'after a reload, clicks so far kept', await p.textContent('#taskClicks'), '1');
+  await p.waitForSelector('#bridgeIndicator.connected', { state: 'attached', timeout: 8000 });
+  await frame.locator('[data-ut-id="home-go-messages"]').click(); await p.waitForTimeout(150);
+  await frame.locator('[data-ut-id="message-open-detail"]').click(); await p.waitForTimeout(250);
+  await rerender(p, () => p.click('#finishTask'));
+  await p.locator('.reflection-choice label:has(input[value="completed"])').click();
+  await rerender(p, () => p.click('#reflectionForm button[type=submit]'));
+  await fillForm(p, { ease: '7' });
+  await fillForm(p, { overall: '5' });
+  await p.waitForSelector('.done-card');
+
+  const evs = await events(p);
+  eq(G, 'one session', [...new Set(evs.map(e => e.session_id))].length, 1);
+  for (const t of ['task-activity', 'task-message']) {
+    eq(G, `${t}: started once, ended once`, [bySession(evs, 'task_started', t).length, bySession(evs, 'task_ended', t).length], [1, 1]);
+    const backs = bySession(evs, 'method_event', t).filter(e => e.payload.action === 'back_to_task');
+    eq(G, `${t}: one back_to_task event`, backs.length, 1);
+    check(G, `${t}: back_to_task records when Finish was pressed`, Number.isFinite(backs[0]?.payload.detail.finished_at_seconds), JSON.stringify(backs[0]?.payload));
+    const end = bySession(evs, 'task_ended', t)[0].payload;
+    eq(G, `${t}: back_to_task_count 1`, end.back_to_task_count, 1);
+    eq(G, `${t}: success observed after going back`, end.observed_success, true);
+    check(G, `${t}: finished_at_seconds is the real Finish, not the accidental one`, end.finished_at_seconds >= backs[0].payload.detail.finished_at_seconds, JSON.stringify(end));
+  }
+  eq(G, 'task 1: both clicks counted', bySession(evs, 'task_ended', 'task-activity')[0].payload.click_count, 2);
+  eq(G, 'task 2: clicks counted across the reload (1 + 2)', bySession(evs, 'task_ended', 'task-message')[0].payload.click_count, 3);
+  eq(G, 'task 1: clicks recorded in order, before and after going back', bySession(evs, 'interaction_batch', 'task-activity').flatMap(e => e.payload.items).filter(x => x.type === 'click').map(x => x.target), ['nav-activity', 'activity-open-detail']);
   await done();
 };
 

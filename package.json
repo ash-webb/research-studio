@@ -1,7 +1,7 @@
 {
   "name": "unmoderated-research-studio",
   "private": true,
-  "version": "0.3.32",
+  "version": "0.3.33",
   "license": "CC0-1.0",
   "type": "module",
   "scripts": {

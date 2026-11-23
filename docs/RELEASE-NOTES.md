@@ -1,3 +1,12 @@
+# v0.3.33 release notes — a way back after an accidental “Finish this task” (draft)
+
+## Added
+- **“How did that task go?” has a “← Back to the task” button**, under the line “Selected Finish this task by mistake? You can go back to where you were in the design.” In the IOLA study a participant (UT12) selected Finish on the wrong task and, with no way back, restarted the whole survey; another (UT6) skipped a task the same way.
+- **The design is kept where they left it.** On Finish the task is now hidden rather than removed, so going back returns to the same screen with what they had typed or chosen, the same click count and the same timer. Focus moves to the question's heading on Finish and back to the task's heading on return. After a reload on the question there is no design to keep; the button then says the design will start again from its first screen.
+- **Recorded:** a `back_to_task` event per return (when Finish was selected, time spent on the question), `back_to_task_count` on `task_ended` and in the Task CSV, and `finished_at_seconds` now holds the final Finish. Success signals, clicks and interactions from before and after going back all count toward the same task. In Qualtrics these travel in `rs_data_*`; the survey needs no changes. See `docs/DATA-DICTIONARY.md`.
+- Browser test `backToTask` in `npm run test:e2e`. The tests' wait-for-new-screen helper now treats a hidden screen as replaced.
+- No study file changes; the IOLA study stays at 1.5.3.
+
 # v0.3.32 release notes — new releases reach participants right away (draft)
 
 ## Fixed

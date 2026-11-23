@@ -83,7 +83,7 @@ async function newContext(browser, group, opts = {}) {
 async function rerender(p, action) {
   await p.evaluate(() => document.querySelector('#participantMain').firstElementChild?.setAttribute('data-e2e-old', '1'));
   await action();
-  await p.waitForFunction(() => !document.querySelector('#participantMain [data-e2e-old]'), null, { timeout: 10000 });
+  await p.waitForFunction(() => { const o = document.querySelector('#participantMain [data-e2e-old]'); return !o || o.hidden; }, null, { timeout: 10000 });
 }
 async function fillForm(p, answers) {
   for (const [name, value] of Object.entries(answers)) {

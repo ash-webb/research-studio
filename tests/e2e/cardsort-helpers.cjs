@@ -4,7 +4,7 @@
 async function waitRerender(p, action) {
   await p.evaluate(() => document.querySelector('#participantMain')?.firstElementChild?.setAttribute('data-e2e-old', '1'));
   await action();
-  await p.waitForFunction(() => !document.querySelector('#participantMain [data-e2e-old]'), null, { timeout: 8000 });
+  await p.waitForFunction(() => { const o = document.querySelector('#participantMain [data-e2e-old]'); return !o || o.hidden; }, null, { timeout: 8000 });
 }
 const centre = b => ({ x: b.x + b.width / 2, y: b.y + b.height / 2 });
 

@@ -66,7 +66,7 @@ const byNameValue = (n) => f => f.name === n;
 async function screenChange(p, g, label, action) {
   await p.evaluate(() => document.querySelector('#participantMain')?.firstElementChild?.setAttribute('data-e2e-old', '1'));
   await action();
-  await p.waitForFunction(() => !document.querySelector('#participantMain [data-e2e-old]'), null, { timeout: 8000 });
+  await p.waitForFunction(() => { const o = document.querySelector('#participantMain [data-e2e-old]'); return !o || o.hidden; }, null, { timeout: 8000 });
   await p.waitForTimeout(80);
   const f = await describeFocus(p);
   check(g, `${label}: focus moves into the new screen (not lost to the page top)`, !f.body, 'focus was left on <body>; a keyboard or screen-reader user must start again from the top of the page');

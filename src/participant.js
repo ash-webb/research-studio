@@ -9,6 +9,8 @@ let study, writer, sessionId, activeTask=null, taskIndex=0;
 let taskStartedAt=0, clickCount=0, taskInteractions=[], trackerConnected=false, observedSuccess=false;
 // Seconds from activity start (same clock as time_seconds) to the first matching success signal and to "Finish this task".
 let successSeconds=null, finishedSeconds=null;
+// v0.3.33: times the participant went back to the task from "How did that task go?" (an accidental Finish).
+let backToTask=0;
 let stage='welcome', prototypeOrigin='', timer=null, lastPage='', activeVariant=null;
 // Resume-after-refresh state (v0.3.3). Progress is checkpointed in this tab's sessionStorage,
 // which survives reloads and restored tabs but is cleared when the tab is closed.
@@ -119,7 +121,7 @@ function persist(stageName=resumeStage,index=taskIndex){
     interruptions,interruptedMs,activity:activityState,draft:formDraft,assignments,abResults,compare,savedAt:Date.now()};
   try{sessionStorage.setItem(resumeKey,JSON.stringify(cp));}catch{}
 }
-function saveActivity(state){activityState={...state,successSeconds,finishedSeconds};persist('activity');}
+function saveActivity(state){activityState={...state,successSeconds,finishedSeconds,backToTask};persist('activity');}
 // Another open tab of the same session answers this; a duplicated tab must not write into it.
 const sessionChannel=('BroadcastChannel' in window)?new BroadcastChannel('utp-session-v1'):null;
 sessionChannel?.addEventListener('message',e=>{if(e.data?.type==='ping'&&e.data.sessionId&&e.data.sessionId===sessionId&&stage!=='welcome')sessionChannel.postMessage({type:'here',sessionId,token:e.data.token});});
@@ -170,7 +172,7 @@ function resumeActivity(cp,gap){
   interruptions=(cp.interruptions||0)+1;interruptedMs=(cp.interruptedMs||0)+gap;resumedIntoActivity=true;
   activityState=cp.activity||{};
   clickCount=activityState.clickCount||0;trackerConnected=!!activityState.trackerConnected;observedSuccess=!!activityState.observedSuccess;
-  successSeconds=activityState.successSeconds??null;finishedSeconds=activityState.finishedSeconds??null;
+  successSeconds=activityState.successSeconds??null;finishedSeconds=activityState.finishedSeconds??null;backToTask=activityState.backToTask||0;
   progress(.12+taskIndex/study.tasks.length*.73,`Activity ${taskIndex+1} of ${study.tasks.length}`);
   clearInterval(timer);persist('activity');
   if(cp.stage==='reflection'&&['prototype','ab_test'].includes(normalizeMethod(activeTask))){finishPrototype();return;}
@@ -289,7 +291,7 @@ function showPre(){stage='pre';persist('pre');progress(.08,'Before the activitie
 function startActivity(){
   if(embedded)saveToSurvey('in_progress');
   if(taskIndex>=study.tasks.length){showPost();return;}
-  stage='activity';activeTask=study.tasks[taskIndex];activeVariant=null;taskStartedAt=Date.now();clickCount=0;taskInteractions=[];trackerConnected=false;observedSuccess=false;lastPage='';successSeconds=null;finishedSeconds=null;
+  stage='activity';activeTask=study.tasks[taskIndex];activeVariant=null;taskStartedAt=Date.now();clickCount=0;taskInteractions=[];trackerConnected=false;observedSuccess=false;lastPage='';successSeconds=null;finishedSeconds=null;backToTask=0;
   activityState={};interruptions=0;interruptedMs=0;resumedIntoActivity=false;formDraft=null;
   if(normalizeMethod(activeTask)==='ab_test')activeVariant=variantForTask(activeTask,assignments);
   progress(.12+taskIndex/study.tasks.length*.73,`Activity ${taskIndex+1} of ${study.tasks.length}`);
@@ -307,7 +309,8 @@ async function completeActivity(result={}, options={}){
     ...(options.selfReport!==undefined?{self_report:options.selfReport}:{}),
     ...(options.observedSuccess!==undefined?{observed_success:options.observedSuccess}:{}),
     ...(['prototype','ab_test'].includes(normalizeMethod(activeTask))?{tracker_connected:trackerConnected,click_count:clickCount,
-      ...(successSeconds!=null?{success_at_seconds:successSeconds}:{}),...(finishedSeconds!=null?{finished_at_seconds:finishedSeconds}:{})}:{}),
+      ...(successSeconds!=null?{success_at_seconds:successSeconds}:{}),...(finishedSeconds!=null?{finished_at_seconds:finishedSeconds}:{}),
+      ...(backToTask?{back_to_task_count:backToTask}:{})}:{}),
     // Reloads during the activity: time_seconds stays wall-clock; interrupted_seconds is the time away.
     ...(interruptions?{interruptions,interrupted_seconds:Math.round(interruptedMs/1000)}:{})
   });
@@ -472,8 +475,18 @@ function startPrototype(){
 function flushInteractions(){if(!taskInteractions.length||!writer||!activeTask)return;const hits=taskInteractions.splice(0);for(let i=0;i<hits.length;i+=20)writer.add('interaction_batch',activeTask.id,{items:hits.slice(i,i+20)});}
 function finishPrototype(){
   if(stage!=='activity')return;
-  clearInterval(timer);stage='prototype_reflection';flushInteractions();if(finishedSeconds==null)finishedSeconds=elapsed();activityState={clickCount,trackerConnected,observedSuccess,successSeconds,finishedSeconds};persist('reflection');
-  render(`<section class="survey-card"><span class="eyebrow accent">AFTER THE TASK</span><h1>How did that task go?</h1><p>Please indicate whether you believe you completed the task. Your answer is measured separately from a prototype success signal.</p><form id="reflectionForm"><div class="question"><span class="question-title">Were you able to complete the task? <span class="required">*</span></span><div class="reflection-choice"><label><input type="radio" name="selfReport" value="completed" required> Yes, I completed it</label><label><input type="radio" name="selfReport" value="unable" required> No, I could not complete it</label></div></div><button type="submit" class="btn btn-primary">Continue →</button></form></section>`);
+  clearInterval(timer);stage='prototype_reflection';flushInteractions();if(finishedSeconds==null)finishedSeconds=elapsed();activityState={clickCount,trackerConnected,observedSuccess,successSeconds,finishedSeconds,backToTask};persist('reflection');
+  // v0.3.33: the task stays on the page, hidden, so "Back to the task" returns to the same screen of the design.
+  // (After a reload on this screen there is no task to keep; going back then restarts the design, as a reload does.)
+  const shell=$main().querySelector(':scope>.task-shell');
+  const markup=`<section class="survey-card" id="reflectionCard"><span class="eyebrow accent">AFTER THE TASK</span><h1>How did that task go?</h1><p>Please indicate whether you believe you completed the task. Your answer is measured separately from a prototype success signal.</p><div class="back-to-task"><p id="backToTaskHelp">Selected <strong>Finish this task</strong> by mistake? ${shell?'You can go back to where you were in the design.':'You can go back to the task. The design will start again from its first screen.'}</p>${cardButton('← Back to the task','backToTask','outline')}</div><form id="reflectionForm"><div class="question"><span class="question-title">Were you able to complete the task? <span class="required">*</span></span><div class="reflection-choice"><label><input type="radio" name="selfReport" value="completed" required> Yes, I completed it</label><label><input type="radio" name="selfReport" value="unable" required> No, I could not complete it</label></div></div><button type="submit" class="btn btn-primary">Continue →</button></form></section>`;
+  if(shell){
+    shell.hidden=true;shell.classList.replace('task-shell','task-shell-parked');
+    shell.insertAdjacentHTML('beforebegin',markup);
+    const h=$('#reflectionCard h1');h.setAttribute('tabindex','-1');window.scrollTo(0,0);h.focus({preventScroll:true});
+  }else render(markup);
+  $('#backToTask').setAttribute('aria-describedby','backToTaskHelp');
+  $('#backToTask').onclick=()=>returnToTask();
   $('#reflectionForm').onsubmit=async e=>{
     e.preventDefault();const selfReport=e.currentTarget.querySelector('[name="selfReport"]:checked')?.value;
     if(!selfReport)return;
@@ -487,6 +500,22 @@ function finishPrototype(){
     const observed=isAB?(successStatus==='received'?true:undefined):(successStatus==='unavailable'?undefined:observedSuccess);
     await completeActivity(result,{selfReport,observedSuccess:observed});
   };
+}
+// v0.3.33: undo an accidental "Finish this task". Time keeps running from the task's start (time_seconds stays
+// wall-clock); the Finish time is cleared so the real one is recorded, and each return is logged.
+function returnToTask(){
+  if(stage!=='prototype_reflection')return;
+  const away=finishedSeconds!=null?Math.max(0,elapsed()-finishedSeconds):null;
+  event('back_to_task',{finished_at_seconds:finishedSeconds,seconds_on_question:away});
+  backToTask++;finishedSeconds=null;stage='activity';
+  activityState={clickCount,trackerConnected,observedSuccess,successSeconds,finishedSeconds,backToTask};persist('activity');
+  const parked=$main().querySelector(':scope>.task-shell-parked');
+  if(!parked){startPrototype();announce('Back to the task.');return;}
+  $('#reflectionCard')?.remove();
+  parked.classList.replace('task-shell-parked','task-shell');parked.hidden=false;
+  timer=setInterval(()=>{const t=Math.floor((Date.now()-taskStartedAt)/1000);const f=$('#taskElapsed');if(f)f.textContent=`${Math.floor(t/60)}:${String(t%60).padStart(2,'0')}`;},1000);
+  const h=parked.querySelector('.task-instructions h1');h.setAttribute('tabindex','-1');window.scrollTo(0,0);h.focus({preventScroll:true});
+  announce('Back to the task. The design is where you left it.');
 }
 window.addEventListener('message',e=>{
   const comparing=stage==='compare';

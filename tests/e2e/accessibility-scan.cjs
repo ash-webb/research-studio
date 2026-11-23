@@ -44,7 +44,7 @@ async function scan(p, screen, viewportLabel) {
 async function rerender(p, action) {
   await p.evaluate(() => document.querySelector('#participantMain')?.firstElementChild?.setAttribute('data-e2e-old', '1'));
   await action();
-  await p.waitForFunction(() => !document.querySelector('#participantMain [data-e2e-old]'), null, { timeout: 8000 });
+  await p.waitForFunction(() => { const o = document.querySelector('#participantMain [data-e2e-old]'); return !o || o.hidden; }, null, { timeout: 8000 });
 }
 async function begin(p, id) {
   await p.evaluate(() => { try { sessionStorage.clear(); } catch {} }).catch(() => {}); // fresh session in this tab

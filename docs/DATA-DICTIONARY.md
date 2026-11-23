@@ -87,6 +87,7 @@ Saved as `plan` in the working-copy JSON; removed from the published study file 
 - `task_ended.payload.success_at_seconds` (prototype and A/B activities): seconds from activity start to the **first** success signal matching the activity. Omitted when no signal arrived. Same clock as `time_seconds` (wall-clock, including time away during reloads), and kept across reloads.
 - `task_ended.payload.finished_at_seconds`: seconds from activity start to “Finish this task”. `time_seconds` runs on until the participant answers whether they completed the task.
 - Task CSV includes both; the A/B exposures CSV includes `success_at_seconds`; the survey return link carries it as `rs_abN_tts`.
+- After “Back to the task” (v0.3.33), `finished_at_seconds` is the last Finish; the earlier one is in the `back_to_task` event.
 - For time-on-task comparisons between designs, prefer `success_at_seconds` among successful participants: `time_seconds` includes time after succeeding and the reflection question.
 
 ## Observed success (`observed_success`)
@@ -113,3 +114,10 @@ Saved as `plan` in the working-copy JSON; removed from the published study file 
 - Test at least one session of each method end to end; compare raw event exports with dashboard values.
 - Verify Mac Safari, keyboard behavior and mobile touch interactions with participants using supported devices.
 - Review consent language, free-text PII risk, recruitment/participant authentication, accessibility, retention and deletion controls.
+
+## Back to the task (v0.3.33)
+- On “How did that task go?” after a prototype or A/B activity, **Back to the task** returns to the activity. The design stays on the screen the participant had reached; after a reload on that question it starts again from its first screen, as any reload does.
+- Each return adds a `method_event` with `action: "back_to_task"` and `detail: {finished_at_seconds, seconds_on_question}`: when Finish was selected, and how long they spent on the question before going back.
+- `task_ended.payload.back_to_task_count`: how many times they went back (omitted when 0). `finished_at_seconds` is reset by each return, so it holds the final Finish. `time_seconds` stays wall-clock from the start, including time on the question.
+- Task CSV includes `back_to_task_count` (0 when they never went back). Inside a survey the events travel in `rs_data_*` as usual; no new survey fields are needed.
+
