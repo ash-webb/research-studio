@@ -1,7 +1,7 @@
 {
   "id": "TR-102",
   "version": "0.1.1",
-  "status": "draft",
+  "status": "reviewed",
   "title": "Plan a defensible study",
   "summary": "Specify the question, task, scoring, recruitment, analysis and stopping rule before fielding.",
   "phases": [

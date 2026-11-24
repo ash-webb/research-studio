@@ -1,7 +1,7 @@
 {
   "id": "TR-101",
   "version": "0.1.1",
-  "status": "draft",
+  "status": "reviewed",
   "title": "Choose a research method",
   "summary": "Choose a method that can answer the decision, and check what the installed tools actually support.",
   "phases": [

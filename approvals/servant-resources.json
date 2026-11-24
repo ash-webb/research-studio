@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "approvalId": "SR-20261124-STUDIO-0.1.1",
+  "status": "APPROVED",
+  "audience": "servant-private-workspace-and-configured-researcher-model",
+  "repository": "ash-webb/research-studio",
+  "catalogDigest": "72a2858b0d273507f92f12a1209cc525a8fee722b5755929bac0267d3776a6bd",
+  "reviewer": "Ashley",
+  "approvedAt": "2026-11-24T22:54:22.053Z",
+  "expiresAt": "2026-12-24T22:54:22.053Z"
+}

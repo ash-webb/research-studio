@@ -1,7 +1,7 @@
 {
   "id": "TR-105",
   "version": "0.1.1",
-  "status": "draft",
+  "status": "reviewed",
   "title": "Plan card sorts and tree tests",
   "summary": "Use card sorting for grouping and tree testing for findability, with separate measures and limits.",
   "phases": [

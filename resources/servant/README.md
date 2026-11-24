@@ -14,7 +14,7 @@ The approved record schema is version 1. Each guide has exactly: `id`, `version`
 
 Servant authenticates every read and resolution using its existing device transport, Researcher/owner access and pilot hold. It re-resolves selected versions/content hashes before preparing a Researcher request. Guides are method references, never product findings, and are not automatically sent to an agent or installed as skills. Existing Research Hub evidence approvals remain separate and unchanged.
 
-This initial publication is empty. The included examples remain drafts; no source approval has been granted by the publishing helper.
+The v0.1.1 starter release contains 4 reviewed guides. Ashley approved its exact content for the Servant private-workspace/configured-Researcher-model audience on November 24, 2026, through December 24, 2026 at 22:54:22.053 UTC. The live content-bound record is approvals/servant-resources.json. The original PENDING request in review-candidate/ is retained as review history, not live authorization.
 
 ## Review a candidate before publication
 
@@ -24,10 +24,10 @@ items and prepare `review-candidate/catalog.json` and a PENDING
 without changing draft statuses, the live catalog or any approval. Servant never
 reads the candidate directory. The normal `--check` rejects stale candidate copies.
 
-The November 24, 2026 starter release is version 0.1.1. Content corrections are
-complete, but human publication approval is pending. Review the candidate catalog
-and its full-content digest; the separate root approval-request.json describes the
-currently empty live feed and is not the request for these guides.
+The November 24, 2026 starter release is version 0.1.1 and is now approved as
+recorded above. For future changes, review the candidate catalog and its full-content
+digest before creating any new approval. Pending request files are never live
+authorization; only the matching approvals/servant-resources.json grants delivery.
 
 After an authorized human approves the exact candidate and its audience, mark only
 those items reviewed, regenerate the live catalog, and verify it has the candidate

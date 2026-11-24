@@ -1,7 +1,7 @@
 {
   "id": "TR-110",
   "version": "0.1.1",
-  "status": "draft",
+  "status": "reviewed",
   "title": "Run the study and record deviations",
   "summary": "Check the whole collection route, preserve the declared denominator and document deviations.",
   "phases": [
