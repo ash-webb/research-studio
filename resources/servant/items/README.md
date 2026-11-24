@@ -1,0 +1,1 @@
+Only authored methods-guide JSON records belong here. Use status draft until method review is complete. The publisher excludes draft records. See ../README.md for the schema and release approval. Never add raw research data, original datasets, credentials or access instructions.

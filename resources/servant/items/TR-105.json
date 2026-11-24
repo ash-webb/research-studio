@@ -1,0 +1,30 @@
+{
+  "id": "TR-105",
+  "version": "0.1.0",
+  "status": "draft",
+  "title": "Plan card sorts and tree tests",
+  "summary": "Keep grouping, findability and their analysis paths separate.",
+  "phases": [
+    "planning",
+    "execution",
+    "analysis"
+  ],
+  "steps": [
+    "For a card sort, define the grouping question, audience, understandable card set and open, closed or hybrid format.",
+    "Preserve original participant labels; document normalization, merge rules and denominators for co-placement. Coefficients and dendrograms suggest structures to test, not proven navigation.",
+    "For a tree test, version the trees, write neutral scenarios and define all accepted destinations and scoring before fielding.",
+    "Define direct success, first branch, backtracking and timing separately. Keep perceived success separate from recorded destination success.",
+    "Preserve participant pairing or task clustering and plan multiple comparisons. Lostness is optional and needs a valid definition and path data.",
+    "Test the resulting interface with a method that addresses remaining usability and accessibility questions."
+  ],
+  "questions": [
+    "Am I measuring grouping or findability?",
+    "Does the task wording disclose a destination label?"
+  ],
+  "example": "Ask where someone would find a past notice, without repeating the navigation label that is the intended destination.",
+  "sources": [
+    {
+      "title": "Team card sort and tree test workbook; adapted from the supplied card-sort and tree-test teaching decks"
+    }
+  ]
+}

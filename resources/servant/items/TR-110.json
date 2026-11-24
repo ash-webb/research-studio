@@ -1,0 +1,28 @@
+{
+  "id": "TR-110",
+  "version": "0.1.0",
+  "status": "draft",
+  "title": "Run the study and record deviations",
+  "summary": "Check readiness, preserve the study design and record changes without moving raw responses into an agent.",
+  "phases": [
+    "execution"
+  ],
+  "steps": [
+    "Pilot the exact design links, instructions, assignment, consent, keyboard flow and device behavior. Confirm that both versions use comparable tasks and scoring.",
+    "Use the field list generated for this study and its actual Qualtrics route. Do not invent field names or mix separate survey and embedded collection routes.",
+    "Check the signal against the intended behavior. A fired event is not necessarily comprehension, confidence or successful completion.",
+    "Track recruited, eligible, assigned, task-scored and follow-up-completed counts separately. Check unequal dropout and tracking differences before comparing designs.",
+    "Follow the predefined stopping rule. Document technical pauses, restarts, exclusions and protocol changes with their reasons; do not stop because a preferred result appeared.",
+    "Keep identifiers, raw Qualtrics/Medallia exports and private session notes on approved systems. Servant does not fetch survey responses."
+  ],
+  "questions": [
+    "Have assignment and measurement been checked end to end?",
+    "What changed during fieldwork, and how could it affect interpretation?"
+  ],
+  "example": "If one version fails to record a completion signal, pause and investigate. Do not silently count those missing signals as failed tasks.",
+  "sources": [
+    {
+      "title": "Team study-plan and analysis templates; Civic Research Studio collection and preflight guidance"
+    }
+  ]
+}

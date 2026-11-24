@@ -1,0 +1,28 @@
+{
+  "id": "TR-102",
+  "version": "0.1.0",
+  "status": "draft",
+  "title": "Plan a defensible study",
+  "summary": "Define the question, design, measures, participants, analysis and stopping rule before fielding.",
+  "phases": [
+    "planning"
+  ],
+  "steps": [
+    "Cite prior research with its population, period, method and limits. Separate known evidence from hypotheses and business priorities.",
+    "Define one primary question and outcome. Specify the unit, denominator, scoring rule, missing outcomes and a practically meaningful difference.",
+    "For independent designs, different participants use each version. For paired designs, preserve the participant pairing and address order, learning and fatigue.",
+    "Write neutral tasks without revealing the answer. Record consent, accessibility, recruiting and data-handling arrangements.",
+    "Justify recruitment and assignment targets using precision, power or a formative learning plan. A tool's comparison minimum is not a sample-size recommendation.",
+    "Predefine the analysis, exclusions and stopping rule. Pilot the versions and measurement before recruiting."
+  ],
+  "questions": [
+    "Can the primary measure distinguish task success from self-report and tracking?",
+    "Which unknowns must be resolved before fielding?"
+  ],
+  "example": "Task: You checked your refund status and see processing is still underway. Work out what, if anything, you should do next. Define the accepted interpretation separately.",
+  "sources": [
+    {
+      "title": "Study plan template; adapted from HF795 and the M3 Design a Study template"
+    }
+  ]
+}

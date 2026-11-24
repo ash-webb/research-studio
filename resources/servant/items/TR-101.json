@@ -1,0 +1,27 @@
+{
+  "id": "TR-101",
+  "version": "0.1.0",
+  "status": "draft",
+  "title": "Choose a research method",
+  "summary": "Match the decision and question to the evidence a method can produce.",
+  "phases": [
+    "planning"
+  ],
+  "steps": [
+    "Name the decision, its owner, the population and the uncertainty that matters.",
+    "Use prototype usability or implementation A/B testing for observed task behavior; use a preference test for preference. Preference does not establish task performance.",
+    "Use card sorting to explore grouping and labels; use tree testing to assess findability. Grouping alone does not establish findability.",
+    "Use surveys or interviews for reported experience and explanations. Reported intention is not observed completion.",
+    "Record alternatives and limits. Moderated sessions, interviews, field work and some accessibility studies need methods outside the unmoderated Studio runner."
+  ],
+  "questions": [
+    "What would change the decision?",
+    "Which outcome answers the question, and what can this method not establish?"
+  ],
+  "example": "To learn whether people interpret a waiting status correctly, score their interpretation. A click event alone does not answer that question.",
+  "sources": [
+    {
+      "title": "Team research handbook; adapted from the HF795 study-design and survey materials"
+    }
+  ]
+}

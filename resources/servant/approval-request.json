@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "approvalId": "REPLACE-WITH-REVIEW-ID",
+  "status": "PENDING",
+  "audience": "servant-private-workspace-and-configured-researcher-model",
+  "repository": "ash-webb/research-studio",
+  "catalogDigest": "a06ff5ed3711038f2a7c737379c1f5e2f90d10fd1cab0cdf95ea236fdd7e8275",
+  "reviewer": null,
+  "approvedAt": null,
+  "expiresAt": null
+}

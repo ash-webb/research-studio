@@ -1,0 +1,18 @@
+name: Check Servant resource publication
+on:
+  push:
+    branches: [main]
+    paths: ['resources/servant/**', 'approvals/servant-resources.json', 'scripts/publish-servant-resources.mjs', '.github/workflows/servant-resources.yml']
+  pull_request:
+    paths: ['resources/servant/**', 'approvals/servant-resources.json', 'scripts/publish-servant-resources.mjs', '.github/workflows/servant-resources.yml']
+permissions:
+  contents: read
+jobs:
+  publication:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: '24'
+      - run: node scripts/publish-servant-resources.mjs --check
