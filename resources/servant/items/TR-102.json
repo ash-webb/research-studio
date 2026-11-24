@@ -1,28 +1,44 @@
 {
   "id": "TR-102",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "status": "draft",
   "title": "Plan a defensible study",
-  "summary": "Define the question, design, measures, participants, analysis and stopping rule before fielding.",
+  "summary": "Specify the question, task, scoring, recruitment, analysis and stopping rule before fielding.",
   "phases": [
     "planning"
   ],
   "steps": [
-    "Cite prior research with its population, period, method and limits. Separate known evidence from hypotheses and business priorities.",
-    "Define one primary question and outcome. Specify the unit, denominator, scoring rule, missing outcomes and a practically meaningful difference.",
-    "For independent designs, different participants use each version. For paired designs, preserve the participant pairing and address order, learning and fatigue.",
-    "Write neutral tasks without revealing the answer. Record consent, accessibility, recruiting and data-handling arrangements.",
-    "Justify recruitment and assignment targets using precision, power or a formative learning plan. A tool's comparison minimum is not a sample-size recommendation.",
-    "Predefine the analysis, exclusions and stopping rule. Pilot the versions and measurement before recruiting."
+    "Cite prior research with its population, period, method and limits. Separate findings from hypotheses and business priorities; name the decision and its owner.",
+    "Define one primary outcome, the unit counted, numerator, denominator, scoring rule, treatment of missing outcomes and smallest difference worth acting on. Distinguish observed task success, self-report and tracking status.",
+    "For the current A/B/n activity, one session receives one design. Keep tasks and measurement comparable across designs. A paired study needs a separately suitable design, pairing and order controls; it is not a switch in this A/B activity.",
+    "Write a neutral participant task that does not reveal the intended answer. Write the accepted answer or success rubric separately for the scorer, including how partial or ambiguous answers are handled.",
+    "Define eligibility, recruitment, access needs, consent, device support and approved data handling before recruitment. Pilot with assistive technology when relevant; record remaining accessibility limits.",
+    "Justify the target using precision, power or a formative learning plan. Keep recruited, eligible, assigned, scored and follow-up-completed targets distinct. The comparison display minimum of 10 assigned per design is not a recommended sample size.",
+    "The standard A/B primary rate uses everyone assigned; dropout and unmeasured sessions remain in that denominator as not successful, with measurement status reported separately. Recruit extra for losses before assignment; later dropout is not removed from the assigned target. Do not forecast follow-up completion without a stated completion assumption.",
+    "Predefine primary contrasts, analysis, exclusions and a stopping rule. Record repeat-session risks: sessions are not verified unique people. Any recruitment controls belong in approved systems, not identifiers sent to an agent.",
+    "Pilot the exact versions, collection route, assignment, success signal and follow-up end to end. Recheck the plan after import into the installed Studio version. A generated draft or survey is not permission to field a study."
   ],
   "questions": [
-    "Can the primary measure distinguish task success from self-report and tracking?",
-    "Which unknowns must be resolved before fielding?"
+    "Can another researcher score the primary outcome without guessing?",
+    "Are recruitment, assignment and follow-up targets using the correct units?",
+    "What must be checked or approved before real participants can enter?"
   ],
-  "example": "Task: You checked your refund status and see processing is still underway. Work out what, if anything, you should do next. Define the accepted interpretation separately.",
+  "example": "Participant task: You checked your refund status and see that processing is underway. What, if anything, would you do next? Keep the intended interpretation in a separate scorer rubric; do not put it in the participant prompt.",
   "sources": [
     {
-      "title": "Study plan template; adapted from HF795 and the M3 Design a Study template"
+      "title": "GOV.UK: Plan a round of user research",
+      "url": "https://www.gov.uk/service-manual/user-research/plan-round-of-user-research"
+    },
+    {
+      "title": "Nielsen Norman Group: Task Scenarios for Usability Testing",
+      "url": "https://www.nngroup.com/articles/task-scenarios-usability-testing/"
+    },
+    {
+      "title": "Research Studio 0.3.24: A/B assignment, measures and limits",
+      "url": "https://github.com/ash-webb/research-studio/blob/03cfcb2/docs/AB-TESTING.md"
+    },
+    {
+      "title": "Servant: installed Studio 0.3.24 adapter and researcher A/B reference (app/src/lib/research-studio-compat.ts; civic-research-studio/references/ab-testing.md)"
     }
   ]
 }

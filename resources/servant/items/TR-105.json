@@ -1,30 +1,45 @@
 {
   "id": "TR-105",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "status": "draft",
   "title": "Plan card sorts and tree tests",
-  "summary": "Keep grouping, findability and their analysis paths separate.",
+  "summary": "Use card sorting for grouping and tree testing for findability, with separate measures and limits.",
   "phases": [
     "planning",
     "execution",
     "analysis"
   ],
   "steps": [
-    "For a card sort, define the grouping question, audience, understandable card set and open, closed or hybrid format.",
-    "Preserve original participant labels; document normalization, merge rules and denominators for co-placement. Coefficients and dendrograms suggest structures to test, not proven navigation.",
-    "For a tree test, version the trees, write neutral scenarios and define all accepted destinations and scoring before fielding.",
-    "Define direct success, first branch, backtracking and timing separately. Keep perceived success separate from recorded destination success.",
-    "Preserve participant pairing or task clustering and plan multiple comparisons. Lostness is optional and needs a valid definition and path data.",
-    "Test the resulting interface with a method that addresses remaining usability and accessibility questions."
+    "For a card sort, define the grouping question, audience, understandable card set and open, closed or hybrid format. Check that the set represents the content question without requiring unexplained specialist terms.",
+    "Preserve original participant labels only in the approved source system; document any normalization, merges and co-placement denominators in an approved analysis. Participant-written labels may contain private text. Servant deliberately omits open-sort participant group names from its saved readout; do not paste them into an agent to recover detail.",
+    "The current runner does not automatically produce clusters or dendrograms. If a separate approved analysis proposes a structure from co-placement, treat it as a hypothesis to test, not proven navigation.",
+    "For a tree test, version the text hierarchies, write realistic neutral scenarios and specify every acceptable destination and scoring rule before fielding. Do not repeat the destination label in the task.",
+    "Define destination success, direct success, first-branch correctness, backtracks and timing separately. Self-reported ease or completion is a different measure. State the denominator for each rate and the treatment of missing paths.",
+    "The current readout supports destination success, directness, first-branch correctness when known and backtracks. Lostness is not automatically calculated; any separate lostness analysis needs a stated definition and valid path data.",
+    "Account for multiple tasks from the same person and any paired comparisons; they are not independent participants. Plan the primary comparison and any multiplicity handling rather than choosing the best-looking task afterward.",
+    "Test the resulting interface for remaining usability and accessibility questions. A successful text-tree destination does not demonstrate that people can find or use the same feature in the visual interface."
   ],
   "questions": [
-    "Am I measuring grouping or findability?",
-    "Does the task wording disclose a destination label?"
+    "Am I asking about grouping, findability or the finished interface?",
+    "Does the task wording disclose the answer?",
+    "Are private participant labels and dependent observations handled correctly?"
   ],
-  "example": "Ask where someone would find a past notice, without repeating the navigation label that is the intended destination.",
+  "example": "Ask: You need to check what a letter sent last month asked you to do. Where would you look? Define the accepted destination in the scoring plan rather than naming that navigation item in the task.",
   "sources": [
     {
-      "title": "Team card sort and tree test workbook; adapted from the supplied card-sort and tree-test teaching decks"
+      "title": "Nielsen Norman Group: Card Sorting vs. Tree Testing",
+      "url": "https://www.nngroup.com/articles/card-sorting-tree-testing-differences/"
+    },
+    {
+      "title": "Nielsen Norman Group: Tree Testing",
+      "url": "https://www.nngroup.com/articles/tree-testing/"
+    },
+    {
+      "title": "Nielsen Norman Group: Task Scenarios for Usability Testing",
+      "url": "https://www.nngroup.com/articles/task-scenarios-usability-testing/"
+    },
+    {
+      "title": "Servant: local-only readout adapter, including tree metrics and open-sort label protection (app/src/lib/readout-methods.ts)"
     }
   ]
 }

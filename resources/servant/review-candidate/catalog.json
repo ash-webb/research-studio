@@ -1,0 +1,183 @@
+{
+  "schemaVersion": 1,
+  "version": "0.1.1",
+  "updatedAt": "2026-11-24",
+  "origin": "Research Studio reviewed methods resources",
+  "autoAttach": false,
+  "resources": [
+    {
+      "id": "TR-101",
+      "version": "0.1.1",
+      "status": "reviewed",
+      "title": "Choose a research method",
+      "summary": "Choose a method that can answer the decision, and check what the installed tools actually support.",
+      "phases": [
+        "planning"
+      ],
+      "steps": [
+        "Name the decision, its owner, the relevant population and the uncertainty that matters. Review existing evidence before collecting more.",
+        "Use a prototype usability task to observe behavior. Use an implementation A/B/n comparison for differences between working designs on comparable tasks. The current A/B activity assigns one design per session; it is not a paired, within-person comparison.",
+        "Use a screenshot first-click test for the initial choice, not end-to-end task completion. Use preference comparisons for stated preference, not proof of better task performance.",
+        "Use card sorting to explore grouping and labels; use tree testing to assess findability in a text hierarchy. Neither alone establishes usability of the finished interface.",
+        "Use surveys for reported experience and interviews for explanations and context. Reported intention or confidence is not observed completion or comprehension.",
+        "Check the installed version before promising a workflow. Servant currently targets Studio 0.3.24 for draft imports; newer public releases may behave differently. The current runner does not provide participant recruitment, automatic clustering or a validated winning-design declaration.",
+        "Record alternatives and limits. Moderated sessions, interviews, field work and some accessibility questions need methods outside the unmoderated runner. Plan those with suitable tools and support."
+      ],
+      "questions": [
+        "What evidence would change the decision?",
+        "Can this method measure the outcome, with this population and access needs?",
+        "Which work is supported here, and which needs another approved workflow?"
+      ],
+      "example": "To learn whether people understand a waiting status, score their interpretation against a predefined rubric. A click, a preference or a claim of confidence alone does not establish that understanding.",
+      "sources": [
+        {
+          "title": "GOV.UK: Plan a round of user research",
+          "url": "https://www.gov.uk/service-manual/user-research/plan-round-of-user-research"
+        },
+        {
+          "title": "Research Studio 0.3.24: A/B assignment, measures and limits",
+          "url": "https://github.com/ash-webb/research-studio/blob/03cfcb2/docs/AB-TESTING.md"
+        },
+        {
+          "title": "Servant: installed Studio 0.3.24 adapter and researcher A/B reference (app/src/lib/research-studio-compat.ts; civic-research-studio/references/ab-testing.md)"
+        },
+        {
+          "title": "Nielsen Norman Group: Card Sorting vs. Tree Testing",
+          "url": "https://www.nngroup.com/articles/card-sorting-tree-testing-differences/"
+        }
+      ]
+    },
+    {
+      "id": "TR-102",
+      "version": "0.1.1",
+      "status": "reviewed",
+      "title": "Plan a defensible study",
+      "summary": "Specify the question, task, scoring, recruitment, analysis and stopping rule before fielding.",
+      "phases": [
+        "planning"
+      ],
+      "steps": [
+        "Cite prior research with its population, period, method and limits. Separate findings from hypotheses and business priorities; name the decision and its owner.",
+        "Define one primary outcome, the unit counted, numerator, denominator, scoring rule, treatment of missing outcomes and smallest difference worth acting on. Distinguish observed task success, self-report and tracking status.",
+        "For the current A/B/n activity, one session receives one design. Keep tasks and measurement comparable across designs. A paired study needs a separately suitable design, pairing and order controls; it is not a switch in this A/B activity.",
+        "Write a neutral participant task that does not reveal the intended answer. Write the accepted answer or success rubric separately for the scorer, including how partial or ambiguous answers are handled.",
+        "Define eligibility, recruitment, access needs, consent, device support and approved data handling before recruitment. Pilot with assistive technology when relevant; record remaining accessibility limits.",
+        "Justify the target using precision, power or a formative learning plan. Keep recruited, eligible, assigned, scored and follow-up-completed targets distinct. The comparison display minimum of 10 assigned per design is not a recommended sample size.",
+        "The standard A/B primary rate uses everyone assigned; dropout and unmeasured sessions remain in that denominator as not successful, with measurement status reported separately. Recruit extra for losses before assignment; later dropout is not removed from the assigned target. Do not forecast follow-up completion without a stated completion assumption.",
+        "Predefine primary contrasts, analysis, exclusions and a stopping rule. Record repeat-session risks: sessions are not verified unique people. Any recruitment controls belong in approved systems, not identifiers sent to an agent.",
+        "Pilot the exact versions, collection route, assignment, success signal and follow-up end to end. Recheck the plan after import into the installed Studio version. A generated draft or survey is not permission to field a study."
+      ],
+      "questions": [
+        "Can another researcher score the primary outcome without guessing?",
+        "Are recruitment, assignment and follow-up targets using the correct units?",
+        "What must be checked or approved before real participants can enter?"
+      ],
+      "example": "Participant task: You checked your refund status and see that processing is underway. What, if anything, would you do next? Keep the intended interpretation in a separate scorer rubric; do not put it in the participant prompt.",
+      "sources": [
+        {
+          "title": "GOV.UK: Plan a round of user research",
+          "url": "https://www.gov.uk/service-manual/user-research/plan-round-of-user-research"
+        },
+        {
+          "title": "Nielsen Norman Group: Task Scenarios for Usability Testing",
+          "url": "https://www.nngroup.com/articles/task-scenarios-usability-testing/"
+        },
+        {
+          "title": "Research Studio 0.3.24: A/B assignment, measures and limits",
+          "url": "https://github.com/ash-webb/research-studio/blob/03cfcb2/docs/AB-TESTING.md"
+        },
+        {
+          "title": "Servant: installed Studio 0.3.24 adapter and researcher A/B reference (app/src/lib/research-studio-compat.ts; civic-research-studio/references/ab-testing.md)"
+        }
+      ]
+    },
+    {
+      "id": "TR-105",
+      "version": "0.1.1",
+      "status": "reviewed",
+      "title": "Plan card sorts and tree tests",
+      "summary": "Use card sorting for grouping and tree testing for findability, with separate measures and limits.",
+      "phases": [
+        "planning",
+        "execution",
+        "analysis"
+      ],
+      "steps": [
+        "For a card sort, define the grouping question, audience, understandable card set and open, closed or hybrid format. Check that the set represents the content question without requiring unexplained specialist terms.",
+        "Preserve original participant labels only in the approved source system; document any normalization, merges and co-placement denominators in an approved analysis. Participant-written labels may contain private text. Servant deliberately omits open-sort participant group names from its saved readout; do not paste them into an agent to recover detail.",
+        "The current runner does not automatically produce clusters or dendrograms. If a separate approved analysis proposes a structure from co-placement, treat it as a hypothesis to test, not proven navigation.",
+        "For a tree test, version the text hierarchies, write realistic neutral scenarios and specify every acceptable destination and scoring rule before fielding. Do not repeat the destination label in the task.",
+        "Define destination success, direct success, first-branch correctness, backtracks and timing separately. Self-reported ease or completion is a different measure. State the denominator for each rate and the treatment of missing paths.",
+        "The current readout supports destination success, directness, first-branch correctness when known and backtracks. Lostness is not automatically calculated; any separate lostness analysis needs a stated definition and valid path data.",
+        "Account for multiple tasks from the same person and any paired comparisons; they are not independent participants. Plan the primary comparison and any multiplicity handling rather than choosing the best-looking task afterward.",
+        "Test the resulting interface for remaining usability and accessibility questions. A successful text-tree destination does not demonstrate that people can find or use the same feature in the visual interface."
+      ],
+      "questions": [
+        "Am I asking about grouping, findability or the finished interface?",
+        "Does the task wording disclose the answer?",
+        "Are private participant labels and dependent observations handled correctly?"
+      ],
+      "example": "Ask: You need to check what a letter sent last month asked you to do. Where would you look? Define the accepted destination in the scoring plan rather than naming that navigation item in the task.",
+      "sources": [
+        {
+          "title": "Nielsen Norman Group: Card Sorting vs. Tree Testing",
+          "url": "https://www.nngroup.com/articles/card-sorting-tree-testing-differences/"
+        },
+        {
+          "title": "Nielsen Norman Group: Tree Testing",
+          "url": "https://www.nngroup.com/articles/tree-testing/"
+        },
+        {
+          "title": "Nielsen Norman Group: Task Scenarios for Usability Testing",
+          "url": "https://www.nngroup.com/articles/task-scenarios-usability-testing/"
+        },
+        {
+          "title": "Servant: local-only readout adapter, including tree metrics and open-sort label protection (app/src/lib/readout-methods.ts)"
+        }
+      ]
+    },
+    {
+      "id": "TR-110",
+      "version": "0.1.1",
+      "status": "reviewed",
+      "title": "Run the study and record deviations",
+      "summary": "Check the whole collection route, preserve the declared denominator and document deviations.",
+      "phases": [
+        "execution"
+      ],
+      "steps": [
+        "Pilot the exact version-pinned links, instructions, consent, assignment, keyboard flow and supported devices. Check comparable tasks and scoring for every design, including tracking unavailable and interrupted-session cases.",
+        "Use the field list generated for this study and its actual Qualtrics route. Do not invent fields or mix the two-survey link route with the embedded one-survey route. For the embedded route, do not also import a separate Survey 1.",
+        "Check that a success signal represents the intended behavior. A fired click event is not automatically comprehension or task success. Record self-report and tracker status separately.",
+        "Track recruited, eligible, assigned, task-scored and follow-up-completed counts separately. Runner counts are session-based; repeat sessions may be the same person. Check recruitment controls in the approved system without sending identifiers to an agent.",
+        "Keep the declared primary denominator. The standard A/B success rate includes everyone assigned: dropout and unmeasured sessions count as not successful. That is a rate convention, not proof of an observed task failure. Separately report missing measurement, dropout and measured-finisher rates; do not replace the primary rate with the most favorable one.",
+        "Investigate tracking differences, unequal dropout and version problems before interpreting a comparison. Preserve the original records in approved storage; log technical pauses, restarts, exclusions and protocol changes with their reasons and possible bias.",
+        "Follow the predefined stopping rule; do not stop because a preferred result appeared. Technical pauses are documented deviations, not a new opportunity to choose a favorable stopping point.",
+        "Keep raw Qualtrics/Medallia exports, participant labels, identifiers and session notes in approved systems. Use the existing approved local analysis workflow. Servant does not fetch survey responses; method-guide sync does not authorize transferring raw data to a model."
+      ],
+      "questions": [
+        "Have both normal and broken collection paths been tested?",
+        "Are missing measurements distinguished from observed failures without changing the primary denominator?",
+        "What changed during fieldwork, and how could that affect the result?"
+      ],
+      "example": "If B stops recording success signals, pause and investigate. Keep those assigned sessions in the predeclared primary rate as not successful; label their measurement status unknown or unavailable, not observed task failure. Report the defect and any resulting limits or exclusions transparently.",
+      "sources": [
+        {
+          "title": "Research Studio 0.3.24: A/B assignment, measures and limits",
+          "url": "https://github.com/ash-webb/research-studio/blob/03cfcb2/docs/AB-TESTING.md"
+        },
+        {
+          "title": "Servant: installed Studio 0.3.24 adapter and researcher A/B reference (app/src/lib/research-studio-compat.ts; civic-research-studio/references/ab-testing.md)"
+        },
+        {
+          "title": "Research Studio 0.3.24: generated Qualtrics collection routes",
+          "url": "https://github.com/ash-webb/research-studio/blob/03cfcb2/docs/QUALTRICS-AB-SETUP.md"
+        },
+        {
+          "title": "GOV.UK: Plan a round of user research",
+          "url": "https://www.gov.uk/service-manual/user-research/plan-round-of-user-research"
+        }
+      ]
+    }
+  ]
+}

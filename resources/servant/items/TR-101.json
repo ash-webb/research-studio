@@ -1,27 +1,42 @@
 {
   "id": "TR-101",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "status": "draft",
   "title": "Choose a research method",
-  "summary": "Match the decision and question to the evidence a method can produce.",
+  "summary": "Choose a method that can answer the decision, and check what the installed tools actually support.",
   "phases": [
     "planning"
   ],
   "steps": [
-    "Name the decision, its owner, the population and the uncertainty that matters.",
-    "Use prototype usability or implementation A/B testing for observed task behavior; use a preference test for preference. Preference does not establish task performance.",
-    "Use card sorting to explore grouping and labels; use tree testing to assess findability. Grouping alone does not establish findability.",
-    "Use surveys or interviews for reported experience and explanations. Reported intention is not observed completion.",
-    "Record alternatives and limits. Moderated sessions, interviews, field work and some accessibility studies need methods outside the unmoderated Studio runner."
+    "Name the decision, its owner, the relevant population and the uncertainty that matters. Review existing evidence before collecting more.",
+    "Use a prototype usability task to observe behavior. Use an implementation A/B/n comparison for differences between working designs on comparable tasks. The current A/B activity assigns one design per session; it is not a paired, within-person comparison.",
+    "Use a screenshot first-click test for the initial choice, not end-to-end task completion. Use preference comparisons for stated preference, not proof of better task performance.",
+    "Use card sorting to explore grouping and labels; use tree testing to assess findability in a text hierarchy. Neither alone establishes usability of the finished interface.",
+    "Use surveys for reported experience and interviews for explanations and context. Reported intention or confidence is not observed completion or comprehension.",
+    "Check the installed version before promising a workflow. Servant currently targets Studio 0.3.24 for draft imports; newer public releases may behave differently. The current runner does not provide participant recruitment, automatic clustering or a validated winning-design declaration.",
+    "Record alternatives and limits. Moderated sessions, interviews, field work and some accessibility questions need methods outside the unmoderated runner. Plan those with suitable tools and support."
   ],
   "questions": [
-    "What would change the decision?",
-    "Which outcome answers the question, and what can this method not establish?"
+    "What evidence would change the decision?",
+    "Can this method measure the outcome, with this population and access needs?",
+    "Which work is supported here, and which needs another approved workflow?"
   ],
-  "example": "To learn whether people interpret a waiting status correctly, score their interpretation. A click event alone does not answer that question.",
+  "example": "To learn whether people understand a waiting status, score their interpretation against a predefined rubric. A click, a preference or a claim of confidence alone does not establish that understanding.",
   "sources": [
     {
-      "title": "Team research handbook; adapted from the HF795 study-design and survey materials"
+      "title": "GOV.UK: Plan a round of user research",
+      "url": "https://www.gov.uk/service-manual/user-research/plan-round-of-user-research"
+    },
+    {
+      "title": "Research Studio 0.3.24: A/B assignment, measures and limits",
+      "url": "https://github.com/ash-webb/research-studio/blob/03cfcb2/docs/AB-TESTING.md"
+    },
+    {
+      "title": "Servant: installed Studio 0.3.24 adapter and researcher A/B reference (app/src/lib/research-studio-compat.ts; civic-research-studio/references/ab-testing.md)"
+    },
+    {
+      "title": "Nielsen Norman Group: Card Sorting vs. Tree Testing",
+      "url": "https://www.nngroup.com/articles/card-sorting-tree-testing-differences/"
     }
   ]
 }

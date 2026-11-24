@@ -15,3 +15,28 @@ The approved record schema is version 1. Each guide has exactly: `id`, `version`
 Servant authenticates every read and resolution using its existing device transport, Researcher/owner access and pilot hold. It re-resolves selected versions/content hashes before preparing a Researcher request. Guides are method references, never product findings, and are not automatically sent to an agent or installed as skills. Existing Research Hub evidence approvals remain separate and unchanged.
 
 This initial publication is empty. The included examples remain drafts; no source approval has been granted by the publishing helper.
+
+## Review a candidate before publication
+
+Run `node scripts/publish-servant-resources.mjs --prepare-review` to validate all
+items and prepare `review-candidate/catalog.json` and a PENDING
+`review-candidate/approval-request.json`. This previews the exact reviewed release
+without changing draft statuses, the live catalog or any approval. Servant never
+reads the candidate directory. The normal `--check` rejects stale candidate copies.
+
+The November 24, 2026 starter release is version 0.1.1. Content corrections are
+complete, but human publication approval is pending. Review the candidate catalog
+and its full-content digest; the separate root approval-request.json describes the
+currently empty live feed and is not the request for these guides.
+
+After an authorized human approves the exact candidate and its audience, mark only
+those items reviewed, regenerate the live catalog, and verify it has the candidate
+digest. Create the real approval with that digest, the authorized reviewer's name
+and actual UTC approval/expiry instants. The proposed starter approval window is
+30 days. Publish the matching catalog and approval together. Preparing a candidate
+never authorizes this step. Any content edit requires a new review/digest.
+
+Approval covers these guides in Servant's private workspace and configured
+Researcher model. Existing Researcher/owner access, pilot hold, explicit selection
+and evidence controls remain in force. It does not approve real study fielding,
+raw data transfer, release of underlying evidence or new agent permissions.

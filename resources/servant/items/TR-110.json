@@ -1,28 +1,43 @@
 {
   "id": "TR-110",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "status": "draft",
   "title": "Run the study and record deviations",
-  "summary": "Check readiness, preserve the study design and record changes without moving raw responses into an agent.",
+  "summary": "Check the whole collection route, preserve the declared denominator and document deviations.",
   "phases": [
     "execution"
   ],
   "steps": [
-    "Pilot the exact design links, instructions, assignment, consent, keyboard flow and device behavior. Confirm that both versions use comparable tasks and scoring.",
-    "Use the field list generated for this study and its actual Qualtrics route. Do not invent field names or mix separate survey and embedded collection routes.",
-    "Check the signal against the intended behavior. A fired event is not necessarily comprehension, confidence or successful completion.",
-    "Track recruited, eligible, assigned, task-scored and follow-up-completed counts separately. Check unequal dropout and tracking differences before comparing designs.",
-    "Follow the predefined stopping rule. Document technical pauses, restarts, exclusions and protocol changes with their reasons; do not stop because a preferred result appeared.",
-    "Keep identifiers, raw Qualtrics/Medallia exports and private session notes on approved systems. Servant does not fetch survey responses."
+    "Pilot the exact version-pinned links, instructions, consent, assignment, keyboard flow and supported devices. Check comparable tasks and scoring for every design, including tracking unavailable and interrupted-session cases.",
+    "Use the field list generated for this study and its actual Qualtrics route. Do not invent fields or mix the two-survey link route with the embedded one-survey route. For the embedded route, do not also import a separate Survey 1.",
+    "Check that a success signal represents the intended behavior. A fired click event is not automatically comprehension or task success. Record self-report and tracker status separately.",
+    "Track recruited, eligible, assigned, task-scored and follow-up-completed counts separately. Runner counts are session-based; repeat sessions may be the same person. Check recruitment controls in the approved system without sending identifiers to an agent.",
+    "Keep the declared primary denominator. The standard A/B success rate includes everyone assigned: dropout and unmeasured sessions count as not successful. That is a rate convention, not proof of an observed task failure. Separately report missing measurement, dropout and measured-finisher rates; do not replace the primary rate with the most favorable one.",
+    "Investigate tracking differences, unequal dropout and version problems before interpreting a comparison. Preserve the original records in approved storage; log technical pauses, restarts, exclusions and protocol changes with their reasons and possible bias.",
+    "Follow the predefined stopping rule; do not stop because a preferred result appeared. Technical pauses are documented deviations, not a new opportunity to choose a favorable stopping point.",
+    "Keep raw Qualtrics/Medallia exports, participant labels, identifiers and session notes in approved systems. Use the existing approved local analysis workflow. Servant does not fetch survey responses; method-guide sync does not authorize transferring raw data to a model."
   ],
   "questions": [
-    "Have assignment and measurement been checked end to end?",
-    "What changed during fieldwork, and how could it affect interpretation?"
+    "Have both normal and broken collection paths been tested?",
+    "Are missing measurements distinguished from observed failures without changing the primary denominator?",
+    "What changed during fieldwork, and how could that affect the result?"
   ],
-  "example": "If one version fails to record a completion signal, pause and investigate. Do not silently count those missing signals as failed tasks.",
+  "example": "If B stops recording success signals, pause and investigate. Keep those assigned sessions in the predeclared primary rate as not successful; label their measurement status unknown or unavailable, not observed task failure. Report the defect and any resulting limits or exclusions transparently.",
   "sources": [
     {
-      "title": "Team study-plan and analysis templates; Civic Research Studio collection and preflight guidance"
+      "title": "Research Studio 0.3.24: A/B assignment, measures and limits",
+      "url": "https://github.com/ash-webb/research-studio/blob/03cfcb2/docs/AB-TESTING.md"
+    },
+    {
+      "title": "Servant: installed Studio 0.3.24 adapter and researcher A/B reference (app/src/lib/research-studio-compat.ts; civic-research-studio/references/ab-testing.md)"
+    },
+    {
+      "title": "Research Studio 0.3.24: generated Qualtrics collection routes",
+      "url": "https://github.com/ash-webb/research-studio/blob/03cfcb2/docs/QUALTRICS-AB-SETUP.md"
+    },
+    {
+      "title": "GOV.UK: Plan a round of user research",
+      "url": "https://www.gov.uk/service-manual/user-research/plan-round-of-user-research"
     }
   ]
 }
